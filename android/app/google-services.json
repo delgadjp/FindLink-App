@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "62598723004",
+    "project_id": "findlink-449810",
+    "storage_bucket": "findlink-449810.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:62598723004:android:794857e4447fc6bc7827b9",
+        "android_client_info": {
+          "package_name": "com.example.findlink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcDsni5o5H8mHA5njDdZkTKt-FZGMIuZc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
