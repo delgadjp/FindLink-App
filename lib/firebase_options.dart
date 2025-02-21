@@ -41,48 +41,51 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCnCZ7nxWsHAcdzo-y7cI5a42htHWQKWfc',
-    appId: '1:62598723004:web:83752f5f8b6877547827b9',
-    messagingSenderId: '62598723004',
-    projectId: 'findlink-449810',
-    authDomain: 'findlink-449810.firebaseapp.com',
-    storageBucket: 'findlink-449810.firebasestorage.app',
-    measurementId: 'G-8YQLN74HG6',
+    apiKey: 'AIzaSyBtAa6znwld6hJdlBdDEPhqkECzuuyzzo8',
+    appId: '1:152637585017:web:ec43d14d9b3224963386a8',
+    messagingSenderId: '152637585017',
+    projectId: 'missing-person-cap',
+    authDomain: 'missing-person-cap.firebaseapp.com',
+    storageBucket: 'missing-person-cap.firebasestorage.app',
+    measurementId: 'G-KW3Q9T21GY',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBcDsni5o5H8mHA5njDdZkTKt-FZGMIuZc',
-    appId: '1:62598723004:android:794857e4447fc6bc7827b9',
-    messagingSenderId: '62598723004',
-    projectId: 'findlink-449810',
-    storageBucket: 'findlink-449810.firebasestorage.app',
+    apiKey: 'AIzaSyCOEjzw3xPeciieI8-u2B1SZIDFGnsl2Xo',
+    appId: '1:152637585017:android:74e225bfa99f64353386a8',
+    messagingSenderId: '152637585017',
+    projectId: 'missing-person-cap',
+    storageBucket: 'missing-person-cap.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDAQ0m93A768HH7SBzfwlyv3FFSNfy3e-g',
-    appId: '1:62598723004:ios:2acb78953732f7527827b9',
-    messagingSenderId: '62598723004',
-    projectId: 'findlink-449810',
-    storageBucket: 'findlink-449810.firebasestorage.app',
+    apiKey: 'AIzaSyAA-UmuvfDALwwL6Etu0HyW8MhVZyuKGJU',
+    appId: '1:152637585017:ios:e1ec57f7f58fab5e3386a8',
+    messagingSenderId: '152637585017',
+    projectId: 'missing-person-cap',
+    storageBucket: 'missing-person-cap.firebasestorage.app',
+    iosClientId: '152637585017-3knoqmn9oec9sh7e1l4f3tip6tsv2nbk.apps.googleusercontent.com',
     iosBundleId: 'com.example.findlink',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDAQ0m93A768HH7SBzfwlyv3FFSNfy3e-g',
-    appId: '1:62598723004:ios:2acb78953732f7527827b9',
-    messagingSenderId: '62598723004',
-    projectId: 'findlink-449810',
-    storageBucket: 'findlink-449810.firebasestorage.app',
+    apiKey: 'AIzaSyAA-UmuvfDALwwL6Etu0HyW8MhVZyuKGJU',
+    appId: '1:152637585017:ios:e1ec57f7f58fab5e3386a8',
+    messagingSenderId: '152637585017',
+    projectId: 'missing-person-cap',
+    storageBucket: 'missing-person-cap.firebasestorage.app',
+    iosClientId: '152637585017-3knoqmn9oec9sh7e1l4f3tip6tsv2nbk.apps.googleusercontent.com',
     iosBundleId: 'com.example.findlink',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCnCZ7nxWsHAcdzo-y7cI5a42htHWQKWfc',
-    appId: '1:62598723004:web:58f14323f115d95e7827b9',
-    messagingSenderId: '62598723004',
-    projectId: 'findlink-449810',
-    authDomain: 'findlink-449810.firebaseapp.com',
-    storageBucket: 'findlink-449810.firebasestorage.app',
-    measurementId: 'G-PPD4LWYM4Z',
+    apiKey: 'AIzaSyBtAa6znwld6hJdlBdDEPhqkECzuuyzzo8',
+    appId: '1:152637585017:web:a1bc867718b91b373386a8',
+    messagingSenderId: '152637585017',
+    projectId: 'missing-person-cap',
+    authDomain: 'missing-person-cap.firebaseapp.com',
+    storageBucket: 'missing-person-cap.firebasestorage.app',
+    measurementId: 'G-KW3Q9T21GY',
   );
+
 }
