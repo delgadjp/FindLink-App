@@ -40,17 +40,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         padding: EdgeInsets.all(10.0),
         child: Column(
           children: [
-            ElevatedButton(
-              onPressed: () {},
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.filter_list),
-                  SizedBox(width: 5),
-                  Text('Filter')
-                ],
-              ),
-            ),
             Expanded(
               child: ListView.builder(
                 itemCount: reports.length,

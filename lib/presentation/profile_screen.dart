@@ -42,6 +42,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _signOut() async {
+    await AuthService().signOutUser(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,18 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'submit_tip') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SubmitTipScreen()),
-                );
-              } else if (value == 'sign_out') {
-                // Handle Sign Out action
+              if (value == 'sign_out') {
+                _signOut();
               }
             },
             itemBuilder: (BuildContext context) {
               return [
-                PopupMenuItem<String>(value: 'submit_tip', child: Text('Submit a Tip')),
                 PopupMenuItem<String>(value: 'sign_out', child: Text('Sign Out')),
               ];
             },

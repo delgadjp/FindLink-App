@@ -14,11 +14,13 @@ class AppDrawer extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Color(0xFF0D47A1),
               ),
-              child: Text(
-                'Navigation Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
+              child: Center(
+                child: SizedBox(
+                  width: 500,
+                  height: 500,
+                  child: Image.asset(
+                    ImageConstant.pngEgg,
+                  ),
                 ),
               ),
             ),
@@ -49,6 +51,16 @@ class AppDrawer extends StatelessWidget {
                 Navigator.push(
                   context, 
                   MaterialPageRoute(builder: (context) => FillUpFormScreen())
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.lightbulb, color: Colors.white),
+              title: Text('Submit a Tip', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (context) => SubmitTipScreen())
                 );
               },
             ),

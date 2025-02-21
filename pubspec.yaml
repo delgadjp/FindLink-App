@@ -31,6 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
   image_picker: ^1.0.7 
+  shared_preferences: ^2.2.2  # Check for latest version
+  permission_handler: ^11.0.1
   flutter_localizations:
     sdk: flutter
   cached_network_image: ^3.3.1

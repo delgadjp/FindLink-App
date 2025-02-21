@@ -52,7 +52,10 @@ class AuthService {
         email: email,
         password: password,
       );
-      Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration successful! Please login.')),
+      );
+      Navigator.pushReplacementNamed(context, '/login'); // Replace with your home route
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
         ScaffoldMessenger.of(context).showSnackBar(
