@@ -1,26 +1,43 @@
 {
   "project_info": {
-    "project_number": "62598723004",
-    "project_id": "findlink-449810",
-    "storage_bucket": "findlink-449810.firebasestorage.app"
+    "project_number": "152637585017",
+    "project_id": "missing-person-cap",
+    "storage_bucket": "missing-person-cap.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:62598723004:android:794857e4447fc6bc7827b9",
+        "mobilesdk_app_id": "1:152637585017:android:74e225bfa99f64353386a8",
         "android_client_info": {
           "package_name": "com.example.findlink"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "152637585017-spnfkp9n7ubtl9nb9plcv7descc30507.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBcDsni5o5H8mHA5njDdZkTKt-FZGMIuZc"
+          "current_key": "AIzaSyCOEjzw3xPeciieI8-u2B1SZIDFGnsl2Xo"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "152637585017-spnfkp9n7ubtl9nb9plcv7descc30507.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "152637585017-3knoqmn9oec9sh7e1l4f3tip6tsv2nbk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.findlink"
+              }
+            }
+          ]
         }
       }
     }
