@@ -138,6 +138,30 @@ class LoginPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 15),
+                    OutlinedButton.icon(
+                      onPressed: () => _authService.signInWithGoogle(context),
+                      icon: Image.asset(
+                        ImageConstant.googleLogo, // Updated to use ImageConstant
+                        height: 24,
+                      ),
+                      label: Text(
+                        'Sign in with Google',
+                        style: TextStyle(
+                          color: Color(0xFF424242),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                        side: BorderSide(color: Colors.grey),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 15),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
