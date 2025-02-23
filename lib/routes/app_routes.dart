@@ -1,5 +1,4 @@
 import '../core/app_export.dart';
-import '../presentation/home_screen.dart';
 
 class AppRoutes {
   static const String home = '/home';

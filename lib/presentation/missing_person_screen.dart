@@ -1,5 +1,5 @@
 import '../core/app_export.dart';
-import '../core/utils/image_constant.dart';
+
 
 class MissingPersonScreen extends StatefulWidget {
   @override
@@ -7,7 +7,6 @@ class MissingPersonScreen extends StatefulWidget {
 }
 
 class _MissingPersonScreenState extends State<MissingPersonScreen> {
-  int _currentIndex = 0;
   final List<Map<String, String>> reports = [
     {
       'organization': 'Philippine National Police',
@@ -51,20 +50,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifications'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
       ),
     );
   }

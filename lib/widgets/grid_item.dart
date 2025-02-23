@@ -1,6 +1,6 @@
 import '../core/app_export.dart';
 
-class GridItem extends StatelessWidget {
+class GridItem extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -12,22 +12,63 @@ class GridItem extends StatelessWidget {
   });
 
   @override
+  State<GridItem> createState() => _GridItemState();
+}
+
+class _GridItemState extends State<GridItem> {
+  bool isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 40, color: Colors.blue.shade900),
-          SizedBox(height: 8),
-          Expanded(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12), // Lowered font size
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 200),
+      child: Card(
+        elevation: isHovered ? 8 : 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => isHovered = true),
+          onExit: (_) => setState(() => isHovered = false),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedContainer(
+                    duration: Duration(milliseconds: 200),
+                    width: isHovered ? 65 : 60,
+                    height: isHovered ? 65 : 60,
+                    decoration: BoxDecoration(
+                      color: isHovered ? Colors.blue.shade100 : Colors.blue.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        widget.icon,
+                        size: isHovered ? 36 : 32,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    widget.label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isHovered ? Color(0xFF0D47A1) : Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
