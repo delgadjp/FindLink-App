@@ -52,20 +52,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: Text("Profile", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Color(0xFF0D47A1),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'sign_out') {
-                _signOut();
-              }
-            },
-            itemBuilder: (BuildContext context) {
-              return [
-                PopupMenuItem<String>(value: 'sign_out', child: Text('Sign Out')),
-              ];
-            },
-          ),
-        ],
       ),
       drawer: AppDrawer(),
       body: SingleChildScrollView(

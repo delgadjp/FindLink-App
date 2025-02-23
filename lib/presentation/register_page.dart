@@ -1,5 +1,4 @@
 import '../core/app_export.dart';
-import '../core/network/auth_service.dart';
 
 class RegisterPage extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
@@ -39,7 +38,7 @@ class RegisterPage extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 115.0),
                       child: Image.asset(
-                        ImageConstant.pngEgg,
+                        ImageConstant.placeholderLogo,
                         width: 180,
                         height: 240,
                         fit: BoxFit.contain,

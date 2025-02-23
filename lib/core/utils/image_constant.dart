@@ -23,4 +23,6 @@ class ImageConstant {
   static String profile = '$imagePath/profile_image.jpg';
 
   static String googleLogo = '$imagePath/google_logo.png';
+
+  static String placeholderLogo = '$imagePath/placeholder-logo.png';
 }
