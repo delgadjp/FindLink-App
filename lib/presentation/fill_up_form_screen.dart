@@ -1603,42 +1603,48 @@ class FillUpForm extends State<FillUpFormScreen> {
             SizedBox(
               height: 35,
               child: dropdownItems != null
-                  ? DropdownButtonFormField<String>(
-                      items: dropdownItems.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(
-                            value, 
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black // Changed menu item text color to black
-                            )
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        return DropdownButtonFormField<String>(
+                          items: dropdownItems.map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(
+                                value,
+                                style: TextStyle(
+                                  fontSize: constraints.maxWidth < 200 ? 12 : 14,
+                                  color: Colors.black,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            // Handle dropdown value change
+                          },
+                          style: TextStyle(
+                            fontSize: constraints.maxWidth < 200 ? 12 : 14,
+                            color: Colors.black,
                           ),
+                          dropdownColor: Colors.white,
+                          icon: Icon(Icons.arrow_drop_down, color: Colors.black, size: 20),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide: BorderSide(color: const Color.fromARGB(255, 205, 205, 205)),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            isDense: true,
+                          ),
+                          isExpanded: true,
                         );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        // Handle dropdown value change
                       },
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black // Changed selected value text color to black
-                      ),
-                      dropdownColor: Colors.white, // Set dropdown menu background color
-                      icon: Icon(Icons.arrow_drop_down, color: Colors.black),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          borderSide: BorderSide(color: const Color.fromARGB(255, 205, 205, 205)),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 5),
-                        isDense: true,
-                      ),
                     )
                   : TextFormField(
                       keyboardType: keyboardType,
@@ -1755,17 +1761,19 @@ class _UnderInfluenceCheckboxesState extends State<UnderInfluenceCheckboxes> {
           "UNDER THE INFLUENCE?",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 12, // Slightly larger for clarity
+            fontSize: 11, // Slightly larger for clarity
             color: Colors.black,
           ),
         ),
-        Row(
+        SizedBox(height: 4), // Reduced spacing
+        Wrap(
+          spacing: 8, // Horizontal spacing between checkboxes
+          runSpacing: 0, // Vertical spacing between rows
           children: [
             _buildCheckbox("NO", no, (value) {
               setState(() {
                 no = value!;
                 if (no) {
-                  // If "NO" is checked, uncheck all others
                   drugs = false;
                   liquor = false;
                   others = false;
@@ -1799,7 +1807,7 @@ class _UnderInfluenceCheckboxesState extends State<UnderInfluenceCheckboxes> {
         ),
         if (others) // Show text field only when "OTHERS" is checked
           Padding(
-            padding: const EdgeInsets.only(left: 32.0, top: 8.0),
+            padding: const EdgeInsets.only(top: 4.0), // Reduced top padding
             child: TextField(
               controller: othersController,
               decoration: InputDecoration(
@@ -1815,20 +1823,26 @@ class _UnderInfluenceCheckboxesState extends State<UnderInfluenceCheckboxes> {
   }
 
   Widget _buildCheckbox(String label, bool value, Function(bool?) onChanged) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Checkbox(
-          value: value,
-          onChanged: onChanged,
-          visualDensity: VisualDensity.compact,
-          activeColor: Colors.blue,
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.black),
-        ),
-      ],
+    return IntrinsicWidth(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Transform.scale(
+            scale: 0.8, // Make checkbox smaller
+            child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              visualDensity: VisualDensity.compact,
+              activeColor: Colors.blue,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: Colors.black), // Reduced font size
+          ),
+        ],
+      ),
     );
   }
 }
