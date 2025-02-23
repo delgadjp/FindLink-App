@@ -19,7 +19,7 @@ class HomeScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade100, Color(0xFF0D47A1),],
+            colors: [Color(0xFF0D47A1), Colors.blue.shade100,],
             stops: [0.0, 50],
           ),
         ),
@@ -131,21 +131,15 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // Grid with improved spacing and elevation
+              // Main actions section with improved layout
               Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: GridView.count(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  childAspectRatio: 1.3,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
                   children: [
                     _buildAnimatedGridItem(
                       icon: Icons.person_search,
                       label: "VIEW MISSING PERSON",
-                      color: Colors.blue.shade100,
+                      subtitle: "Access the database of reported cases",
                       onTap: () {
                         Navigator.push(
                           context,
@@ -153,10 +147,11 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
+                    SizedBox(height: 12),
                     _buildAnimatedGridItem(
                       icon: Icons.file_upload,
                       label: "FILL UP FILE",
-                      color: Colors.blue.shade100,
+                      subtitle: "Report a new missing person case",
                       onTap: () {
                         Navigator.push(
                           context,
@@ -164,10 +159,11 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
+                    SizedBox(height: 12),
                     _buildAnimatedGridItem(
                       icon: Icons.track_changes,
                       label: "TRACK THE CASE",
-                      color: Colors.blue.shade100,
+                      subtitle: "Monitor ongoing investigations",
                       onTap: () {
                         Navigator.push(
                           context,
@@ -278,7 +274,7 @@ class HomeScreen extends StatelessWidget {
   Widget _buildAnimatedGridItem({
     required IconData icon,
     required String label,
-    required Color color,
+    required String subtitle,
     required VoidCallback onTap,
   }) {
     return TweenAnimationBuilder(
@@ -287,10 +283,63 @@ class HomeScreen extends StatelessWidget {
       builder: (context, double value, child) {
         return Transform.scale(
           scale: value,
-          child: GridItem(
-            icon: icon,
-            label: label,
-            onTap: onTap,
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 32,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D47A1),
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey[400],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
