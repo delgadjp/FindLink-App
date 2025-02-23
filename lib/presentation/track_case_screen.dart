@@ -23,73 +23,144 @@ class TrackCaseScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: EdgeInsets.all(10.0),
-        child: Column(
-          children: [
-            Text(
-              "Process Status",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Case Information Card
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Case #12345",
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "Reported on: 15 March 2024",
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: statusStages
-                  .asMap()
-                  .map((index, stage) {
-                    Color color;
-                    if (stage['status'] == 'Completed') {
-                      color = Colors.green;
-                    } else if (stage['status'] == 'In Progress') {
-                      color = Colors.orange;
-                    } else {
-                      color = Colors.grey;
-                    }
-
-                    return MapEntry(
-                      index,
-                      Column(
+              SizedBox(height: 24),
+              
+              // Status Timeline Section
+              Text(
+                "Case Progress",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D47A1),
+                ),
+              ),
+              SizedBox(height: 16),
+              
+              // Timeline Visualization
+              Container(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: statusStages.length,
+                  itemBuilder: (context, index) {
+                    final stage = statusStages[index];
+                    Color color = stage['status'] == 'Completed' 
+                        ? Colors.green 
+                        : stage['status'] == 'In Progress' 
+                            ? Colors.orange 
+                            : Colors.grey;
+                    
+                    return Container(
+                      width: MediaQuery.of(context).size.width / 4,
+                      child: Column(
                         children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: color.withOpacity(0.2),
+                            child: CircleAvatar(
+                              radius: 15,
+                              backgroundColor: color,
+                              child: Icon(
+                                stage['status'] == 'Completed' 
+                                    ? Icons.check 
+                                    : stage['status'] == 'In Progress' 
+                                        ? Icons.refresh 
+                                        : Icons.hourglass_empty,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
                           Text(
                             stage['stage']!,
-                            style: TextStyle(color: color, fontSize: 12),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          SizedBox(height: 5),
-                          CircleAvatar(
-                            radius: 12,
-                            backgroundColor: color,
-                            child: Icon(
-                              index < statusStages.length - 1
-                                  ? Icons.arrow_forward
-                                  : Icons.check,
-                              color: Colors.white,
-                              size: 15,
+                          SizedBox(height: 4),
+                          Text(
+                            stage['status']!,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
                             ),
                           ),
                         ],
                       ),
                     );
-                  })
-                  .values
-                  .toList(),
-            ),
-            SizedBox(height: 20),
-            LinearProgressIndicator(
-              value: statusStages
-                      .indexWhere((stage) => stage['status'] == 'In Progress') / 
-                  (statusStages.length - 1),
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-            ),
-            SizedBox(height: 10),
-            Text(
-              "Current Status: ${statusStages.last['status']}",
-              style: TextStyle(fontSize: 16),
-            ),
-          ],
+                  },
+                ),
+              ),
+              
+              // Latest Update Card
+              Card(
+                elevation: 2,
+                margin: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Latest Update",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0D47A1),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "Investigation in progress by Officer John Doe",
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Updated 2 hours ago",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

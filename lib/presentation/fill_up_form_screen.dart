@@ -11,10 +11,35 @@ class FillUpForm extends State<FillUpFormScreen> {
   bool hasOtherAddress = false;
   bool hasPreviousCriminalRecord = false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _dateOfBirthReportingController = TextEditingController();
+  final TextEditingController _dateOfBirthSuspectController = TextEditingController();
+  final TextEditingController _dateOfBirthVictimController = TextEditingController();
 
   final List<String> citizenshipOptions = ['Filipino', 'American', 'Chinese', 'Japanese', 'Korean', 'Others'];
   final List<String> genderOptions = ['Male', 'Female', 'Other'];
   final List<String> civilStatusOptions = ['Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
+
+  int? reportingPersonAge;
+  int? suspectAge;
+  int? victimAge;
+
+  int calculateAge(DateTime birthDate) {
+    final today = DateTime.now();
+    int age = today.year - birthDate.year;
+    if (today.month < birthDate.month || 
+        (today.month == birthDate.month && today.day < birthDate.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  @override
+  void dispose() {
+    _dateOfBirthReportingController.dispose();
+    _dateOfBirthSuspectController.dispose();
+    _dateOfBirthVictimController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -260,25 +285,30 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         );
                                         if (pickedDate != null) {
                                           setState(() {
-                                            // Update your state with the selected date
+                                            // Format the date as dd/MM/yyyy
+                                            _dateOfBirthReportingController.text = 
+                                                "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                                "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                                "${pickedDate.year}";
+                                            reportingPersonAge = calculateAge(pickedDate);
                                           });
                                         }
                                       },
                                       child: AbsorbPointer(
-                                        child: SizedBox(
-                                          height: 35, // Reduced height
-                                          child: TextField(
-                                            style: TextStyle(fontSize: 16, color: Colors.black),
-                                            decoration: InputDecoration(
-                                              filled: true,
-                                              fillColor: Colors.white,
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Colors.black),
-                                              ),
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                              isDense: true,
+                                        child: TextFormField(
+                                          controller: _dateOfBirthReportingController,
+                                          style: TextStyle(fontSize: 13, color: Colors.black),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.black),
                                             ),
+                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
+                                            isDense: true,
+                                            hintStyle: TextStyle(color: Colors.black),
+                                            labelStyle: TextStyle(color: Colors.black),
                                           ),
                                         ),
                                       ),
@@ -304,21 +334,10 @@ class FillUpForm extends State<FillUpFormScreen> {
                                     SizedBox(height: 10),
                                     SizedBox(
                                       height: 35, // Reduced height
-                                      child: DropdownButtonFormField<int>(
-                                        items: List.generate(100, (index) => index + 1)
-                                            .map((age) => DropdownMenuItem(
-                                                  value: age,
-                                                  child: Text(
-                                                    age.toString(),
-                                                    style: TextStyle(fontSize: 16),
-                                                  ),
-                                                ))
-                                            .toList(),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            // Update your state with the selected age
-                                          });
-                                        },
+                                      child: TextFormField(
+                                        readOnly: true,
+                                        controller: TextEditingController(text: reportingPersonAge?.toString() ?? ''),
+                                        style: TextStyle(fontSize: 16, color: Colors.black),
                                         decoration: InputDecoration(
                                           filled: true,
                                           fillColor: Colors.white,
@@ -429,7 +448,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
 
 
- CheckboxListTile(
+                          CheckboxListTile(
                           title: Text("Do you have another address?", style: TextStyle(fontSize: 15, color: Colors.black)), // Change text color to black
                           value: hasOtherAddress,
                           onChanged: (bool? value) {
@@ -577,7 +596,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         color: Colors.black,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    SizedBox(height: 10),
                                     GestureDetector(
                                       onTap: () async {
                                         DateTime? pickedDate = await showDatePicker(
@@ -588,25 +607,30 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         );
                                         if (pickedDate != null) {
                                           setState(() {
-                                            // Update your state with the selected date
+                                            // Format the date as dd/MM/yyyy
+                                            _dateOfBirthSuspectController.text = 
+                                                "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                                "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                                "${pickedDate.year}";
+                                            suspectAge = calculateAge(pickedDate);
                                           });
                                         }
                                       },
                                       child: AbsorbPointer(
-                                        child: SizedBox(
-                                          height: 35, // Reduced height
-                                          child: TextField(
-                                            style: TextStyle(fontSize: 16, color: Colors.black),
-                                            decoration: InputDecoration(
-                                              filled: true,
-                                              fillColor: Colors.white,
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Colors.black),
-                                              ),
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                              isDense: true,
+                                        child: TextFormField(
+                                          controller: _dateOfBirthSuspectController,
+                                          style: TextStyle(fontSize: 13, color: Colors.black),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.black),
                                             ),
+                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                            isDense: true,
+                                            hintStyle: TextStyle(color: Colors.black),
+                                            labelStyle: TextStyle(color: Colors.black),
                                           ),
                                         ),
                                       ),
@@ -632,21 +656,10 @@ class FillUpForm extends State<FillUpFormScreen> {
                                     SizedBox(height: 4),
                                     SizedBox(
                                       height: 35, // Reduced height
-                                      child: DropdownButtonFormField<int>(
-                                        items: List.generate(100, (index) => index + 1)
-                                            .map((age) => DropdownMenuItem(
-                                                  value: age,
-                                                  child: Text(
-                                                    age.toString(),
-                                                    style: TextStyle(fontSize: 16),
-                                                  ),
-                                                ))
-                                            .toList(),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            // Update your state with the selected age
-                                          });
-                                        },
+                                      child: TextFormField(
+                                        readOnly: true,
+                                        controller: TextEditingController(text: suspectAge?.toString() ?? ''),
+                                        style: TextStyle(fontSize: 16, color: Colors.black),
                                         decoration: InputDecoration(
                                           filled: true,
                                           fillColor: Colors.white,
@@ -1059,7 +1072,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         color: Colors.black,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    SizedBox(height: 10),
                                     GestureDetector(
                                       onTap: () async {
                                         DateTime? pickedDate = await showDatePicker(
@@ -1070,25 +1083,30 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         );
                                         if (pickedDate != null) {
                                           setState(() {
-                                            // Update your state with the selected date
+                                            // Format the date as dd/MM/yyyy
+                                            _dateOfBirthVictimController.text = 
+                                                "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                                "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                                "${pickedDate.year}";
+                                            victimAge = calculateAge(pickedDate);
                                           });
                                         }
                                       },
                                       child: AbsorbPointer(
-                                        child: SizedBox(
-                                          height: 35, // Reduced height
-                                          child: TextField(
-                                            style: TextStyle(fontSize: 16, color: Colors.black),
-                                            decoration: InputDecoration(
-                                              filled: true,
-                                              fillColor: Colors.white,
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Colors.black),
-                                              ),
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                              isDense: true,
+                                        child: TextFormField(
+                                          controller: _dateOfBirthVictimController,
+                                          style: TextStyle(fontSize: 13, color: Colors.black),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.black),
                                             ),
+                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                            isDense: true,
+                                            hintStyle: TextStyle(color: Colors.black),
+                                            labelStyle: TextStyle(color: Colors.black),
                                           ),
                                         ),
                                       ),
@@ -1114,21 +1132,10 @@ class FillUpForm extends State<FillUpFormScreen> {
                                     SizedBox(height: 4),
                                     SizedBox(
                                       height: 35, // Reduced height
-                                      child: DropdownButtonFormField<int>(
-                                        items: List.generate(100, (index) => index + 1)
-                                            .map((age) => DropdownMenuItem(
-                                                  value: age,
-                                                  child: Text(
-                                                    age.toString(),
-                                                    style: TextStyle(fontSize: 16),
-                                                  ),
-                                                ))
-                                            .toList(),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            // Update your state with the selected age
-                                          });
-                                        },
+                                      child: TextFormField(
+                                        readOnly: true,
+                                        controller: TextEditingController(text: victimAge?.toString() ?? ''),
+                                        style: TextStyle(fontSize: 16, color: Colors.black),
                                         decoration: InputDecoration(
                                           filled: true,
                                           fillColor: Colors.white,
@@ -1604,7 +1611,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             value, 
                             style: TextStyle(
                               fontSize: 16,
-                              color: const Color.fromARGB(255, 255, 255, 255) // Set color for dropdown items
+                              color: Colors.black // Changed menu item text color to black
                             )
                           ),
                         );
@@ -1614,8 +1621,10 @@ class FillUpForm extends State<FillUpFormScreen> {
                       },
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.black // Set color for selected value
+                        color: Colors.black // Changed selected value text color to black
                       ),
+                      dropdownColor: Colors.white, // Set dropdown menu background color
+                      icon: Icon(Icons.arrow_drop_down, color: Colors.black),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
@@ -1636,6 +1645,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                       inputFormatters: inputFormatters,
                       validator: validator,
                       style: TextStyle(fontSize: 16, color: Colors.black),
+                      
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
