@@ -4,10 +4,8 @@ class ReportedFormsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      itemCount: 2,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 2,
       itemBuilder: (context, index) {
         return Container(
           margin: EdgeInsets.only(bottom: 16),
