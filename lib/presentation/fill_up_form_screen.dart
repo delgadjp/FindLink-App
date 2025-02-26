@@ -258,139 +258,42 @@ class FillUpForm extends State<FillUpFormScreen> {
                           },
                         ]),
                         SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "DATE OF BIRTH",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        DateTime? pickedDate = await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(1950),
-                                          lastDate: DateTime.now(),
-                                        );
-                                        if (pickedDate != null) {
-                                          setState(() {
-                                            // Format the date as dd/MM/yyyy
-                                            _dateOfBirthReportingController.text = 
-                                                "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                                "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                                "${pickedDate.year}";
-                                            reportingPersonAge = calculateAge(pickedDate);
-                                          });
-                                        }
-                                      },
-                                      child: AbsorbPointer(
-                                        child: TextFormField(
-                                          controller: _dateOfBirthReportingController,
-                                          style: TextStyle(fontSize: 13, color: Colors.black),
-                                          decoration: InputDecoration(
-                                            filled: true,
-                                            fillColor: Colors.white,
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: BorderSide(color: Colors.black),
-                                            ),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                            isDense: true,
-                                            hintStyle: TextStyle(color: Colors.black),
-                                            labelStyle: TextStyle(color: Colors.black),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "AGE",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    SizedBox(
-                                      height: 35, // Reduced height
-                                      child: TextFormField(
-                                        readOnly: true,
-                                        controller: TextEditingController(text: reportingPersonAge?.toString() ?? ''),
-                                        style: TextStyle(fontSize: 16, color: Colors.black),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.black),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "PLACE OF BIRTH",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    SizedBox(
-                                      height: 35, // Reduced height
-                                      child: TextField(
-                                        style: TextStyle(fontSize: 16, color: Colors.black),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.black),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        _buildRowInputs([
+                          {
+                            'label': 'DATE OF BIRTH',
+                            'required': true,
+                            'controller': _dateOfBirthReportingController,
+                            'readOnly': true,
+                            'onTap': () async {
+                              DateTime? pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(1950),
+                                lastDate: DateTime.now(),
+                              );
+                              if (pickedDate != null) {
+                                setState(() {
+                                  _dateOfBirthReportingController.text = 
+                                      "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.year}";
+                                  reportingPersonAge = calculateAge(pickedDate);
+                                });
+                              }
+                            },
+                          },
+                          {
+                            'label': 'AGE',
+                            'required': true,
+                            'controller': TextEditingController(text: reportingPersonAge?.toString() ?? ''),
+                            'readOnly': true,
+                          },
+                          {
+                            'label': 'PLACE OF BIRTH',
+                            'required': true,
+                            'keyboardType': TextInputType.text,
+                          },
+                        ]),
                         SizedBox(height: 10),
                         _buildRowInputs([
                           {
@@ -461,7 +364,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -469,7 +372,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'VILLAGE/SITIO',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -477,17 +380,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'BARANGAY',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'TOWN/CITY',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'PROVINCE',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -579,140 +482,42 @@ class FillUpForm extends State<FillUpFormScreen> {
                           },
                         ]),
                         SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      
-                                      "DATE OF BIRTH",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        DateTime? pickedDate = await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(1950),
-                                          lastDate: DateTime.now(),
-                                        );
-                                        if (pickedDate != null) {
-                                          setState(() {
-                                            // Format the date as dd/MM/yyyy
-                                            _dateOfBirthSuspectController.text = 
-                                                "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                                "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                                "${pickedDate.year}";
-                                            suspectAge = calculateAge(pickedDate);
-                                          });
-                                        }
-                                      },
-                                      child: AbsorbPointer(
-                                        child: TextFormField(
-                                          controller: _dateOfBirthSuspectController,
-                                          style: TextStyle(fontSize: 13, color: Colors.black),
-                                          decoration: InputDecoration(
-                                            filled: true,
-                                            fillColor: Colors.white,
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: BorderSide(color: Colors.black),
-                                            ),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                                            isDense: true,
-                                            hintStyle: TextStyle(color: Colors.black),
-                                            labelStyle: TextStyle(color: Colors.black),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "AGE",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    SizedBox(
-                                      height: 35, // Reduced height
-                                      child: TextFormField(
-                                        readOnly: true,
-                                        controller: TextEditingController(text: suspectAge?.toString() ?? ''),
-                                        style: TextStyle(fontSize: 16, color: Colors.black),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.black),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "PLACE OF BIRTH",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    SizedBox(
-                                      height: 35, // Reduced height
-                                      child: TextField(
-                                        style: TextStyle(fontSize: 16, color: Colors.black),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.black),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        _buildRowInputs([
+                          {
+                            'label': 'DATE OF BIRTH',
+                            'required': true,
+                            'controller': _dateOfBirthSuspectController,
+                            'readOnly': true,
+                            'onTap': () async {
+                              DateTime? pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(1950),
+                                lastDate: DateTime.now(),
+                              );
+                              if (pickedDate != null) {
+                                setState(() {
+                                  _dateOfBirthSuspectController.text = 
+                                      "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.year}";
+                                  suspectAge = calculateAge(pickedDate);
+                                });
+                              }
+                            },
+                          },
+                          {
+                            'label': 'AGE',
+                            'required': true,
+                            'controller': TextEditingController(text: suspectAge?.toString() ?? ''),
+                            'readOnly': true,
+                          },
+                          {
+                            'label': 'PLACE OF BIRTH',
+                            'required': true,
+                            'keyboardType': TextInputType.text,
+                          },
+                        ]),
                                                 SizedBox(height: 10),
 
                         _buildRowInputs([
@@ -783,7 +588,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -791,7 +596,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'VILLAGE/SITIO',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -799,17 +604,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'BARANGAY',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'TOWN/CITY',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'PROVINCE',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -1056,139 +861,42 @@ class FillUpForm extends State<FillUpFormScreen> {
                           },
                         ]),
                         SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "DATE OF BIRTH",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        DateTime? pickedDate = await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(1950),
-                                          lastDate: DateTime.now(),
-                                        );
-                                        if (pickedDate != null) {
-                                          setState(() {
-                                            // Format the date as dd/MM/yyyy
-                                            _dateOfBirthVictimController.text = 
-                                                "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                                "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                                "${pickedDate.year}";
-                                            victimAge = calculateAge(pickedDate);
-                                          });
-                                        }
-                                      },
-                                      child: AbsorbPointer(
-                                        child: TextFormField(
-                                          controller: _dateOfBirthVictimController,
-                                          style: TextStyle(fontSize: 13, color: Colors.black),
-                                          decoration: InputDecoration(
-                                            filled: true,
-                                            fillColor: Colors.white,
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: BorderSide(color: Colors.black),
-                                            ),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                                            isDense: true,
-                                            hintStyle: TextStyle(color: Colors.black),
-                                            labelStyle: TextStyle(color: Colors.black),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "AGE",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    SizedBox(
-                                      height: 35, // Reduced height
-                                      child: TextFormField(
-                                        readOnly: true,
-                                        controller: TextEditingController(text: victimAge?.toString() ?? ''),
-                                        style: TextStyle(fontSize: 16, color: Colors.black),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.black),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "PLACE OF BIRTH",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12, // Increased from 8
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    SizedBox(
-                                      height: 35, // Reduced height
-                                      child: TextField(
-                                        style: TextStyle(fontSize: 16, color: Colors.black),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.black),
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), // Reduced padding
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        _buildRowInputs([
+                          {
+                            'label': 'DATE OF BIRTH',
+                            'required': true,
+                            'controller': _dateOfBirthVictimController,
+                            'readOnly': true,
+                            'onTap': () async {
+                              DateTime? pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(1950),
+                                lastDate: DateTime.now(),
+                              );
+                              if (pickedDate != null) {
+                                setState(() {
+                                  _dateOfBirthVictimController.text = 
+                                      "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.year}";
+                                  victimAge = calculateAge(pickedDate);
+                                });
+                              }
+                            },
+                          },
+                          {
+                            'label': 'AGE',
+                            'required': true,
+                            'controller': TextEditingController(text: victimAge?.toString() ?? ''),
+                            'readOnly': true,
+                          },
+                          {
+                            'label': 'PLACE OF BIRTH',
+                            'required': true,
+                            'keyboardType': TextInputType.text,
+                          },
+                        ]),
                                                 SizedBox(height: 10),
 
                         _buildRowInputs([
@@ -1259,7 +967,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -1267,7 +975,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'VILLAGE/SITIO',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -1275,17 +983,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           _buildRowInputs([
                             {
                               'label': 'BARANGAY',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'TOWN/CITY',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'PROVINCE',
-                              'required': false,
+                              'required': true,
                               'keyboardType': TextInputType.text,
                             },
                           ]),
@@ -1561,7 +1269,10 @@ class FillUpForm extends State<FillUpFormScreen> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
-    List<String>? dropdownItems,  // Add this parameter
+    List<String>? dropdownItems,
+    TextEditingController? controller,
+    bool? readOnly,
+    VoidCallback? onTap,
   }) {
     return Expanded(
       child: Padding(
@@ -1580,11 +1291,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                         label,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 11, // Slightly reduced from 12
                           color: Colors.black,
+                          height: 1.2, // Add line height control
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        softWrap: true, // Enable soft wrapping
                       ),
                     ),
                   ),
@@ -1646,26 +1359,33 @@ class FillUpForm extends State<FillUpFormScreen> {
                         );
                       },
                     )
-                  : TextFormField(
-                      keyboardType: keyboardType,
-                      inputFormatters: inputFormatters,
-                      validator: validator,
-                      style: TextStyle(fontSize: 16, color: Colors.black),
-                      
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),
+                  : GestureDetector(
+                      onTap: onTap,
+                      child: AbsorbPointer(
+                        absorbing: onTap != null,
+                        child: TextFormField(
+                          controller: controller,
+                          readOnly: readOnly ?? false,
+                          keyboardType: keyboardType,
+                          inputFormatters: inputFormatters,
+                          validator: validator,
+                          style: TextStyle(fontSize: 13, color: Colors.black),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide: BorderSide(color: const Color.fromARGB(255, 205, 205, 205)),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            isDense: true,
+                            errorStyle: TextStyle(height: 0),
+                          ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(5),
-                          borderSide: BorderSide(color: const Color.fromARGB(255, 205, 205, 205)),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        isDense: true,
-                        errorStyle: TextStyle(height: 0),
                       ),
                     ),
             ),
@@ -1684,6 +1404,9 @@ class FillUpForm extends State<FillUpFormScreen> {
         inputFormatters: field['inputFormatters'],
         validator: field['validator'],
         dropdownItems: field['dropdownItems'], // Add this line
+        controller: field['controller'],
+        readOnly: field['readOnly'],
+        onTap: field['onTap'],
       )).toList(),
     );
   }
