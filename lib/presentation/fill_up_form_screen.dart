@@ -30,10 +30,18 @@ class FillUpForm extends State<FillUpFormScreen> {
 
   String? reportingPersonProvince;
   String? reportingPersonCity;
+  String? reportingPersonOtherProvince;
+  String? reportingPersonOtherCity;
+  
   String? suspectProvince;
   String? suspectCity;
+  String? suspectOtherProvince;
+  String? suspectOtherCity;
+  
   String? victimProvince;
   String? victimCity;
+  String? victimOtherProvince;
+  String? victimOtherCity;
 
   int calculateAge(DateTime birthDate) {
     final today = DateTime.now();
@@ -400,12 +408,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'TOWN/CITY',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'reportingOther',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'reportingOther',
                             },
                           ]),
                           SizedBox(height: 10),
@@ -626,12 +634,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'TOWN/CITY',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'suspectOther',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'suspectOther',
                             },
                           ]),
                           SizedBox(height: 10),
@@ -1007,12 +1015,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'TOWN/CITY',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'victimOther',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'victimOther',
                             },
                           ]),
                           SizedBox(height: 10),
@@ -1454,6 +1462,36 @@ class FillUpForm extends State<FillUpFormScreen> {
           );
         }
         
+        // Handle Reporting Person Other address
+        else if (field['label'] == 'PROVINCE' && field['section'] == 'reportingOther') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
+            onChanged: (String? newValue) {
+              setState(() {
+                reportingPersonOtherProvince = newValue;
+                reportingPersonOtherCity = null;
+              });
+            },
+            value: reportingPersonOtherProvince,
+          );
+        } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'reportingOther') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: reportingPersonOtherProvince != null 
+                ? [dropdownPlaceholder, ...PhilippinesData.getCities(reportingPersonOtherProvince!)]
+                : [dropdownPlaceholder],
+            value: reportingPersonOtherCity ?? dropdownPlaceholder,
+            onChanged: (String? newValue) {
+              setState(() {
+                reportingPersonOtherCity = newValue;
+              });
+            },
+          );
+        }
+
         // Handle Suspect address
         else if (field['label'] == 'PROVINCE' && field['section'] == 'suspect') {
           return _buildInputField(
@@ -1484,6 +1522,36 @@ class FillUpForm extends State<FillUpFormScreen> {
           );
         }
         
+        // Handle Suspect Other address
+        else if (field['label'] == 'PROVINCE' && field['section'] == 'suspectOther') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
+            onChanged: (String? newValue) {
+              setState(() {
+                suspectOtherProvince = newValue;
+                suspectOtherCity = null;
+              });
+            },
+            value: suspectOtherProvince,
+          );
+        } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'suspectOther') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: suspectOtherProvince != null 
+                ? [dropdownPlaceholder, ...PhilippinesData.getCities(suspectOtherProvince!)]
+                : [dropdownPlaceholder],
+            value: suspectOtherCity ?? dropdownPlaceholder,
+            onChanged: (String? newValue) {
+              setState(() {
+                suspectOtherCity = newValue;
+              });
+            },
+          );
+        }
+
         // Handle Victim address
         else if (field['label'] == 'PROVINCE' && field['section'] == 'victim') {
           return _buildInputField(
@@ -1509,6 +1577,36 @@ class FillUpForm extends State<FillUpFormScreen> {
             onChanged: (String? newValue) {
               setState(() {
                 victimCity = newValue;
+              });
+            },
+          );
+        }
+
+        // Handle Victim Other address
+        else if (field['label'] == 'PROVINCE' && field['section'] == 'victimOther') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
+            onChanged: (String? newValue) {
+              setState(() {
+                victimOtherProvince = newValue;
+                victimOtherCity = null;
+              });
+            },
+            value: victimOtherProvince,
+          );
+        } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'victimOther') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: victimOtherProvince != null 
+                ? [dropdownPlaceholder, ...PhilippinesData.getCities(victimOtherProvince!)]
+                : [dropdownPlaceholder],
+            value: victimOtherCity ?? dropdownPlaceholder,
+            onChanged: (String? newValue) {
+              setState(() {
+                victimOtherCity = newValue;
               });
             },
           );
