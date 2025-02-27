@@ -1,4 +1,5 @@
 import '/core/app_export.dart';
+import '/data/philippines_data.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -8,20 +9,31 @@ class FillUpFormScreen extends StatefulWidget {
 }
 
 class FillUpForm extends State<FillUpFormScreen> {
-  bool hasOtherAddress = false;
+  bool hasOtherAddressReporting = false;
+  bool hasOtherAddressSuspect = false;
+  bool hasOtherAddressVictim = false;
   bool hasPreviousCriminalRecord = false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _dateOfBirthReportingController = TextEditingController();
   final TextEditingController _dateOfBirthSuspectController = TextEditingController();
   final TextEditingController _dateOfBirthVictimController = TextEditingController();
 
-  final List<String> citizenshipOptions = ['Filipino', 'American', 'Chinese', 'Japanese', 'Korean', 'Others'];
-  final List<String> genderOptions = ['Male', 'Female', 'Other'];
-  final List<String> civilStatusOptions = ['Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
+  static const String dropdownPlaceholder = '-- SELECT --';
+
+  final List<String> citizenshipOptions = [dropdownPlaceholder, 'Filipino', 'American', 'Chinese', 'Japanese', 'Korean', 'Others'];
+  final List<String> genderOptions = [dropdownPlaceholder, 'Male', 'Female', 'Other'];
+  final List<String> civilStatusOptions = [dropdownPlaceholder, 'Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
 
   int? reportingPersonAge;
   int? suspectAge;
   int? victimAge;
+
+  String? reportingPersonProvince;
+  String? reportingPersonCity;
+  String? suspectProvince;
+  String? suspectCity;
+  String? victimProvince;
+  String? victimCity;
 
   int calculateAge(DateTime birthDate) {
     final today = DateTime.now();
@@ -341,11 +353,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'TOWN/CITY',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'section': 'reporting',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'section': 'reporting',
                             },
                           ]),
                           SizedBox(height: 10),
@@ -353,14 +367,14 @@ class FillUpForm extends State<FillUpFormScreen> {
 
                           CheckboxListTile(
                           title: Text("Do you have another address?", style: TextStyle(fontSize: 15, color: Colors.black)), // Change text color to black
-                          value: hasOtherAddress,
+                          value: hasOtherAddressReporting,
                           onChanged: (bool? value) {
                             setState(() {
-                              hasOtherAddress = value ?? false;
+                              hasOtherAddressReporting = value ?? false;
                             });
                           },
                         ),
-                        if (hasOtherAddress) ...[
+                        if (hasOtherAddressReporting) ...[
                           _buildRowInputs([
                             {
                               'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
@@ -566,25 +580,27 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'TOWN/CITY',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'section': 'suspect',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'section': 'suspect',
                             },
                           ]),
                           SizedBox(height: 10),
 
                           CheckboxListTile(
                           title: Text("Do you have another address?", style: TextStyle(fontSize: 15, color: Colors.black)), // Change text color to black
-                          value: hasOtherAddress,
+                          value: hasOtherAddressSuspect,
                           onChanged: (bool? value) {
                             setState(() {
-                              hasOtherAddress = value ?? false;
+                              hasOtherAddressSuspect = value ?? false;
                             });
                           },
                         ),
-                        if (hasOtherAddress) ...[
+                        if (hasOtherAddressSuspect) ...[
                           _buildRowInputs([
                             {
                               'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
@@ -945,25 +961,27 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'TOWN/CITY',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'section': 'victim',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'section': 'victim',
                             },
                           ]),
                           SizedBox(height: 10),
 
                           CheckboxListTile(
                           title: Text("Do you have another address?", style: TextStyle(fontSize: 15, color: Colors.black)), // Change text color to black
-                          value: hasOtherAddress,
+                          value: hasOtherAddressVictim,
                           onChanged: (bool? value) {
                             setState(() {
-                              hasOtherAddress = value ?? false;
+                              hasOtherAddressVictim = value ?? false;
                             });
                           },
                         ),
-                        if (hasOtherAddress) ...[
+                        if (hasOtherAddressVictim) ...[
                           _buildRowInputs([
                             {
                               'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
@@ -1273,6 +1291,8 @@ class FillUpForm extends State<FillUpFormScreen> {
     TextEditingController? controller,
     bool? readOnly,
     VoidCallback? onTap,
+    Function(String?)? onChanged,
+    String? value,
   }) {
     return Expanded(
       child: Padding(
@@ -1319,21 +1339,27 @@ class FillUpForm extends State<FillUpFormScreen> {
                   ? LayoutBuilder(
                       builder: (context, constraints) {
                         return DropdownButtonFormField<String>(
+                          value: value ?? dropdownPlaceholder,
                           items: dropdownItems.map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
+                              enabled: value != dropdownPlaceholder, // Disable placeholder item
                               child: Text(
                                 value,
                                 style: TextStyle(
                                   fontSize: constraints.maxWidth < 200 ? 12 : 14,
-                                  color: Colors.black,
+                                  color: value == dropdownPlaceholder 
+                                      ? Colors.grey 
+                                      : Colors.black,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             );
                           }).toList(),
                           onChanged: (String? newValue) {
-                            // Handle dropdown value change
+                            if (newValue != dropdownPlaceholder) {
+                              onChanged?.call(newValue);
+                            }
                           },
                           style: TextStyle(
                             fontSize: constraints.maxWidth < 200 ? 12 : 14,
@@ -1397,17 +1423,110 @@ class FillUpForm extends State<FillUpFormScreen> {
 
   Widget _buildRowInputs(List<Map<String, dynamic>> fields) {
     return Row(
-      children: fields.map((field) => _buildInputField(
-        field['label'],
-        isRequired: field['required'] ?? false,
-        keyboardType: field['keyboardType'],
-        inputFormatters: field['inputFormatters'],
-        validator: field['validator'],
-        dropdownItems: field['dropdownItems'], // Add this line
-        controller: field['controller'],
-        readOnly: field['readOnly'],
-        onTap: field['onTap'],
-      )).toList(),
+      children: fields.map((field) {
+        // Handle Reporting Person address
+        if (field['label'] == 'PROVINCE' && field['section'] == 'reporting') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
+            onChanged: (String? newValue) {
+              setState(() {
+                reportingPersonProvince = newValue;
+                reportingPersonCity = null; // Reset city when province changes
+              });
+            },
+            value: reportingPersonProvince,
+          );
+        } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'reporting') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: reportingPersonProvince != null 
+                ? [dropdownPlaceholder, ...PhilippinesData.getCities(reportingPersonProvince!)]
+                : [dropdownPlaceholder],
+            value: reportingPersonCity ?? dropdownPlaceholder,
+            onChanged: (String? newValue) {
+              setState(() {
+                reportingPersonCity = newValue;
+              });
+            },
+          );
+        }
+        
+        // Handle Suspect address
+        else if (field['label'] == 'PROVINCE' && field['section'] == 'suspect') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
+            onChanged: (String? newValue) {
+              setState(() {
+                suspectProvince = newValue;
+                suspectCity = null; // Reset city when province changes
+              });
+            },
+            value: suspectProvince,
+          );
+        } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'suspect') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: suspectProvince != null 
+                ? [dropdownPlaceholder, ...PhilippinesData.getCities(suspectProvince!)]
+                : [dropdownPlaceholder],
+            value: suspectCity ?? dropdownPlaceholder,
+            onChanged: (String? newValue) {
+              setState(() {
+                suspectCity = newValue;
+              });
+            },
+          );
+        }
+        
+        // Handle Victim address
+        else if (field['label'] == 'PROVINCE' && field['section'] == 'victim') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
+            onChanged: (String? newValue) {
+              setState(() {
+                victimProvince = newValue;
+                victimCity = null; // Reset city when province changes
+              });
+            },
+            value: victimProvince,
+          );
+        } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'victim') {
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: victimProvince != null 
+                ? [dropdownPlaceholder, ...PhilippinesData.getCities(victimProvince!)]
+                : [dropdownPlaceholder],
+            value: victimCity ?? dropdownPlaceholder,
+            onChanged: (String? newValue) {
+              setState(() {
+                victimCity = newValue;
+              });
+            },
+          );
+        }
+
+        // Handle all other fields
+        return _buildInputField(
+          field['label'],
+          isRequired: field['required'] ?? false,
+          keyboardType: field['keyboardType'],
+          inputFormatters: field['inputFormatters'],
+          validator: field['validator'],
+          dropdownItems: field['dropdownItems'],
+          controller: field['controller'],
+          readOnly: field['readOnly'],
+          onTap: field['onTap'],
+        );
+      }).toList(),
     );
   }
 
