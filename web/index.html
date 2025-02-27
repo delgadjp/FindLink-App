@@ -32,6 +32,16 @@
   <title>findlink</title>
   <link rel="manifest" href="manifest.json">
   <meta name="google-signin-client_id" content="152637585017-3nu933671pcdbqkc980a3baubshgrekj.apps.googleusercontent.com">
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBmxHXH5MjBmNpPPI_8a2q8SNBWw5tWcBU"></script>
+  <script>
+    if (typeof window.gmapsLoaded === 'undefined') {
+      window.gmapsLoaded = false;
+      window.initMap = function() {
+        window.gmapsLoaded = true;
+      };
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
