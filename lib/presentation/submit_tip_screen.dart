@@ -3,6 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SubmitTipScreen extends StatefulWidget {
   @override
@@ -27,6 +32,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final TextEditingController _eyeColorController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _customEyeColorController = TextEditingController();
+  final TextEditingController _longitudeController = TextEditingController();
+  final TextEditingController _latitudeController = TextEditingController();
+  final TextEditingController _coordinatesController = TextEditingController();
 
   final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
   final DateFormat _timeFormatter = DateFormat('HH:mm');
@@ -59,7 +67,83 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'eyeColor': '',
     'description': '',
     'image': '',
+    'longitude': '',
+    'latitude': '',
+    'coordinates': '',
   };
+
+  GoogleMapController? mapController;
+  Set<Marker> markers = {};
+  LatLng? selectedLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // If we don't have a selected location yet, set a default one
+      // This ensures the map shows something even if permissions fail
+      if (selectedLocation == null) {
+        setState(() {
+          // Default to a common location (e.g. central London)
+          selectedLocation = LatLng(51.509865, -0.118092);
+          _updateMarkerAndControllers();
+          print("Setting default location as permission not yet granted");
+        });
+      }
+
+      // Request location permission
+      final status = await Permission.location.request();
+      print("Location permission status: $status");
+      
+      if (status.isGranted) {
+        // Get current position if permission is granted
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        
+        setState(() {
+          selectedLocation = LatLng(position.latitude, position.longitude);
+          _updateMarkerAndControllers();
+        });
+      } else {
+        // Show error message if permission is denied
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permission is required to show your location on the map')),
+        );
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting location. Please try again.')),
+      );
+    }
+  }
+
+  void _updateMarkerAndControllers() {
+    if (selectedLocation != null) {
+      markers.clear();
+      markers.add(
+        Marker(
+          markerId: MarkerId('selected_location'),
+          position: selectedLocation!,
+          draggable: true,
+          onDragEnd: (newPosition) {
+            setState(() {
+              selectedLocation = newPosition;
+              _longitudeController.text = newPosition.longitude.toString();
+              _latitudeController.text = newPosition.latitude.toString();
+            });
+          },
+        ),
+      );
+      _longitudeController.text = selectedLocation!.longitude.toString();
+      _latitudeController.text = selectedLocation!.latitude.toString();
+    }
+  }
 
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) return 'Please enter phone number';
@@ -89,6 +173,20 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     double? height = double.tryParse(value);
     if (height! < 30 || height > 250) 
       return 'Please enter a valid height (30-250 cm)';
+    return null;
+  }
+
+  String? _validateCoordinate(String? value, String type) {
+    if (value == null || value.isEmpty) return 'Please enter $type';
+    if (!RegExp(r'^-?\d*\.?\d*$').hasMatch(value)) return 'Invalid $type format';
+    double? coord = double.tryParse(value);
+    if (coord == null) return 'Invalid $type';
+    if (type == 'longitude' && (coord < -180 || coord > 180)) {
+      return 'Longitude must be between -180 and 180';
+    }
+    if (type == 'latitude' && (coord < -90 || coord > 90)) {
+      return 'Latitude must be between -90 and 90';
+    }
     return null;
   }
 
@@ -137,6 +235,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             : (selectedEyeColor ?? '');
         tipData['description'] = _descriptionController.text;
         tipData['image'] = _image!.path; // 🔥 Ensure image is included
+        tipData['longitude'] = _longitudeController.text;
+        tipData['latitude'] = _latitudeController.text;
+        tipData['coordinates'] = _coordinatesController.text;
 
         tips.add(jsonEncode(tipData));
         await prefs.setStringList('tips', tips);
@@ -159,6 +260,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _eyeColorController.clear();
         _descriptionController.clear();
         _customEyeColorController.clear();
+        _longitudeController.clear();
+        _latitudeController.clear();
+        _coordinatesController.clear();
         setState(() => _image = null);
       } catch (e) {
         print('Error saving tip: $e');
@@ -167,6 +271,140 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         );
       }
     }
+  }
+
+  Widget _buildMapSection() {
+    // Add debug prints to identify platform and location status
+    print("Platform is web: ${kIsWeb}");
+    print("Selected location: $selectedLocation");
+    
+    // Show a placeholder on web if there are issues with Google Maps
+    if (kIsWeb) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader("Select Location on Map"),
+          Container(
+            height: 300,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+              color: Colors.grey.shade200,
+            ),
+            child: selectedLocation == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text("Loading map...", style: TextStyle(color: Colors.black54)),
+                      ],
+                    ),
+                  )
+                : Stack(
+                    children: [
+                      Center(
+                        child: Text(
+                          "Map View\n\nLongitude: ${selectedLocation!.longitude.toStringAsFixed(6)}\nLatitude: ${selectedLocation!.latitude.toStringAsFixed(6)}",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: FloatingActionButton(
+                          onPressed: _getCurrentLocation,
+                          child: Icon(Icons.my_location),
+                          backgroundColor: Color(0xFF0D47A1),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _getCurrentLocation,
+                  icon: Icon(Icons.my_location),
+                  label: Text("Use My Location"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF0D47A1),
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Normal Google Maps implementation for mobile
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Select Location on Map"),
+        Container(
+          height: 300,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: selectedLocation == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 8),
+                        Text("Determining location...", 
+                          style: TextStyle(color: Colors.black54)),
+                      ],
+                    ),
+                  )
+                : GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: selectedLocation!,
+                      zoom: 15,
+                    ),
+                    onMapCreated: (GoogleMapController controller) {
+                      mapController = controller;
+                    },
+                    markers: markers,
+                    myLocationButtonEnabled: true,
+                    myLocationEnabled: true,
+                    onTap: (LatLng position) {
+                      setState(() {
+                        selectedLocation = position;
+                        _updateMarkerAndControllers();
+                      });
+                    },
+                  ),
+          ),
+        ),
+        // Add a status indicator below the map
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            selectedLocation == null 
+                ? "Location status: Loading..." 
+                : "Location detected at: ${selectedLocation!.latitude}, ${selectedLocation!.longitude}",
+            style: TextStyle(
+              color: Colors.black87, 
+              fontStyle: FontStyle.italic,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -272,6 +510,33 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ],
                     ),
                   ),
+                  SizedBox(height: 16),
+                  _buildCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader("Location Details"),
+                        _buildTextField(
+                          _longitudeController,
+                          "Longitude",
+                          icon: Icons.compass_calibration,
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          validator: (value) => _validateCoordinate(value, 'longitude'),
+                        ),
+                        _buildTextField(
+                          _latitudeController,
+                          "Latitude",
+                          icon: Icons.compass_calibration,
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          validator: (value) => _validateCoordinate(value, 'latitude'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  _buildCard(
+                    child: _buildMapSection(),
+                  ),
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _submitTip,
@@ -350,10 +615,10 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     bool required = true,
     int maxLines = 1,
     IconData? icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     List<TextInputFormatter>? formatters;
-    String? Function(String?)? validator;
-    TextInputType? keyboardType;
 
     // Set specific formatting and validation per field
     switch (label) {
