@@ -8,6 +8,9 @@ export 'package:flutter_svg/flutter_svg.dart';
 export 'package:image_picker/image_picker.dart';
 export 'package:shared_preferences/shared_preferences.dart';
 export 'package:flutter/foundation.dart';
+export 'dart:typed_data';
+export 'package:uuid/uuid.dart';
+
 
 export 'package:findlink/widgets/missing_person_card.dart';
 export 'package:findlink/widgets/drawer_widget.dart';
@@ -29,3 +32,4 @@ export 'package:findlink/presentation/fill_up_form_screen.dart';
 export 'package:findlink/presentation/chatbot_screen.dart';
 
 export 'package:findlink/core/network/auth_service.dart';
+export 'package:findlink/core/network/tip_service.dart';

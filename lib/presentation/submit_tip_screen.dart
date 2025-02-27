@@ -2,12 +2,12 @@ import '../core/app_export.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_auth/firebase_auth.dart' as auth;
 
 class SubmitTipScreen extends StatefulWidget {
   @override
@@ -16,8 +16,10 @@ class SubmitTipScreen extends StatefulWidget {
 
 class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final _formKey = GlobalKey<FormState>();
-  File? _image;
+  File? _imageFile;
+  Uint8List? _webImage;
   final picker = ImagePicker();
+  final auth.FirebaseAuth _auth = auth.FirebaseAuth.instance;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -168,12 +170,28 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   String? _validateHeight(String? value) {
     if (value == null || value.isEmpty) return 'Please enter height';
-    if (!RegExp(r'^\d{1,3}(\.\d{1,2})?$').hasMatch(value)) 
-      return 'Enter height in cm (e.g. 175 or 175.5)';
-    double? height = double.tryParse(value);
-    if (height! < 30 || height > 250) 
-      return 'Please enter a valid height (30-250 cm)';
-    return null;
+    
+    // Check for feet and inches format: either 5'7 or 5 7 or 5ft 7in
+    RegExp feetInchesRegex = RegExp(r"^(\d{1,2})(?:'|\s|ft\s*)(\d{1,2})?(?:''|in)?$");
+    
+    if (feetInchesRegex.hasMatch(value)) {
+      // Extract feet and inches
+      Match match = feetInchesRegex.firstMatch(value)!;
+      int? feet = int.tryParse(match.group(1) ?? '0');
+      int? inches = int.tryParse(match.group(2) ?? '0');
+      
+      // Validate values are reasonable
+      if (feet! < 2 || feet > 8) 
+        return 'Please enter a valid height (2\' to 8\')';
+      
+      if (inches != null && (inches < 0 || inches > 11))
+        return 'Inches must be between 0 and 11';
+      
+      return null;
+    }
+    
+    // If it doesn't match the format, reject it
+    return 'Enter height as feet\'inches (e.g. 5\'7)';
   }
 
   String? _validateCoordinate(String? value, String type) {
@@ -195,10 +213,20 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     try {
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
-        setState(() {
-          _image = File(pickedFile.path);
-          tipData['image'] = pickedFile.path;
-        });
+        if (kIsWeb) {
+          // Handle web platform
+          final bytes = await pickedFile.readAsBytes();
+          setState(() {
+            _webImage = bytes;
+            tipData['image'] = base64Encode(bytes); // Store as base64 for web
+          });
+        } else {
+          // Handle mobile platforms
+          setState(() {
+            _imageFile = File(pickedFile.path);
+            tipData['image'] = pickedFile.path;
+          });
+        }
       }
     } catch (e) {
       print('Error picking image: $e');
@@ -207,46 +235,92 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   /// Submit tip data with validation
   Future<void> _submitTip() async {
+    // Check if user is authenticated first
+    if (_auth.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('You must be logged in to submit a tip.'),
+          action: SnackBarAction(
+            label: 'Sign In',
+            onPressed: () {
+              // Navigate to login screen
+              Navigator.pushNamed(context, '/login');
+            },
+          ),
+        ),
+      );
+      return;
+    }
+    
+    // Debug: Print auth info to verify authentication
+    print("Current user: ${_auth.currentUser?.uid}");
+    print("Current user email: ${_auth.currentUser?.email}");
+    print("Is user anonymous: ${_auth.currentUser?.isAnonymous}");
+
     if (_formKey.currentState?.validate() ?? false) {
-      if (_image == null) {
-        // 🔥 Require an image
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please upload an image.')),
-        );
-        return;
-      }
-
       try {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        List<String> tips = prefs.getStringList('tips') ?? [];
-
-        tipData['name'] = _nameController.text;
-        tipData['phone'] = _phoneController.text;
-        tipData['dateLastSeen'] = _dateLastSeenController.text;
-        tipData['timeLastSeen'] = _timeLastSeenController.text;
-        tipData['gender'] = selectedGender ?? '';
-        tipData['age'] = _ageController.text;
-        tipData['clothing'] = _clothingController.text;
-        tipData['features'] = _featuresController.text;
-        tipData['height'] = _heightController.text;
-        tipData['hairColor'] = selectedHairColor ?? '';
-        tipData['eyeColor'] = selectedEyeColor == 'Other' 
-            ? _customEyeColorController.text 
-            : (selectedEyeColor ?? '');
-        tipData['description'] = _descriptionController.text;
-        tipData['image'] = _image!.path; // 🔥 Ensure image is included
-        tipData['longitude'] = _longitudeController.text;
-        tipData['latitude'] = _latitudeController.text;
-        tipData['coordinates'] = _coordinatesController.text;
-
-        tips.add(jsonEncode(tipData));
-        await prefs.setStringList('tips', tips);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tip submitted successfully!')),
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          },
         );
 
-        // Clear fields after submission
+        final TipService tipService = TipService();
+        
+        // Parse date string to DateTime
+        DateTime dateLastSeen = _dateLastSeenController.text.isNotEmpty 
+            ? DateFormat('yyyy-MM-dd').parse(_dateLastSeenController.text)
+            : DateTime.now();
+        
+        // Parse numeric values with error handling
+        int age = int.tryParse(_ageController.text) ?? 0;
+        
+        // Use height as string directly for feet/inches format
+        String height = _heightController.text.trim();
+        
+        double longitude = double.tryParse(_longitudeController.text) ?? 0.0;
+        double latitude = double.tryParse(_latitudeController.text) ?? 0.0;
+        
+        // Get current user ID if authenticated
+        String userId = _auth.currentUser!.uid;
+        
+        // Submit tip to Firestore - update to handle both mobile and web
+        await tipService.submitTip(
+          name: _nameController.text,
+          phone: _phoneController.text,
+          dateLastSeen: dateLastSeen,
+          timeLastSeen: _timeLastSeenController.text,
+          gender: selectedGender ?? '',
+          age: age,
+          height: height, // Pass height as formatted string
+          hairColor: selectedHairColor ?? '',
+          eyeColor: selectedEyeColor == 'Other' 
+              ? _customEyeColorController.text 
+              : (selectedEyeColor ?? ''),
+          clothing: _clothingController.text,
+          features: _featuresController.text,
+          description: _descriptionController.text,
+          imageFile: kIsWeb ? null : _imageFile,
+          imageBytes: _webImage,
+          longitude: longitude,
+          latitude: latitude,
+          userId: userId, // Pass userId if user is logged in
+        );
+
+        // Remove loading indicator
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Tip submitted to database successfully!')),
+        );
+
+        // Clear form fields
+        _formKey.currentState?.reset();
         _nameController.clear();
         _phoneController.clear();
         _dateLastSeenController.clear();
@@ -263,11 +337,17 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _longitudeController.clear();
         _latitudeController.clear();
         _coordinatesController.clear();
-        setState(() => _image = null);
+        setState(() {
+          _imageFile = null;
+          _webImage = null;
+        });
       } catch (e) {
+        // Remove loading indicator
+        Navigator.pop(context);
+        
         print('Error saving tip: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting tip.')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     }
@@ -698,11 +778,26 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
       case "Height":
         formatters = [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d{1,3}(\.\d{0,2})?')),
+          FilteringTextInputFormatter.allow(RegExp(r"[0-9'ftins\s]")), // Allow numbers, ', ft, in, and spaces
+          LengthLimitingTextInputFormatter(10),
         ];
         validator = _validateHeight;
-        keyboardType = TextInputType.numberWithOptions(decimal: true);
-        break;
+        keyboardType = TextInputType.text;
+        return Padding(
+          padding: EdgeInsets.only(bottom: 16),
+          child: TextFormField(
+            controller: controller,
+            style: TextStyle(color: Colors.black87),
+            decoration: _getInputDecoration(label, icon).copyWith(
+              hintText: "e.g. 5'7", 
+              helperText: "Enter as feet'inches (e.g. 5'7)",
+              helperStyle: TextStyle(color: Colors.black54, fontSize: 12),
+            ),
+            inputFormatters: formatters,
+            validator: validator,
+            keyboardType: keyboardType,
+          ),
+        );
 
       default:
         validator = (value) {
@@ -801,16 +896,29 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   Widget _buildImagePicker() {
     return Center(
-      child: _image != null
+      child: (kIsWeb ? _webImage != null : _imageFile != null)
           ? Column(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(_image!, height: 200, fit: BoxFit.cover),
+                  child: kIsWeb
+                      ? Image.memory(
+                          _webImage!,
+                          height: 200,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.file(
+                          _imageFile!,
+                          height: 200,
+                          fit: BoxFit.cover,
+                        ),
                 ),
                 SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () => setState(() => _image = null),
+                  onPressed: () => setState(() {
+                    _imageFile = null;
+                    _webImage = null;
+                  }),
                   icon: Icon(Icons.delete, color: Colors.red),
                   label: Text('Remove Image', style: TextStyle(color: Colors.red)),
                 )
