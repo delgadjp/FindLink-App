@@ -1,9 +1,8 @@
 import '/core/app_export.dart';
-import '/data/philippines_data.dart';
+import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
-
   @override
   FillUpForm createState() => FillUpForm();
 }
@@ -28,20 +27,34 @@ class FillUpForm extends State<FillUpFormScreen> {
   int? suspectAge;
   int? victimAge;
 
-  String? reportingPersonProvince;
-  String? reportingPersonCity;
-  String? reportingPersonOtherProvince;
-  String? reportingPersonOtherCity;
+  Region? reportingPersonRegion;
+  Province? reportingPersonProvince;
+  Municipality? reportingPersonMunicipality;
+  String? reportingPersonBarangay;
   
-  String? suspectProvince;
-  String? suspectCity;
-  String? suspectOtherProvince;
-  String? suspectOtherCity;
+  Region? reportingPersonOtherRegion;
+  Province? reportingPersonOtherProvince;
+  Municipality? reportingPersonOtherMunicipality;
+  String? reportingPersonOtherBarangay;
   
-  String? victimProvince;
-  String? victimCity;
-  String? victimOtherProvince;
-  String? victimOtherCity;
+  Region? suspectRegion;
+  Province? suspectProvince;
+  Municipality? suspectMunicipality;
+  String? suspectBarangay;
+  
+  Region? suspectOtherRegion;
+  Province? suspectOtherProvince;
+  Municipality? suspectOtherMunicipality;
+  String? suspectOtherBarangay;
+  
+  Region? victimRegion;
+  Province? victimProvince;
+  Municipality? victimMunicipality;
+  String? victimBarangay;
+  Region? victimOtherRegion;
+  Province? victimOtherProvince;
+  Municipality? victimOtherMunicipality;
+  String? victimOtherBarangay;
 
   int calculateAge(DateTime birthDate) {
     final today = DateTime.now();
@@ -353,20 +366,26 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                           _buildRowInputs([
                             {
-                              'label': 'BARANGAY',
+                              'label': 'REGION',
                               'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'TOWN/CITY',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
                               'section': 'reporting',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'reporting',
+                            },
+                          ]),
+                          SizedBox(height: 10),
+                          _buildRowInputs([
+                            {
+                              'label': 'TOWN/CITY',
+                              'required': true,
+                              'section': 'reporting',
+                            },
+                            {
+                              'label': 'BARANGAY',
+                              'required': true,
                               'section': 'reporting',
                             },
                           ]),
@@ -401,17 +420,25 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                           _buildRowInputs([
                             {
-                              'label': 'BARANGAY',
+                              'label': 'REGION',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'reportingOther',
                             },
+                            {
+                              'label': 'PROVINCE',
+                              'required': true,
+                              'section': 'reportingOther',
+                            },
+                          ]),
+                          SizedBox(height: 10),
+                          _buildRowInputs([
                             {
                               'label': 'TOWN/CITY',
                               'required': true,
                               'section': 'reportingOther',
                             },
                             {
-                              'label': 'PROVINCE',
+                              'label': 'BARANGAY',
                               'required': true,
                               'section': 'reportingOther',
                             },
@@ -580,20 +607,26 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                           _buildRowInputs([
                             {
-                              'label': 'BARANGAY',
+                              'label': 'REGION',
                               'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'TOWN/CITY',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
                               'section': 'suspect',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'suspect',
+                            },
+                          ]),
+                          SizedBox(height: 10),
+                          _buildRowInputs([
+                            {
+                              'label': 'TOWN/CITY',
+                              'required': true,
+                              'section': 'suspect',
+                            },
+                            {
+                              'label': 'BARANGAY',
+                              'required': true,
                               'section': 'suspect',
                             },
                           ]),
@@ -627,17 +660,25 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                           _buildRowInputs([
                             {
-                              'label': 'BARANGAY',
+                              'label': 'REGION',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'suspectOther',
                             },
+                            {
+                              'label': 'PROVINCE',
+                              'required': true,
+                              'section': 'suspectOther',
+                            },
+                          ]),
+                          SizedBox(height: 10),
+                          _buildRowInputs([
                             {
                               'label': 'TOWN/CITY',
                               'required': true,
                               'section': 'suspectOther',
                             },
                             {
-                              'label': 'PROVINCE',
+                              'label': 'BARANGAY',
                               'required': true,
                               'section': 'suspectOther',
                             },
@@ -961,20 +1002,26 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                           _buildRowInputs([
                             {
-                              'label': 'BARANGAY',
+                              'label': 'REGION',
                               'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'TOWN/CITY',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
                               'section': 'victim',
                             },
                             {
                               'label': 'PROVINCE',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'victim',
+                            },
+                          ]),
+                          SizedBox(height: 10),
+                          _buildRowInputs([
+                            {
+                              'label': 'TOWN/CITY',
+                              'required': true,
+                              'section': 'victim',
+                            },
+                            {
+                              'label': 'BARANGAY',
+                              'required': true,
                               'section': 'victim',
                             },
                           ]),
@@ -1008,17 +1055,25 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                           _buildRowInputs([
                             {
-                              'label': 'BARANGAY',
+                              'label': 'REGION',
                               'required': true,
-                              'keyboardType': TextInputType.text,
+                              'section': 'victimOther',
                             },
+                            {
+                              'label': 'PROVINCE',
+                              'required': true,
+                              'section': 'victimOther',
+                            },
+                          ]),
+                          SizedBox(height: 10),
+                          _buildRowInputs([
                             {
                               'label': 'TOWN/CITY',
                               'required': true,
                               'section': 'victimOther',
                             },
                             {
-                              'label': 'PROVINCE',
+                              'label': 'BARANGAY',
                               'required': true,
                               'section': 'victimOther',
                             },
@@ -1433,182 +1488,776 @@ class FillUpForm extends State<FillUpFormScreen> {
     return Row(
       children: fields.map((field) {
         // Handle Reporting Person address
-        if (field['label'] == 'PROVINCE' && field['section'] == 'reporting') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
-            onChanged: (String? newValue) {
-              setState(() {
-                reportingPersonProvince = newValue;
-                reportingPersonCity = null; // Reset city when province changes
-              });
-            },
-            value: reportingPersonProvince,
+        if (field['label'] == 'REGION' && field['section'] == 'reporting') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineRegionDropdownView(
+                    onChanged: (Region? value) {
+                      setState(() {
+                        if (reportingPersonRegion != value) {
+                          reportingPersonProvince = null;
+                          reportingPersonMunicipality = null;
+                          reportingPersonBarangay = null;
+                        }
+                        reportingPersonRegion = value;
+                      });
+                    },
+                    value: reportingPersonRegion,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'PROVINCE' && field['section'] == 'reporting') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineProvinceDropdownView(
+                    provinces: reportingPersonRegion?.provinces ?? [],
+                    onChanged: (Province? value) {
+                      setState(() {
+                        if (reportingPersonProvince != value) {
+                          reportingPersonMunicipality = null;
+                          reportingPersonBarangay = null;
+                        }
+                        reportingPersonProvince = value;
+                      });
+                    },
+                    value: reportingPersonProvince,
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'reporting') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: reportingPersonProvince != null 
-                ? [dropdownPlaceholder, ...PhilippinesData.getCities(reportingPersonProvince!)]
-                : [dropdownPlaceholder],
-            value: reportingPersonCity ?? dropdownPlaceholder,
-            onChanged: (String? newValue) {
-              setState(() {
-                reportingPersonCity = newValue;
-              });
-            },
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: reportingPersonProvince?.municipalities ?? [],
+                    onChanged: (Municipality? value) {
+                      setState(() {
+                        if (reportingPersonMunicipality != value) {
+                          reportingPersonBarangay = null;
+                        }
+                        reportingPersonMunicipality = value;
+                      });
+                    },
+                    value: reportingPersonMunicipality,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'BARANGAY' && field['section'] == 'reporting') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineBarangayDropdownView(
+                    barangays: reportingPersonMunicipality?.barangays ?? [],
+                    onChanged: (String? value) {
+                      setState(() {
+                        reportingPersonBarangay = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         }
-        
+
         // Handle Reporting Person Other address
-        else if (field['label'] == 'PROVINCE' && field['section'] == 'reportingOther') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
-            onChanged: (String? newValue) {
-              setState(() {
-                reportingPersonOtherProvince = newValue;
-                reportingPersonOtherCity = null;
-              });
-            },
-            value: reportingPersonOtherProvince,
+        else if (field['label'] == 'REGION' && field['section'] == 'reportingOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineRegionDropdownView(
+                    onChanged: (Region? value) {
+                      setState(() {
+                        if (reportingPersonOtherRegion != value) {
+                          reportingPersonOtherProvince = null;
+                          reportingPersonOtherMunicipality = null;
+                          reportingPersonOtherBarangay = null;
+                        }
+                        reportingPersonOtherRegion = value;
+                      });
+                    },
+                    value: reportingPersonOtherRegion,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'PROVINCE' && field['section'] == 'reportingOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineProvinceDropdownView(
+                    provinces: reportingPersonOtherRegion?.provinces ?? [],
+                    onChanged: (Province? value) {
+                      setState(() {
+                        if (reportingPersonOtherProvince != value) {
+                          reportingPersonOtherMunicipality = null;
+                          reportingPersonOtherBarangay = null;
+                        }
+                        reportingPersonOtherProvince = value;
+                      });
+                    },
+                    value: reportingPersonOtherProvince,
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'reportingOther') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: reportingPersonOtherProvince != null 
-                ? [dropdownPlaceholder, ...PhilippinesData.getCities(reportingPersonOtherProvince!)]
-                : [dropdownPlaceholder],
-            value: reportingPersonOtherCity ?? dropdownPlaceholder,
-            onChanged: (String? newValue) {
-              setState(() {
-                reportingPersonOtherCity = newValue;
-              });
-            },
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: reportingPersonOtherProvince?.municipalities ?? [],
+                    onChanged: (Municipality? value) {
+                      setState(() {
+                        if (reportingPersonOtherMunicipality != value) {
+                          reportingPersonOtherBarangay = null;
+                        }
+                        reportingPersonOtherMunicipality = value;
+                      });
+                    },
+                    value: reportingPersonOtherMunicipality,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'BARANGAY' && field['section'] == 'reportingOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineBarangayDropdownView(
+                    barangays: reportingPersonOtherMunicipality?.barangays ?? [],
+                    onChanged: (String? value) {
+                      setState(() {
+                        reportingPersonOtherBarangay = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
         // Handle Suspect address
-        else if (field['label'] == 'PROVINCE' && field['section'] == 'suspect') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
-            onChanged: (String? newValue) {
-              setState(() {
-                suspectProvince = newValue;
-                suspectCity = null; // Reset city when province changes
-              });
-            },
-            value: suspectProvince,
+        else if (field['label'] == 'REGION' && field['section'] == 'suspect') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineRegionDropdownView(
+                    onChanged: (Region? value) {
+                      setState(() {
+                        if (suspectRegion != value) {
+                          suspectProvince = null;
+                          suspectMunicipality = null;
+                          suspectBarangay = null;
+                        }
+                        suspectRegion = value;
+                      });
+                    },
+                    value: suspectRegion,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'PROVINCE' && field['section'] == 'suspect') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineProvinceDropdownView(
+                    provinces: suspectRegion?.provinces ?? [],
+                    onChanged: (Province? value) {
+                      setState(() {
+                        if (suspectProvince != value) {
+                          suspectMunicipality = null;
+                          suspectBarangay = null;
+                        }
+                        suspectProvince = value;
+                      });
+                    },
+                    value: suspectProvince,
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'suspect') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: suspectProvince != null 
-                ? [dropdownPlaceholder, ...PhilippinesData.getCities(suspectProvince!)]
-                : [dropdownPlaceholder],
-            value: suspectCity ?? dropdownPlaceholder,
-            onChanged: (String? newValue) {
-              setState(() {
-                suspectCity = newValue;
-              });
-            },
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: suspectProvince?.municipalities ?? [],
+                    onChanged: (Municipality? value) {
+                      setState(() {
+                        if (suspectMunicipality != value) {
+                          suspectBarangay = null;
+                        }
+                        suspectMunicipality = value;
+                      });
+                    },
+                    value: suspectMunicipality,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'BARANGAY' && field['section'] == 'suspect') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineBarangayDropdownView(
+                    barangays: suspectMunicipality?.barangays ?? [],
+                    onChanged: (String? value) {
+                      setState(() {
+                        suspectBarangay = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         }
-        
+
         // Handle Suspect Other address
-        else if (field['label'] == 'PROVINCE' && field['section'] == 'suspectOther') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
-            onChanged: (String? newValue) {
-              setState(() {
-                suspectOtherProvince = newValue;
-                suspectOtherCity = null;
-              });
-            },
-            value: suspectOtherProvince,
+        else if (field['label'] == 'REGION' && field['section'] == 'suspectOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineRegionDropdownView(
+                    onChanged: (Region? value) {
+                      setState(() {
+                        if (suspectOtherRegion != value) {
+                          suspectOtherProvince = null;
+                          suspectOtherMunicipality = null;
+                          suspectOtherBarangay = null;
+                        }
+                        suspectOtherRegion = value;
+                      });
+                    },
+                    value: suspectOtherRegion,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'PROVINCE' && field['section'] == 'suspectOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineProvinceDropdownView(
+                    provinces: suspectOtherRegion?.provinces ?? [],
+                    onChanged: (Province? value) {
+                      setState(() {
+                        if (suspectOtherProvince != value) {
+                          suspectOtherMunicipality = null;
+                          suspectOtherBarangay = null;
+                        }
+                        suspectOtherProvince = value;
+                      });
+                    },
+                    value: suspectOtherProvince,
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'suspectOther') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: suspectOtherProvince != null 
-                ? [dropdownPlaceholder, ...PhilippinesData.getCities(suspectOtherProvince!)]
-                : [dropdownPlaceholder],
-            value: suspectOtherCity ?? dropdownPlaceholder,
-            onChanged: (String? newValue) {
-              setState(() {
-                suspectOtherCity = newValue;
-              });
-            },
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: suspectOtherProvince?.municipalities ?? [],
+                    onChanged: (Municipality? value) {
+                      setState(() {
+                        if (suspectOtherMunicipality != value) {
+                          suspectOtherBarangay = null;
+                        }
+                        suspectOtherMunicipality = value;
+                      });
+                    },
+                    value: suspectOtherMunicipality,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'BARANGAY' && field['section'] == 'suspectOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineBarangayDropdownView(
+                    barangays: suspectOtherMunicipality?.barangays ?? [],
+                    onChanged: (String? value) {
+                      setState(() {
+                        suspectOtherBarangay = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
         // Handle Victim address
-        else if (field['label'] == 'PROVINCE' && field['section'] == 'victim') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
-            onChanged: (String? newValue) {
-              setState(() {
-                victimProvince = newValue;
-                victimCity = null; // Reset city when province changes
-              });
-            },
-            value: victimProvince,
+        else if (field['label'] == 'REGION' && field['section'] == 'victim') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineRegionDropdownView(
+                    onChanged: (Region? value) {
+                      setState(() {
+                        if (victimRegion != value) {
+                          victimProvince = null;
+                          victimMunicipality = null;
+                          victimBarangay = null;
+                        }
+                        victimRegion = value;
+                      });
+                    },
+                    value: victimRegion,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'PROVINCE' && field['section'] == 'victim') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineProvinceDropdownView(
+                    provinces: victimRegion?.provinces ?? [],
+                    onChanged: (Province? value) {
+                      setState(() {
+                        if (victimProvince != value) {
+                          victimMunicipality = null;
+                          victimBarangay = null;
+                        }
+                        victimProvince = value;
+                      });
+                    },
+                    value: victimProvince,
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'victim') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: victimProvince != null 
-                ? [dropdownPlaceholder, ...PhilippinesData.getCities(victimProvince!)]
-                : [dropdownPlaceholder],
-            value: victimCity ?? dropdownPlaceholder,
-            onChanged: (String? newValue) {
-              setState(() {
-                victimCity = newValue;
-              });
-            },
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: victimProvince?.municipalities ?? [],
+                    onChanged: (Municipality? value) {
+                      setState(() {
+                        if (victimMunicipality != value) {
+                          victimBarangay = null;
+                        }
+                        victimMunicipality = value;
+                      });
+                    },
+                    value: victimMunicipality,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'BARANGAY' && field['section'] == 'victim') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineBarangayDropdownView(
+                    barangays: victimMunicipality?.barangays ?? [],
+                    onChanged: (String? value) {
+                      setState(() {
+                        victimBarangay = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
         // Handle Victim Other address
-        else if (field['label'] == 'PROVINCE' && field['section'] == 'victimOther') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: [dropdownPlaceholder, ...PhilippinesData.provinces],
-            onChanged: (String? newValue) {
-              setState(() {
-                victimOtherProvince = newValue;
-                victimOtherCity = null;
-              });
-            },
-            value: victimOtherProvince,
+        else if (field['label'] == 'REGION' && field['section'] == 'victimOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineRegionDropdownView(
+                    onChanged: (Region? value) {
+                      setState(() {
+                        if (victimOtherRegion != value) {
+                          victimOtherProvince = null;
+                          victimOtherMunicipality = null;
+                          victimOtherBarangay = null;
+                        }
+                        victimOtherRegion = value;
+                      });
+                    },
+                    value: victimOtherRegion,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'PROVINCE' && field['section'] == 'victimOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineProvinceDropdownView(
+                    provinces: victimOtherRegion?.provinces ?? [],
+                    onChanged: (Province? value) {
+                      setState(() {
+                        if (victimOtherProvince != value) {
+                          victimOtherMunicipality = null;
+                          victimOtherBarangay = null;
+                        }
+                        victimOtherProvince = value;
+                      });
+                    },
+                    value: victimOtherProvince,
+                  ),
+                ],
+              ),
+            ),
           );
         } else if (field['label'] == 'TOWN/CITY' && field['section'] == 'victimOther') {
-          return _buildInputField(
-            field['label'],
-            isRequired: field['required'] ?? false,
-            dropdownItems: victimOtherProvince != null 
-                ? [dropdownPlaceholder, ...PhilippinesData.getCities(victimOtherProvince!)]
-                : [dropdownPlaceholder],
-            value: victimOtherCity ?? dropdownPlaceholder,
-            onChanged: (String? newValue) {
-              setState(() {
-                victimOtherCity = newValue;
-              });
-            },
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: victimOtherProvince?.municipalities ?? [],
+                    onChanged: (Municipality? value) {
+                      setState(() {
+                        if (victimOtherMunicipality != value) {
+                          victimOtherBarangay = null;
+                        }
+                        victimOtherMunicipality = value;
+                      });
+                    },
+                    value: victimOtherMunicipality,
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (field['label'] == 'BARANGAY' && field['section'] == 'victimOther') {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field['label'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  PhilippineBarangayDropdownView(
+                    barangays: victimOtherMunicipality?.barangays ?? [],
+                    onChanged: (String? value) {
+                      setState(() {
+                        victimOtherBarangay = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
