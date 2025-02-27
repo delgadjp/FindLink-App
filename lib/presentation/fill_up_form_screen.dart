@@ -1,5 +1,6 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
+import '/widgets/custom_address_dropdowns.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -1504,7 +1505,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineRegionDropdownView(
+                  CustomPhilippineRegionDropdown(
+                    value: reportingPersonRegion,
                     onChanged: (Region? value) {
                       setState(() {
                         if (reportingPersonRegion != value) {
@@ -1515,7 +1517,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         reportingPersonRegion = value;
                       });
                     },
-                    value: reportingPersonRegion,
                   ),
                 ],
               ),
@@ -1537,7 +1538,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineProvinceDropdownView(
+                  CustomPhilippineProvinceDropdown(
+                    value: reportingPersonProvince,
                     provinces: reportingPersonRegion?.provinces ?? [],
                     onChanged: (Province? value) {
                       setState(() {
@@ -1548,7 +1550,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         reportingPersonProvince = value;
                       });
                     },
-                    value: reportingPersonProvince,
                   ),
                 ],
               ),
@@ -1570,7 +1571,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineMunicipalityDropdownView(
+                  CustomPhilippineMunicipalityDropdown(
+                    value: reportingPersonMunicipality,
                     municipalities: reportingPersonProvince?.municipalities ?? [],
                     onChanged: (Municipality? value) {
                       setState(() {
@@ -1580,7 +1582,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         reportingPersonMunicipality = value;
                       });
                     },
-                    value: reportingPersonMunicipality,
                   ),
                 ],
               ),
@@ -1602,7 +1603,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineBarangayDropdownView(
+                  CustomPhilippineBarangayDropdown(
+                    value: reportingPersonBarangay,
                     barangays: reportingPersonMunicipality?.barangays ?? [],
                     onChanged: (String? value) {
                       setState(() {
@@ -1633,7 +1635,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineRegionDropdownView(
+                  CustomPhilippineRegionDropdown(
+                    value: reportingPersonOtherRegion,
                     onChanged: (Region? value) {
                       setState(() {
                         if (reportingPersonOtherRegion != value) {
@@ -1644,7 +1647,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         reportingPersonOtherRegion = value;
                       });
                     },
-                    value: reportingPersonOtherRegion,
                   ),
                 ],
               ),
@@ -1666,7 +1668,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineProvinceDropdownView(
+                  CustomPhilippineProvinceDropdown(
+                    value: reportingPersonOtherProvince,
                     provinces: reportingPersonOtherRegion?.provinces ?? [],
                     onChanged: (Province? value) {
                       setState(() {
@@ -1677,7 +1680,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         reportingPersonOtherProvince = value;
                       });
                     },
-                    value: reportingPersonOtherProvince,
                   ),
                 ],
               ),
@@ -1699,7 +1701,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineMunicipalityDropdownView(
+                  CustomPhilippineMunicipalityDropdown(
+                    value: reportingPersonOtherMunicipality,
                     municipalities: reportingPersonOtherProvince?.municipalities ?? [],
                     onChanged: (Municipality? value) {
                       setState(() {
@@ -1709,7 +1712,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         reportingPersonOtherMunicipality = value;
                       });
                     },
-                    value: reportingPersonOtherMunicipality,
                   ),
                 ],
               ),
@@ -1731,7 +1733,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineBarangayDropdownView(
+                  CustomPhilippineBarangayDropdown(
+                    value: reportingPersonOtherBarangay,
                     barangays: reportingPersonOtherMunicipality?.barangays ?? [],
                     onChanged: (String? value) {
                       setState(() {
@@ -1762,7 +1765,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineRegionDropdownView(
+                  CustomPhilippineRegionDropdown(
+                    value: suspectRegion,
                     onChanged: (Region? value) {
                       setState(() {
                         if (suspectRegion != value) {
@@ -1773,7 +1777,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         suspectRegion = value;
                       });
                     },
-                    value: suspectRegion,
                   ),
                 ],
               ),
@@ -1795,7 +1798,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineProvinceDropdownView(
+                  CustomPhilippineProvinceDropdown(
+                    value: suspectProvince,
                     provinces: suspectRegion?.provinces ?? [],
                     onChanged: (Province? value) {
                       setState(() {
@@ -1806,7 +1810,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         suspectProvince = value;
                       });
                     },
-                    value: suspectProvince,
                   ),
                 ],
               ),
@@ -1828,7 +1831,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineMunicipalityDropdownView(
+                  CustomPhilippineMunicipalityDropdown(
+                    value: suspectMunicipality,
                     municipalities: suspectProvince?.municipalities ?? [],
                     onChanged: (Municipality? value) {
                       setState(() {
@@ -1838,7 +1842,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         suspectMunicipality = value;
                       });
                     },
-                    value: suspectMunicipality,
                   ),
                 ],
               ),
@@ -1860,7 +1863,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineBarangayDropdownView(
+                  CustomPhilippineBarangayDropdown(
+                    value: suspectBarangay,
                     barangays: suspectMunicipality?.barangays ?? [],
                     onChanged: (String? value) {
                       setState(() {
@@ -1891,7 +1895,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineRegionDropdownView(
+                  CustomPhilippineRegionDropdown(
+                    value: suspectOtherRegion,
                     onChanged: (Region? value) {
                       setState(() {
                         if (suspectOtherRegion != value) {
@@ -1902,7 +1907,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         suspectOtherRegion = value;
                       });
                     },
-                    value: suspectOtherRegion,
                   ),
                 ],
               ),
@@ -1924,7 +1928,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineProvinceDropdownView(
+                  CustomPhilippineProvinceDropdown(
+                    value: suspectOtherProvince,
                     provinces: suspectOtherRegion?.provinces ?? [],
                     onChanged: (Province? value) {
                       setState(() {
@@ -1935,7 +1940,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         suspectOtherProvince = value;
                       });
                     },
-                    value: suspectOtherProvince,
                   ),
                 ],
               ),
@@ -1957,7 +1961,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineMunicipalityDropdownView(
+                  CustomPhilippineMunicipalityDropdown(
+                    value: suspectOtherMunicipality,
                     municipalities: suspectOtherProvince?.municipalities ?? [],
                     onChanged: (Municipality? value) {
                       setState(() {
@@ -1967,7 +1972,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         suspectOtherMunicipality = value;
                       });
                     },
-                    value: suspectOtherMunicipality,
                   ),
                 ],
               ),
@@ -1989,7 +1993,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineBarangayDropdownView(
+                  CustomPhilippineBarangayDropdown(
+                    value: suspectOtherBarangay,
                     barangays: suspectOtherMunicipality?.barangays ?? [],
                     onChanged: (String? value) {
                       setState(() {
@@ -2020,7 +2025,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineRegionDropdownView(
+                  CustomPhilippineRegionDropdown(
+                    value: victimRegion,
                     onChanged: (Region? value) {
                       setState(() {
                         if (victimRegion != value) {
@@ -2031,7 +2037,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         victimRegion = value;
                       });
                     },
-                    value: victimRegion,
                   ),
                 ],
               ),
@@ -2053,7 +2058,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineProvinceDropdownView(
+                  CustomPhilippineProvinceDropdown(
+                    value: victimProvince,
                     provinces: victimRegion?.provinces ?? [],
                     onChanged: (Province? value) {
                       setState(() {
@@ -2064,7 +2070,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         victimProvince = value;
                       });
                     },
-                    value: victimProvince,
                   ),
                 ],
               ),
@@ -2086,7 +2091,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineMunicipalityDropdownView(
+                  CustomPhilippineMunicipalityDropdown(
+                    value: victimMunicipality,
                     municipalities: victimProvince?.municipalities ?? [],
                     onChanged: (Municipality? value) {
                       setState(() {
@@ -2096,7 +2102,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         victimMunicipality = value;
                       });
                     },
-                    value: victimMunicipality,
                   ),
                 ],
               ),
@@ -2118,7 +2123,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineBarangayDropdownView(
+                  CustomPhilippineBarangayDropdown(
+                    value: victimBarangay,
                     barangays: victimMunicipality?.barangays ?? [],
                     onChanged: (String? value) {
                       setState(() {
@@ -2149,7 +2155,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineRegionDropdownView(
+                  CustomPhilippineRegionDropdown(
+                    value: victimOtherRegion,
                     onChanged: (Region? value) {
                       setState(() {
                         if (victimOtherRegion != value) {
@@ -2160,7 +2167,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         victimOtherRegion = value;
                       });
                     },
-                    value: victimOtherRegion,
                   ),
                 ],
               ),
@@ -2182,7 +2188,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineProvinceDropdownView(
+                  CustomPhilippineProvinceDropdown(
+                    value: victimOtherProvince,
                     provinces: victimOtherRegion?.provinces ?? [],
                     onChanged: (Province? value) {
                       setState(() {
@@ -2193,7 +2200,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         victimOtherProvince = value;
                       });
                     },
-                    value: victimOtherProvince,
                   ),
                 ],
               ),
@@ -2215,7 +2221,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineMunicipalityDropdownView(
+                  CustomPhilippineMunicipalityDropdown(
+                    value: victimOtherMunicipality,
                     municipalities: victimOtherProvince?.municipalities ?? [],
                     onChanged: (Municipality? value) {
                       setState(() {
@@ -2225,7 +2232,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                         victimOtherMunicipality = value;
                       });
                     },
-                    value: victimOtherMunicipality,
                   ),
                 ],
               ),
@@ -2247,7 +2253,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     ),
                   ),
                   SizedBox(height: 4),
-                  PhilippineBarangayDropdownView(
+                  CustomPhilippineBarangayDropdown(
+                    value: victimOtherBarangay,
                     barangays: victimOtherMunicipality?.barangays ?? [],
                     onChanged: (String? value) {
                       setState(() {
