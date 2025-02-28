@@ -1,0 +1,22 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // Tips app images
+    match /tips-app/{imageId} {
+      // Allow read for anyone
+      allow read: if true;
+      
+      // Allow write only for authenticated users
+      allow write: if request.auth != null && 
+                    // Validate file type
+                    request.resource.contentType.matches('image/.*') &&
+                    // Limit file size to 5MB
+                    request.resource.size <= 5 * 1024 * 1024;
+    }
+  }
+}
