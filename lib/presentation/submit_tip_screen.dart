@@ -1,6 +1,7 @@
 import '../core/app_export.dart';
 import 'dart:convert';
 import 'dart:io';
+export 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -71,7 +72,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'image': '',
     'longitude': '',
     'latitude': '',
-    'coordinates': '',
+    'userId': '',
   };
 
   GoogleMapController? mapController;
