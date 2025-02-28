@@ -17,6 +17,26 @@ class SubmitTipScreen extends StatefulWidget {
 
 class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController(); // Add scroll controller
+  
+  // Create a map to store keys for form fields
+  final Map<String, GlobalKey<FormFieldState>> _fieldKeys = {
+    'name': GlobalKey<FormFieldState>(),
+    'phone': GlobalKey<FormFieldState>(),
+    'dateLastSeen': GlobalKey<FormFieldState>(),
+    'timeLastSeen': GlobalKey<FormFieldState>(),
+    'gender': GlobalKey<FormFieldState>(),
+    'age': GlobalKey<FormFieldState>(),
+    'clothing': GlobalKey<FormFieldState>(),
+    'features': GlobalKey<FormFieldState>(),
+    'height': GlobalKey<FormFieldState>(),
+    'hairColor': GlobalKey<FormFieldState>(),
+    'eyeColor': GlobalKey<FormFieldState>(),
+    'description': GlobalKey<FormFieldState>(),
+    'longitude': GlobalKey<FormFieldState>(),
+    'latitude': GlobalKey<FormFieldState>(),
+  };
+
   File? _imageFile;
   Uint8List? _webImage;
   final picker = ImagePicker();
@@ -172,8 +192,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   String? _validateHeight(String? value) {
     if (value == null || value.isEmpty) return 'Please enter height';
     
-    // Check for feet and inches format: either 5'7 or 5 7 or 5ft 7in
-    RegExp feetInchesRegex = RegExp(r"^(\d{1,2})(?:'|\s|ft\s*)(\d{1,2})?(?:''|in)?$");
+    // Accept various height formats
+    
+    // Format: feet and inches (5'7, 5 7, 5ft 7in, etc.)
+    RegExp feetInchesRegex = RegExp(r"^(\d{1,2})(?:'|\s|ft\.?\s*)(?:(\d{1,2})(?:''|\s|in\.?)?)?$");
+    
+    // Format: centimeters (170cm, 170 cm)
+    RegExp centimeterRegex = RegExp(r"^(\d{2,3})(?:\s*cm)?$");
+    
+    // Format: meters (1.7m, 1.7 m)
+    RegExp meterRegex = RegExp(r"^(\d{1})\.(\d{1,2})(?:\s*m)?$");
     
     if (feetInchesRegex.hasMatch(value)) {
       // Extract feet and inches
@@ -181,18 +209,42 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       int? feet = int.tryParse(match.group(1) ?? '0');
       int? inches = int.tryParse(match.group(2) ?? '0');
       
-      // Validate values are reasonable
+      // Validate feet is reasonable (2-8 feet)
       if (feet! < 2 || feet > 8) 
-        return 'Please enter a valid height (2\' to 8\')';
+        return 'Please enter a valid height (2-8 feet)';
       
-      if (inches != null && (inches < 0 || inches > 11))
+      // If inches provided, validate (0-11 inches)
+      if (inches != null && inches > 0 && (inches < 0 || inches > 11))
         return 'Inches must be between 0 and 11';
       
       return null;
     }
     
-    // If it doesn't match the format, reject it
-    return 'Enter height as feet\'inches (e.g. 5\'7)';
+    // Check centimeter format
+    if (centimeterRegex.hasMatch(value)) {
+      int? cm = int.tryParse(centimeterRegex.firstMatch(value)!.group(1) ?? '0');
+      
+      // Validate reasonable height range (60cm-250cm)
+      if (cm! < 60 || cm > 250)
+        return 'Please enter a valid height (60-250 cm)';
+        
+      return null;
+    }
+    
+    // Check meter format
+    if (meterRegex.hasMatch(value)) {
+      Match match = meterRegex.firstMatch(value)!;
+      double meters = double.tryParse('${match.group(1)}.${match.group(2)}') ?? 0;
+      
+      // Validate reasonable height range (0.6m-2.5m)
+      if (meters < 0.6 || meters > 2.5)
+        return 'Please enter a valid height (0.6-2.5 meters)';
+        
+      return null;
+    }
+    
+    // If it doesn't match any acceptable format
+    return 'Enter height as feet\'inches (5\'7), centimeters (170cm), or meters (1.7m)';
   }
 
   String? _validateCoordinate(String? value, String type) {
@@ -258,6 +310,56 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     print("Current user email: ${_auth.currentUser?.email}");
     print("Is user anonymous: ${_auth.currentUser?.isAnonymous}");
 
+    // Check form validation state
+    final bool isValid = _formKey.currentState?.validate() ?? false;
+    
+    if (!isValid) {
+      // Find the first field with an error and scroll to it
+      GlobalKey<FormFieldState>? firstErrorKey;
+      
+      for (final entry in _fieldKeys.entries) {
+        final fieldState = entry.value.currentState;
+        if (fieldState != null && !fieldState.isValid) {
+          firstErrorKey = entry.value;
+          print("Found error in field: ${entry.key}");
+          break;
+        }
+      }
+      
+      // Additional validation for dropdown fields that might not have keys
+      if (firstErrorKey == null) {
+        if (selectedGender == null) {
+          firstErrorKey = _fieldKeys['gender'];
+        } else if (selectedHairColor == null) {
+          firstErrorKey = _fieldKeys['hairColor'];
+        } else if (selectedEyeColor == null || 
+                 (selectedEyeColor == 'Other' && _customEyeColorController.text.isEmpty)) {
+          firstErrorKey = _fieldKeys['eyeColor'];
+        }
+      }
+      
+      // Scroll to the first field with an error
+      if (firstErrorKey != null) {
+        Scrollable.ensureVisible(
+          firstErrorKey.currentContext!,
+          duration: Duration(milliseconds: 500),
+          alignment: 0.2, // Align error near the top but not at the very top
+          curve: Curves.easeInOut,
+        );
+      }
+      
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please fix the highlighted errors in the form"),
+          backgroundColor: Colors.red.shade700,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      return;
+    }
+
     if (_formKey.currentState?.validate() ?? false) {
       try {
         // Show loading indicator
@@ -303,6 +405,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           eyeColor: selectedEyeColor == 'Other' 
               ? _customEyeColorController.text 
               : (selectedEyeColor ?? ''),
+          // Pass optional fields, empty string is fine as they're optional in service
           clothing: _clothingController.text,
           features: _featuresController.text,
           description: _descriptionController.text,
@@ -317,10 +420,13 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         Navigator.pop(context);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tip submitted to database successfully!')),
+          SnackBar(content: Text('Tip submitted successfully!')),
         );
+        
+        // Navigate back to the missing person screen
+        Navigator.pushReplacementNamed(context, AppRoutes.missingPerson);
 
-        // Clear form fields
+        // Clear form fields (these will only execute if navigation fails or is delayed)
         _formKey.currentState?.reset();
         _nameController.clear();
         _phoneController.clear();
@@ -516,6 +622,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
+              controller: _scrollController, // Assign the scroll controller
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -573,11 +680,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader("Additional Details"),
-                        _buildTextField(_clothingController, "Clothing Description", icon: Icons.checkroom),
-                        _buildTextField(_featuresController, "Distinguishing Features", icon: Icons.face_retouching_natural),
+                        _buildSectionHeader("Additional Details (Optional)"),
+                        _buildTextField(_clothingController, "Clothing Description", required: false, icon: Icons.checkroom),
+                        _buildTextField(_featuresController, "Distinguishing Features", required: false, icon: Icons.face_retouching_natural),
                         _buildTextField(_descriptionController, "Additional Description",
-                            maxLines: 3, icon: Icons.description),
+                            maxLines: 3, required: false, icon: Icons.description),
                       ],
                     ),
                   ),
@@ -700,6 +807,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     String? Function(String?)? validator,
   }) {
     List<TextInputFormatter>? formatters;
+    // Get the field key
+    final fieldKey = _fieldKeys[label.toLowerCase().replaceAll(' ', '')];
 
     // Set specific formatting and validation per field
     switch (label) {
@@ -737,6 +846,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           },
           child: IgnorePointer(
             child: TextFormField(
+              key: _fieldKeys['dateLastSeen'], // Assign key to field
               controller: controller,
               style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600), // Updated text style
               decoration: _getInputDecoration(label, icon),
@@ -760,6 +870,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           },
           child: IgnorePointer(
             child: TextFormField(
+              key: _fieldKeys['timeLastSeen'], // Assign key to field
               controller: controller,
               style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600), // Updated text style
               decoration: _getInputDecoration(label, icon),
@@ -779,7 +890,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
       case "Height":
         formatters = [
-          FilteringTextInputFormatter.allow(RegExp(r"[0-9'ftins\s]")), // Allow numbers, ', ft, in, and spaces
+          FilteringTextInputFormatter.allow(RegExp(r"[0-9.'ftincms\s]")), // Allow numbers, units, and decimal points
           LengthLimitingTextInputFormatter(10),
         ];
         validator = _validateHeight;
@@ -787,18 +898,32 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return Padding(
           padding: EdgeInsets.only(bottom: 16),
           child: TextFormField(
+            key: _fieldKeys['height'], // Assign key to field
             controller: controller,
             style: TextStyle(color: Colors.black87),
             decoration: _getInputDecoration(label, icon).copyWith(
-              hintText: "e.g. 5'7", 
-              helperText: "Enter as feet'inches (e.g. 5'7)",
-              helperStyle: TextStyle(color: Colors.black54, fontSize: 12),
+              hintText: "e.g. 5'7, 170cm, or 1.7m", 
+              helperText: "Formats: feet'inches (5'7), centimeters (170cm), meters (1.7m)",
+              helperStyle: TextStyle(
+                color: Colors.black54, 
+                fontSize: 12,
+                overflow: TextOverflow.ellipsis, // Add text overflow handling
+              ),
+              helperMaxLines: 2, // Allow helper text to take up to 2 lines before truncating
             ),
             inputFormatters: formatters,
             validator: validator,
             keyboardType: keyboardType,
           ),
         );
+
+      case "Clothing Description":
+      case "Distinguishing Features":
+      case "Additional Description":
+        // Make these fields optional by setting custom validator that always returns null
+        required = false;
+        validator = (value) => null; // Optional field
+        break;
 
       default:
         validator = (value) {
@@ -812,6 +937,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: TextFormField(
+        key: fieldKey, // Use generic key for other fields
         controller: controller,
         style: TextStyle(color: Colors.black87),
         decoration: _getInputDecoration(label, icon),
@@ -841,6 +967,20 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       ),
       filled: true,
       fillColor: Colors.grey.shade50,
+      // Add custom error styling
+      errorStyle: TextStyle(
+        color: Colors.red.shade800,  // Deeper red color
+        fontWeight: FontWeight.bold, // Bold text for emphasis
+        fontSize: 13.0,              // Slightly larger for visibility
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.red.shade700, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+      ),
     );
   }
 
@@ -851,9 +991,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     Function(String?) onChanged,
     IconData icon,
   ) {
+    final fieldKey = _fieldKeys[label.toLowerCase().replaceAll(' ', '')];
+    
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
+        key: fieldKey, // Assign key to dropdown field
         value: value,
         decoration: _getInputDecoration(label, icon),
         items: items.map((String item) {
@@ -884,6 +1027,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           Padding(
             padding: EdgeInsets.only(bottom: 16),
             child: TextFormField(
+              key: _fieldKeys['eyeColor'], // Assign key to field
               controller: _customEyeColorController,
               decoration: _getInputDecoration("Specify Eye Color", Icons.remove_red_eye),
               validator: (value) => 
