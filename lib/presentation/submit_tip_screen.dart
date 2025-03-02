@@ -261,10 +261,61 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     return null;
   }
 
-  /// Pick an image from the gallery
-  Future<void> _pickImage() async {
+  /// Enhanced image picker with better permission handling
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      // Handle camera permission differently - check permission status first
+      if (source == ImageSource.camera) {
+        PermissionStatus cameraStatus = await Permission.camera.status;
+        
+        if (cameraStatus.isDenied) {
+          // Request permission if it's denied
+          cameraStatus = await Permission.camera.request();
+        }
+        
+        if (cameraStatus.isPermanentlyDenied) {
+          // Show dialog to open app settings if permanently denied
+          showDialog(
+            context: context,
+            builder: (BuildContext context) => AlertDialog(
+              title: Text("Camera Permission Required"),
+              content: Text(
+                "Camera permission is needed to take photos. Please enable it in your device settings.",
+              ),
+              actions: [
+                TextButton(
+                  child: Text("Cancel"),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                TextButton(
+                  child: Text("Open Settings"),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    openAppSettings();
+                  },
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+        
+        if (!cameraStatus.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Camera permission is required to take photos'),
+              action: SnackBarAction(
+                label: 'Settings',
+                onPressed: openAppSettings,
+              ),
+            ),
+          );
+          return;
+        }
+      }
+      
+      // If we got here, permission is granted or we're using gallery
+      final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
         if (kIsWeb) {
           // Handle web platform
@@ -283,6 +334,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       }
     } catch (e) {
       print('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error accessing camera: ${e.toString()}')),
+      );
     }
   }
 
@@ -890,7 +944,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
       case "Height":
         formatters = [
-          FilteringTextInputFormatter.allow(RegExp(r"[0-9.'ftincms\s]")), // Allow numbers, units, and decimal points
+          // Updated formatter to only allow numbers, apostrophes, periods, and spaces
+          FilteringTextInputFormatter.allow(RegExp(r"[0-9.' ]")),
           LengthLimitingTextInputFormatter(10),
         ];
         validator = _validateHeight;
@@ -902,8 +957,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             controller: controller,
             style: TextStyle(color: Colors.black87),
             decoration: _getInputDecoration(label, icon).copyWith(
-              hintText: "e.g. 5'7, 170cm, or 1.7m", 
-              helperText: "Formats: feet'inches (5'7), centimeters (170cm), meters (1.7m)",
+              hintText: "e.g. 5'7, 170, or 1.7", 
+              helperText: "Formats: feet'inches (5'7), centimeters (170), meters (1.7)",
               helperStyle: TextStyle(
                 color: Colors.black54, 
                 fontSize: 12,
@@ -1059,18 +1114,30 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         ),
                 ),
                 SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: () => setState(() {
-                    _imageFile = null;
-                    _webImage = null;
-                  }),
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  label: Text('Remove Image', style: TextStyle(color: Colors.red)),
-                )
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _showImageSourceOptions,
+                      icon: Icon(Icons.edit, color: Color(0xFF0D47A1)),
+                      label: Text('Change Image', style: TextStyle(color: Color(0xFF0D47A1))),
+                    ),
+                    SizedBox(width: 16),
+                    TextButton.icon(
+                      onPressed: () => setState(() {
+                        _imageFile = null;
+                        _webImage = null;
+                        tipData['image'] = '';
+                      }),
+                      icon: Icon(Icons.delete, color: Colors.red),
+                      label: Text('Remove', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
               ],
             )
           : InkWell(
-              onTap: _pickImage,
+              onTap: _showImageSourceOptions,
               child: Container(
                 width: double.infinity,
                 height: 150,
@@ -1084,13 +1151,78 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     Icon(Icons.add_a_photo, size: 48, color: Color(0xFF0D47A1)),
                     SizedBox(height: 8),
                     Text(
-                      'Upload Image',
-                      style: TextStyle(color: Color(0xFF0D47A1)),
+                      'Add Photo',
+                      style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Take a photo or select from gallery',
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
                     ),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  // Add a method to show image source options
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Select Image Source",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D47A1),
+              ),
+            ),
+            SizedBox(height: 16),
+            if (!kIsWeb) // Show camera option only on mobile platforms
+              ListTile(
+                leading: Icon(Icons.camera_alt, color: Color(0xFF0D47A1)),
+                title: Text(
+                  "Take Photo",
+                  style: TextStyle(
+                    color: Color(0xFF0D47A1),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.photo_library, color: Color(0xFF0D47A1)),
+              title: Text(
+                "Choose from Gallery",
+                style: TextStyle(
+                  color: Color(0xFF0D47A1),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
