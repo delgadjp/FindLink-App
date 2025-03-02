@@ -2,7 +2,7 @@
 /// A comprehensive list of citizenship/nationality options for dropdown menus
 class CitizenshipOptions {
   /// Placeholder text shown as the default dropdown value
-  static const String placeholder = '-- SELECT --';
+  static const String placeholder = 'SELECT';
 
   /// Comprehensive list of citizenship options, with placeholder as the first item
   static const List<String> options = [
