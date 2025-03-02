@@ -71,6 +71,7 @@ class HomeScreen extends StatelessWidget {
                 padding: EdgeInsets.all(16),
                 child: Card(
                   elevation: 2,
+                  color: Colors.blue.shade50, // Added background color to match
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
@@ -89,6 +90,7 @@ class HomeScreen extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0D47A1), // Changed text color to match app theme
                                 ),
                               ),
                               Text(
@@ -207,6 +209,7 @@ class HomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Card(
                   elevation: 4,
+                  color: Colors.blue.shade50, // Added background color to match
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -235,8 +238,9 @@ class HomeScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             height: 1.5,
+                            color: Color.fromARGB(255, 0, 0, 0),
                           ),
-                          textAlign: TextAlign.justify,
+                          textAlign: TextAlign.left,
                         ),
                         SizedBox(height: 12),
                         ClipRRect(
@@ -283,6 +287,7 @@ class HomeScreen extends StatelessWidget {
           scale: value,
           child: Card(
             elevation: 2,
+            color: Colors.blue.shade50, // Added background color to the cards
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -347,6 +352,7 @@ class HomeScreen extends StatelessWidget {
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Card(
       elevation: 2,
+      color: Colors.blue.shade50, // Added background color to match
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: EdgeInsets.all(16),
