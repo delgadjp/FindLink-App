@@ -1,5 +1,6 @@
 import 'dart:ui';
 import '../core/app_export.dart';
+import '../routes/app_routes.dart'; // Add import for app_routes
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -258,10 +259,7 @@ class HomeScreen extends StatelessWidget {
         duration: Duration(milliseconds: 300),
         child: FloatingActionButton.extended(
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ChatbotScreen()),
-            );
+            Navigator.pushNamed(context, AppRoutes.chatbot);
           },
           icon: Icon(Icons.chat_bubble_outline),
           label: Text("Chat with us"),

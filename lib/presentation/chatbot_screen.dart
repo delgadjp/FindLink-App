@@ -78,7 +78,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           image: DecorationImage(
-            image: AssetImage("assets/chat_bg.png"), // Add a subtle pattern
+            image: AssetImage(ImageConstant.chatBackground), // Updated to use constant
             opacity: 0.1,
           ),
         ),

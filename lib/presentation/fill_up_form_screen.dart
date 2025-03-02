@@ -1368,6 +1368,15 @@ class FillUpForm extends State<FillUpFormScreen> {
               height: 35,
               child: Row(
                 children: [
+                  if (isRequired)
+                    Text(
+                      '* ',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   Expanded(
                     child: Tooltip(
                       message: label,  // Show full text on hover
@@ -1385,15 +1394,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                       ),
                     ),
                   ),
-                  if (isRequired)
-                    Text(
-                      ' *',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -1496,13 +1496,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineRegionDropdown(
@@ -1529,13 +1541,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineProvinceDropdown(
@@ -1562,13 +1586,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineMunicipalityDropdown(
@@ -1594,13 +1630,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineBarangayDropdown(
@@ -1626,13 +1674,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineRegionDropdown(
@@ -1659,13 +1719,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineProvinceDropdown(
@@ -1692,13 +1764,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineMunicipalityDropdown(
@@ -1724,13 +1808,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineBarangayDropdown(
@@ -1756,13 +1852,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineRegionDropdown(
@@ -1789,13 +1897,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineProvinceDropdown(
@@ -1822,13 +1942,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineMunicipalityDropdown(
@@ -1854,13 +1986,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineBarangayDropdown(
@@ -1886,13 +2030,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineRegionDropdown(
@@ -1919,13 +2075,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineProvinceDropdown(
@@ -1952,13 +2120,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineMunicipalityDropdown(
@@ -1984,13 +2164,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineBarangayDropdown(
@@ -2016,13 +2208,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineRegionDropdown(
@@ -2049,13 +2253,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineProvinceDropdown(
@@ -2082,13 +2298,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineMunicipalityDropdown(
@@ -2114,13 +2342,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineBarangayDropdown(
@@ -2146,13 +2386,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineRegionDropdown(
@@ -2179,13 +2431,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineProvinceDropdown(
@@ -2212,13 +2476,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineMunicipalityDropdown(
@@ -2244,13 +2520,25 @@ class FillUpForm extends State<FillUpFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    field['label'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '* ',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        field['label'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4),
                   CustomPhilippineBarangayDropdown(
