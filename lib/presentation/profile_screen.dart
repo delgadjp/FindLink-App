@@ -1,5 +1,8 @@
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_export.dart';
 import '../widgets/profile/user_stats_card.dart';
+import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -8,6 +11,63 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _name = 'Your Name';
+  String _email = 'user@example.com';
+  String _memberSince = 'Member since: Jan 2023';
+  String _profileImageUrl = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser != null) {
+        // Get user data from Firestore
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          
+          // Format the creation date
+          String formattedDate = 'Member since: Jan 2023';
+          if (userData['createdAt'] != null) {
+            Timestamp creationTimestamp = userData['createdAt'] as Timestamp;
+            DateTime creationDate = creationTimestamp.toDate();
+            formattedDate = 'Member since: ${DateFormat('MMM yyyy').format(creationDate)}';
+          }
+          
+          setState(() {
+            _name = userData['displayName'] ?? currentUser.displayName ?? 'Your Name';
+            _email = userData['email'] ?? currentUser.email ?? 'user@example.com';
+            _profileImageUrl = userData['photoURL'] ?? currentUser.photoURL ?? '';
+            _memberSince = formattedDate;
+          });
+        } else {
+          // Fallback to Firebase Auth user data if Firestore document doesn't exist
+          setState(() {
+            _name = currentUser.displayName ?? 'Your Name';
+            _email = currentUser.email ?? 'user@example.com';
+            _profileImageUrl = currentUser.photoURL ?? '';
+            _memberSince = 'Member since: ${DateFormat('MMM yyyy').format(currentUser.metadata.creationTime ?? DateTime.now())}';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   Future<String?> _showEditNameDialog() async {
     TextEditingController nameController = TextEditingController(text: _name);
@@ -43,6 +103,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _updateUserName(String newName) async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        // Update in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .update({'displayName': newName});
+        
+        // Update in Firebase Auth
+        await currentUser.updateDisplayName(newName);
+        
+        setState(() => _name = newName);
+      }
+    } catch (e) {
+      print('Error updating name: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating name. Please try again.')),
+      );
+    }
+  }
+
+  Future<void> _updateProfilePicture() async {
+    // This would typically involve using image_picker and Firebase Storage
+    // For now, we'll just show a message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Profile picture update functionality will be implemented soon.')),
+    );
+  }
+
   Future<void> _signOut() async {
     await AuthService().signOutUser(context);
   }
@@ -68,7 +159,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       drawer: AppDrawer(),
-      body: SingleChildScrollView(
+      body: _isLoading 
+      ? Center(child: CircularProgressIndicator())
+      : SingleChildScrollView(
         child: Column(
           children: [
             Container(
@@ -89,8 +182,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         ProfileAvatar(
+                          imageUrl: _profileImageUrl,
                           onEditPressed: () {
-                            // Handle profile picture edit
+                            _updateProfilePicture();
                           },
                         ),
                         SizedBox(height: 16),
@@ -110,17 +204,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icon(Icons.edit, color: Colors.white, size: 20),
                               onPressed: () async {
                                 final newName = await _showEditNameDialog();
-                                if (newName != null) {
-                                  setState(() => _name = newName);
+                                if (newName != null && newName.isNotEmpty) {
+                                  await _updateUserName(newName);
                                 }
                               },
                             ),
                           ],
                         ),
                         SizedBox(height: 8),
-                        _buildContactInfo(Icons.email, 'pnp@email.com'),
+                        _buildContactInfo(Icons.email, _email),
                         SizedBox(height: 8),
-                        _buildContactInfo(Icons.calendar_today, 'Member since: Jan 2023'),
+                        _buildContactInfo(Icons.calendar_today, _memberSince),
                         SizedBox(height: 16),
                         _buildUserStats(),
                       ],

@@ -2,8 +2,9 @@ import '../../core/app_export.dart';
 
 class ProfileAvatar extends StatelessWidget {
   final VoidCallback? onEditPressed;
+  final String? imageUrl;
 
-  const ProfileAvatar({this.onEditPressed});
+  const ProfileAvatar({this.onEditPressed, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,9 @@ class ProfileAvatar extends StatelessWidget {
           child: CircleAvatar(
             radius: 50,
             backgroundColor: const Color.fromARGB(255, 131, 131, 131),
-            backgroundImage: AssetImage(ImageConstant.profile),
+            backgroundImage: imageUrl != null && imageUrl!.isNotEmpty
+                ? NetworkImage(imageUrl!) as ImageProvider
+                : AssetImage(ImageConstant.profile),
           ),
         ),
         if (onEditPressed != null)
