@@ -10,6 +10,7 @@ class AppRoutes {
   static const String register = '/register';
   static const String submitTip = '/submit-tip';
   static const String fillUpForm = '/fill-up-form';
+  static const String chatbot = '/chatbot';  // Added chatbot route
 
   static Map<String, WidgetBuilder> routes = {
     home: (context) => HomeScreen(),
@@ -21,5 +22,6 @@ class AppRoutes {
     register: (context) => RegisterPage(),
     submitTip: (context) => SubmitTipScreen(),
     fillUpForm: (context) => FillUpFormScreen(),
+    chatbot: (context) => ChatbotScreen(),  // Added chatbot route
   };
 }

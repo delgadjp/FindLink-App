@@ -25,4 +25,6 @@ class ImageConstant {
   static String googleLogo = '$imagePath/google_logo.png';
 
   static String placeholderLogo = '$imagePath/placeholder-logo.png';
+  
+  static String chatBackground = '$imagePath/chat_bg.png';
 }
