@@ -12,6 +12,8 @@ export 'package:uuid/uuid.dart';
 
 export 'package:findlink/constants/image_constant.dart';
 export 'package:findlink/constants/citizenship_options.dart';
+export '/constants/education_options.dart';
+export '/constants/occupation_options.dart';
 
 export 'package:findlink/widgets/missing_person_card.dart';
 export 'package:findlink/widgets/drawer_widget.dart';

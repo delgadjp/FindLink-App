@@ -1,5 +1,7 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
+import 'package:intl/intl.dart';
+
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -16,6 +18,13 @@ class FillUpForm extends State<FillUpFormScreen> {
   final TextEditingController _dateOfBirthReportingController = TextEditingController();
   final TextEditingController _dateOfBirthSuspectController = TextEditingController();
   final TextEditingController _dateOfBirthVictimController = TextEditingController();
+  
+  // Add controllers for date and time fields
+  final TextEditingController _dateTimeReportedController = TextEditingController();
+  final TextEditingController _dateTimeIncidentController = TextEditingController();
+  
+  DateTime? dateTimeReported;
+  DateTime? dateTimeIncident;
 
   static const String dropdownPlaceholder = CitizenshipOptions.placeholder;
 
@@ -23,6 +32,18 @@ class FillUpForm extends State<FillUpFormScreen> {
   final List<String> citizenshipOptions = CitizenshipOptions.options;
   final List<String> genderOptions = [dropdownPlaceholder, 'Male', 'Female', 'Prefer Not to Say'];
   final List<String> civilStatusOptions = [dropdownPlaceholder, 'Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
+  
+  // Add education and occupation options
+  final List<String> educationOptions = EducationOptions.options;
+  final List<String> occupationOptions = OccupationOptions.options;
+
+  // Selected values for education and occupation
+  String? reportingPersonEducation;
+  String? reportingPersonOccupation;
+  String? suspectEducation;
+  String? suspectOccupation;
+  String? victimEducation;
+  String? victimOccupation;
 
   int? reportingPersonAge;
   int? suspectAge;
@@ -68,11 +89,58 @@ class FillUpForm extends State<FillUpFormScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize with current date and time
+    dateTimeReported = DateTime.now();
+    _dateTimeReportedController.text = _formatDateTime(dateTimeReported!);
+  }
+
+  @override
   void dispose() {
     _dateOfBirthReportingController.dispose();
     _dateOfBirthSuspectController.dispose();
     _dateOfBirthVictimController.dispose();
+    _dateTimeReportedController.dispose();
+    _dateTimeIncidentController.dispose();
     super.dispose();
+  }
+
+  // Format date and time for display
+  String _formatDateTime(DateTime dateTime) {
+    return DateFormat('MM/dd/yyyy hh:mm a').format(dateTime);
+  }
+
+  // Date and time picker function
+  Future<void> _pickDateTime(TextEditingController controller, DateTime? initialDateTime, 
+      Function(DateTime) onDateTimeSelected) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDateTime ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+    );
+    
+    if (pickedDate != null) {
+      // After selecting date, show time picker
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDateTime ?? DateTime.now()),
+      );
+      
+      if (pickedTime != null) {
+        final DateTime selectedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        
+        onDateTimeSelected(selectedDateTime);
+        controller.text = _formatDateTime(selectedDateTime);
+      }
+    }
   }
 
   @override
@@ -216,12 +284,36 @@ class FillUpForm extends State<FillUpFormScreen> {
                           {
                             'label': 'DATE AND TIME REPORTED',
                             'required': true,
-                            'keyboardType': TextInputType.datetime,
+                            'controller': _dateTimeReportedController,
+                            'readOnly': true,
+                            'onTap': () {
+                              _pickDateTime(
+                                _dateTimeReportedController,
+                                dateTimeReported,
+                                (DateTime selectedDateTime) {
+                                  setState(() {
+                                    dateTimeReported = selectedDateTime;
+                                  });
+                                },
+                              );
+                            },
                           },
                           {
                             'label': 'DATE AND TIME OF INCIDENT',
                             'required': true,
-                            'keyboardType': TextInputType.datetime,
+                            'controller': _dateTimeIncidentController,
+                            'readOnly': true,
+                            'onTap': () {
+                              _pickDateTime(
+                                _dateTimeIncidentController,
+                                dateTimeIncident,
+                                (DateTime selectedDateTime) {
+                                  setState(() {
+                                    dateTimeIncident = selectedDateTime;
+                                  });
+                                },
+                              );
+                            },
                           },
                           {
                             'label': 'PLACE OF INCIDENT',
@@ -463,12 +555,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
                               'required': false,
-                              'keyboardType': TextInputType.text,
+                              'dropdownItems': educationOptions,
+                              'section': 'reporting',
                             },
                             {
                               'label': 'OCCUPATION',
                               'required': false,
-                              'keyboardType': TextInputType.text,
+                              'dropdownItems': occupationOptions,
+                              'section': 'reporting',
                             },
                           ]),
                          SizedBox(height: 10),
@@ -713,12 +807,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                           {
                             'label': 'HIGHEST EDUCATION ATTAINMENT',
                             'required': false,
-                            'keyboardType': TextInputType.text,
+                            'dropdownItems': educationOptions,
+                            'section': 'suspect',
                           },
                           {
                             'label': 'OCCUPATION',
                             'required': false,
-                            'keyboardType': TextInputType.text,
+                            'dropdownItems': occupationOptions,
+                            'section': 'suspect',
                           },
                         ]),
                          SizedBox(height: 10),
@@ -1118,12 +1214,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                           {
                             'label': 'HIGHEST EDUCATION ATTAINMENT',
                             'required': false,
-                            'keyboardType': TextInputType.text,
+                            'dropdownItems': educationOptions,
+                            'section': 'victim',
                           },
                           {
                             'label': 'OCCUPATION',
                             'required': false,
-                            'keyboardType': TextInputType.text,
+                            'dropdownItems': occupationOptions,
+                            'section': 'victim',
                           },
                         ]),
                          SizedBox(height: 10),
@@ -1154,7 +1252,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                           {
                             'label': 'DATE/TIME OF INCIDENT',
                             'required': true,
-                            'keyboardType': TextInputType.datetime,
+                            'controller': TextEditingController(text: dateTimeIncident != null ? _formatDateTime(dateTimeIncident!) : ''),
+                            'readOnly': true,
                           },
                           {
                             'label': 'PLACE OF INCIDENT',
@@ -1518,6 +1617,80 @@ class FillUpForm extends State<FillUpFormScreen> {
   Widget _buildRowInputs(List<Map<String, dynamic>> fields) {
     return Row(
       children: fields.map((field) {
+        // Handle special fields for education and occupation
+        if (field['label'] == 'HIGHEST EDUCATION ATTAINMENT') {
+          String selectedValue;
+          Function(String?) onChanged;
+
+          // Determine which person's education we're setting
+          if (field['section'] == 'suspect') {
+            selectedValue = suspectEducation ?? educationOptions[0];
+            onChanged = (String? value) {
+              setState(() {
+                suspectEducation = value;
+              });
+            };
+          } else if (field['section'] == 'victim') {
+            selectedValue = victimEducation ?? educationOptions[0];
+            onChanged = (String? value) {
+              setState(() {
+                victimEducation = value;
+              });
+            };
+          } else { // Default to reporting person
+            selectedValue = reportingPersonEducation ?? educationOptions[0];
+            onChanged = (String? value) {
+              setState(() {
+                reportingPersonEducation = value;
+              });
+            };
+          }
+
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: educationOptions,
+            value: selectedValue,
+            onChanged: onChanged,
+          );
+        } 
+        else if (field['label'] == 'OCCUPATION') {
+          String selectedValue;
+          Function(String?) onChanged;
+
+          // Determine which person's occupation we're setting
+          if (field['section'] == 'suspect') {
+            selectedValue = suspectOccupation ?? occupationOptions[0];
+            onChanged = (String? value) {
+              setState(() {
+                suspectOccupation = value;
+              });
+            };
+          } else if (field['section'] == 'victim') {
+            selectedValue = victimOccupation ?? occupationOptions[0];
+            onChanged = (String? value) {
+              setState(() {
+                victimOccupation = value;
+              });
+            };
+          } else { // Default to reporting person
+            selectedValue = reportingPersonOccupation ?? occupationOptions[0];
+            onChanged = (String? value) {
+              setState(() {
+                reportingPersonOccupation = value;
+              });
+            };
+          }
+
+          return _buildInputField(
+            field['label'],
+            isRequired: field['required'] ?? false,
+            dropdownItems: occupationOptions,
+            value: selectedValue,
+            onChanged: onChanged,
+          );
+        }
+        
         // Handle Reporting Person address
         if (field['label'] == 'REGION' && field['section'] == 'reporting') {
           return Expanded(
@@ -2032,8 +2205,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                           color: Colors.black,
+),
                         ),
-                      ),
                     ],
                   ),
                   SizedBox(height: 4),
@@ -2597,6 +2770,8 @@ class FillUpForm extends State<FillUpFormScreen> {
           controller: field['controller'],
           readOnly: field['readOnly'],
           onTap: field['onTap'],
+          onChanged: field['onChanged'],
+          value: field['value'],
         );
       }).toList(),
     );
