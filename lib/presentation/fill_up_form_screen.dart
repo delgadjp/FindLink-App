@@ -1,6 +1,5 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
-import '/widgets/custom_address_dropdowns.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -18,10 +17,11 @@ class FillUpForm extends State<FillUpFormScreen> {
   final TextEditingController _dateOfBirthSuspectController = TextEditingController();
   final TextEditingController _dateOfBirthVictimController = TextEditingController();
 
-  static const String dropdownPlaceholder = '-- SELECT --';
+  static const String dropdownPlaceholder = CitizenshipOptions.placeholder;
 
-  final List<String> citizenshipOptions = [dropdownPlaceholder, 'Filipino', 'American', 'Chinese', 'Japanese', 'Korean', 'Others'];
-  final List<String> genderOptions = [dropdownPlaceholder, 'Male', 'Female', 'Other'];
+  // Use the options from the constants file
+  final List<String> citizenshipOptions = CitizenshipOptions.options;
+  final List<String> genderOptions = [dropdownPlaceholder, 'Male', 'Female', 'Prefer Not to Say'];
   final List<String> civilStatusOptions = [dropdownPlaceholder, 'Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
 
   int? reportingPersonAge;
@@ -365,6 +365,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                             },
                           ]),
                           SizedBox(height: 10),
+                          Divider(
+                            color: const Color.fromARGB(255, 119, 119, 119),
+                            thickness: 2,
+                          ),
+                          SizedBox(height: 5),
                           _buildRowInputs([
                             {
                               'label': 'REGION',
@@ -419,6 +424,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                             },
                           ]),
                           SizedBox(height: 10),
+                          Divider(
+                            color: const Color.fromARGB(255, 119, 119, 119),
+                            thickness: 2,
+                          ),
+                          SizedBox(height: 5),
                           _buildRowInputs([
                             {
                               'label': 'REGION',
@@ -606,6 +616,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                             },
                           ]),
                           SizedBox(height: 10),
+                          Divider(
+                            color: const Color.fromARGB(255, 119, 119, 119),
+                            thickness: 2,
+                          ),
+                          SizedBox(height: 5),
                           _buildRowInputs([
                             {
                               'label': 'REGION',
@@ -659,6 +674,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                             },
                           ]),
                           SizedBox(height: 10),
+                          Divider(
+                            color: const Color.fromARGB(255, 119, 119, 119),
+                            thickness: 2,
+                          ),
+                          SizedBox(height: 5),
                           _buildRowInputs([
                             {
                               'label': 'REGION',
@@ -1001,6 +1021,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                             },
                           ]),
                           SizedBox(height: 10),
+                          Divider(
+                            color: const Color.fromARGB(255, 119, 119, 119),
+                            thickness: 2,
+                          ),
+                          SizedBox(height: 5),
                           _buildRowInputs([
                             {
                               'label': 'REGION',
@@ -1054,6 +1079,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                             },
                           ]),
                           SizedBox(height: 10),
+                          Divider(
+                            color: const Color.fromARGB(255, 119, 119, 119),
+                            thickness: 2,
+                          ),
+                          SizedBox(height: 5),
                           _buildRowInputs([
                             {
                               'label': 'REGION',
