@@ -1,4 +1,5 @@
 import '../core/app_export.dart';
+import '../widgets/profile/user_stats_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -53,68 +54,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         title: Text("Profile", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.white),
+            tooltip: 'New Report',
+            onPressed: () => Navigator.pushNamed(context, '/new_report'),
+          ),
+          IconButton(
+            icon: Icon(Icons.settings, color: Colors.white),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.pushNamed(context, '/settings'),
+          ),
+        ],
       ),
       drawer: AppDrawer(),
-      body: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.blue.shade900,
-                  Colors.blue.shade800,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.blue.shade900,
+                    Colors.blue.shade800,
+                  ],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(24.0),
+                    child: Column(
+                      children: [
+                        ProfileAvatar(
+                          onEditPressed: () {
+                            // Handle profile picture edit
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _name,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: 2),
+                            IconButton(
+                              icon: Icon(Icons.edit, color: Colors.white, size: 20),
+                              onPressed: () async {
+                                final newName = await _showEditNameDialog();
+                                if (newName != null) {
+                                  setState(() => _name = newName);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        _buildContactInfo(Icons.email, 'pnp@email.com'),
+                        SizedBox(height: 8),
+                        _buildContactInfo(Icons.calendar_today, 'Member since: Jan 2023'),
+                        SizedBox(height: 16),
+                        _buildUserStats(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            child: Column(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      ProfileAvatar(
-                        onEditPressed: () {
-                          // Handle profile picture edit
-                        },
-                      ),
-                      SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _name,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 2), // Changed from width: 8 to width: 2
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.white, size: 20),
-                            onPressed: () async {
-                              final newName = await _showEditNameDialog();
-                              if (newName != null) {
-                                setState(() => _name = newName);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      _buildContactInfo(Icons.phone, '+63 000 0000 000'),
-                      SizedBox(height: 4),
-                      _buildContactInfo(Icons.email, 'pnp@email.com'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Container(
+            Container(
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.only(
@@ -168,14 +183,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   SizedBox(height: 16),
-                  Expanded(
+                  Container(
+                    height: 500,
                     child: ReportedFormsList(),
                   ),
+                  SizedBox(height: 20),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -192,6 +209,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.white70,
             fontSize: 14,
           ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildUserStats() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        UserStatsCard(
+          count: "5",
+          label: "Reports",
+          icon: Icons.description,
+        ),
+        SizedBox(width: 12),
+        UserStatsCard(
+          count: "1",
+          label: "Active",
+          icon: Icons.auto_graph,
+        ),
+        SizedBox(width: 12),
+        UserStatsCard(
+          count: "2",
+          label: "Pending",
+          icon: Icons.pending_actions,
+        ),
+        SizedBox(width: 12),
+        UserStatsCard(
+          count: "3",
+          label: "Resolved",
+          icon: Icons.check_circle,
         ),
       ],
     );
