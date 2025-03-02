@@ -37,7 +37,7 @@ class AuthService {
     }
   }
 
-  // Google Sign In
+  // Updated Google Sign In
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -50,7 +50,12 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      await _auth.signInWithCredential(credential);
+      // Sign in to Firebase with the Google credential
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      
+      // Add the user to Firestore
+      await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,7 +64,7 @@ class AuthService {
     }
   }
 
-  // Add this new method
+  // Modified method
   Future<void> addUserToFirestore(User user, String email) async {
     await _firestore.collection('users').doc(user.uid).set({
       'uid': user.uid,
@@ -67,8 +72,7 @@ class AuthService {
       'createdAt': FieldValue.serverTimestamp(),
       'displayName': user.displayName,
       'photoURL': user.photoURL,
-      
-      // Add any additional user fields you want to store
+      'role': 'user', // Added role field with default value
     });
   }
 
