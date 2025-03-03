@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 
 class SubmitButton extends StatelessWidget {
   final GlobalKey<FormState> formKey;
+  final VoidCallback? onPressed;
+  final bool isLoading;
 
-  const SubmitButton({Key? key, required this.formKey}) : super(key: key);
+  const SubmitButton({
+    Key? key, 
+    required this.formKey, 
+    this.onPressed,
+    this.isLoading = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -28,25 +35,27 @@ class SubmitButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        onPressed: () {
+        onPressed: isLoading ? null : onPressed ?? () {
           if (formKey.currentState?.validate() ?? false) {
             // Proceed with form submission
           }
         },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.send),
-            SizedBox(width: 8),
-            Text(
-              'Submit Report',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+        child: isLoading 
+          ? CircularProgressIndicator(color: Colors.white)
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.send),
+                SizedBox(width: 8),
+                Text(
+                  'Submit Report',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       ),
     );
   }
