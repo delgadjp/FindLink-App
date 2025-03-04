@@ -22,10 +22,9 @@ class TipService {
     required String height,
     required String hairColor,
     required String eyeColor,
-    // Make additional details optional
-    String clothing = '',
-    String features = '',
-    String description = '',
+    required String clothing,
+    required String features,
+    required String description,
     File? imageFile, // Already optional with '?'
     Uint8List? imageBytes, // Already optional with '?'
     required double longitude,
@@ -69,7 +68,6 @@ class TipService {
         'height': height,
         'hairColor': hairColor,
         'eyeColor': eyeColor,
-        // These are now optional with default empty string values
         'clothing': clothing,
         'features': features,
         'description': description,

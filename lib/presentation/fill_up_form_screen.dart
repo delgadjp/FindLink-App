@@ -1,8 +1,7 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 import 'package:intl/intl.dart';
-
-
+import '../widgets/form/disabled_form_fields.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -907,491 +906,103 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'FAMILY NAME',
-                              'required': true,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'FIRST NAME',
-                              'required': true,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'MIDDLE NAME',
-                              'required': false,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['FAMILY NAME', 'FIRST NAME', 'MIDDLE NAME']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'QUALIFIER',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'NICKNAME',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['QUALIFIER', 'NICKNAME']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'CITIZENSHIP',
-                              'required': true,
-                              'dropdownItems': citizenshipOptions,
-                            },
-                            {
-                              'label': 'SEX/GENDER',
-                              'required': true,
-                              'dropdownItems': genderOptions,
-                            },
-                            {
-                              'label': 'CIVIL STATUS',
-                              'required': true,
-                              'dropdownItems': civilStatusOptions,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['CITIZENSHIP', 'SEX/GENDER', 'CIVIL STATUS']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'DATE OF BIRTH',
-                              'required': true,
-                              'controller': _dateOfBirthSuspectController,
-                              'readOnly': true,
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthSuspectController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    suspectAge = calculateAge(pickedDate);
-                                  });
-                                }
-                              },
-                            },
-                            {
-                              'label': 'AGE',
-                              'required': true,
-                              'controller': TextEditingController(text: suspectAge?.toString() ?? ''),
-                              'readOnly': true,
-                            },
-                            {
-                              'label': 'PLACE OF BIRTH',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
+                        DisabledFormFields.buildDisabledFormRow(['DATE OF BIRTH', 'AGE', 'PLACE OF BIRTH']),
                         
                         SizedBox(height: 10),
 
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'HOME PHONE',
-                              'required': false,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                            {
-                              'label': 'MOBILE PHONE',
-                              'required': true,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                              'validator': (value) {
-                                if (value == null || value.isEmpty) return 'Required';
-                                if (value.length < 10) return 'Invalid phone number';
-                                return null;
-                              },
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        // Replace Item B home phone and mobile fields with disabled version
+                        DisabledFormFields.buildDisabledFormRow(['HOME PHONE', 'MOBILE PHONE']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['CURRENT ADDRESS (HOUSE NUMBER/STREET)']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['VILLAGE/SITIO']),
                         SizedBox(height: 10),
                         
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'VILLAGE/SITIO',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        Divider(
-                          color: const Color.fromARGB(255, 119, 119, 119),
-                          thickness: 2,
-                        ),
-                        
+                        Divider(color: const Color.fromARGB(255, 119, 119, 119), thickness: 2),
                         SizedBox(height: 5),
                         
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'REGION',
-                              'required': true,
-                              'section': 'suspect',
-                            },
-                            {
-                              'label': 'PROVINCE',
-                              'required': true,
-                              'section': 'suspect',
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
+                        // Replace address fields with disabled version
+                        DisabledFormFields.buildDisabledFormRow(['REGION', 'PROVINCE']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['TOWN/CITY', 'BARANGAY']),
                         
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'TOWN/CITY',
-                              'required': true,
-                              'section': 'suspect',
-                            },
-                            {
-                              'label': 'BARANGAY',
-                              'required': true,
-                              'section': 'suspect',
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['HIGHEST EDUCATION ATTAINMENT', 'OCCUPATION']),
                         SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['WORK ADDRESS']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['RELATION TO VICTIM', 'EMAIL ADDRESS (If Any)']),
 
-                        CheckboxListTile(
-                          title: Text("Do you have another address?", style: TextStyle(fontSize: 15, color: Colors.black)),
-                          value: hasOtherAddressSuspect,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              hasOtherAddressSuspect = value ?? false;
-                            });
-                          },
-                        ),
-                        
-                        if (hasOtherAddressSuspect) ...[
-                          FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'OTHER ADDRESS (HOUSE NUMBER/STREET)',
-                                'required': true,
-                                'keyboardType': TextInputType.text,
-                              },
-                            ],
-                            formState: formState,
-                            onFieldChange: onFieldChange,
-                          ),
-                            
-                          SizedBox(height: 10),
-                          
-                          FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'VILLAGE/SITIO',
-                                'required': true,
-                                'keyboardType': TextInputType.text,
-                              },
-                            ],
-                            formState: formState,
-                            onFieldChange: onFieldChange,
-                          ),
-                          
-                          SizedBox(height: 10),
-                          
-                          Divider(
-                            color: const Color.fromARGB(255, 119, 119, 119),
-                            thickness: 2,
-                          ),
-                          
-                          SizedBox(height: 5),
-                          
-                          FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'REGION',
-                                'required': true,
-                                'section': 'suspectOther',
-                              },
-                              {
-                                'label': 'PROVINCE',
-                                'required': true,
-                                'section': 'suspectOther',
-                              },
-                            ],
-                            formState: formState,
-                            onFieldChange: onFieldChange,
-                          ),
-                          
-                          SizedBox(height: 10),
-                          
-                          FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'TOWN/CITY',
-                                'required': true,
-                                'section': 'suspectOther',
-                              },
-                              {
-                                'label': 'BARANGAY',
-                                'required': true,
-                                'section': 'suspectOther',
-                              },
-                            ],
-                            formState: formState,
-                            onFieldChange: onFieldChange,
-                          ),
-                          
-                          SizedBox(height: 10),
-                        ],
-
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'HIGHEST EDUCATION ATTAINMENT',
-                              'required': false,
-                              'dropdownItems': educationOptions,
-                              'section': 'suspect',
-                            },
-                            {
-                              'label': 'OCCUPATION',
-                              'required': false,
-                              'dropdownItems': occupationOptions,
-                              'section': 'suspect',
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'WORK ADDRESS',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'RELATION TO VICTIM',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'EMAIL ADDRESS (If Any)',
-                              'required': false,
-                              'keyboardType': TextInputType.emailAddress,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                          SizedBox(height: 10),
-                            Text(
-                              "WITH PREVIOUS CRIMINAL CASE RECORD?",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.black,
+                        // Replace the previous criminal record section with disabled fields
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "WITH PREVIOUS CRIMINAL CASE RECORD?",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
-                            Row(
-                              children: [
-                                Radio<bool>(
-                                  value: true,
-                                  groupValue: hasPreviousCriminalRecord,
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      hasPreviousCriminalRecord = value ?? false;
-                                    });
-                                  },
-                                ),
-                                Text(
-                                  "Yes",
-                                  style: TextStyle(fontSize: 14, color: Colors.black),
-                                ),
-                                Radio<bool>(
-                                  value: false,
-                                  groupValue: hasPreviousCriminalRecord,
-                                  onChanged: (bool? value) {
-                                    setState(() {
-                                      hasPreviousCriminalRecord = value ?? false;
-                                    });
-                                  },
-                                ),
-                                Text(
-                                  "No",
-                                  style: TextStyle(fontSize: 14, color: Colors.black),
-                                ),
-                              ],
-                            ),
-                            if (hasPreviousCriminalRecord)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 32.0, top: 8.0),
-                                child: TextField(
-                                  decoration: InputDecoration(
-                                    labelText: "Specify Previous Criminal Case Record",
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.all(8),
+                              SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    margin: EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
                                   ),
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                                  Text(
+                                    "Yes",
+                                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  ),
+                                  SizedBox(width: 20),
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    margin: EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  Text(
+                                    "No",
+                                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  ),
+                                ],
                               ),
-                          ],
+                            ],
+                          ),
                         ),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'STATUS OF PREVIOUS CASE',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
+
+                        DisabledFormFields.buildDisabledFormRow(['Specify Previous Criminal Case Record']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['STATUS OF PREVIOUS CASE']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['HEIGHT', 'WEIGHT', 'BUILT']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['COLOR OF EYES', 'DESCRIPTION OF EYES']),
+                        SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['COLOR OF HAIR', 'DESCRIPTION OF HAIR']),
                         
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'HEIGHT',
-                              'required': false,
-                              'keyboardType': TextInputType.number,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                            {
-                              'label': 'WEIGHT',
-                              'required': false,
-                              'keyboardType': TextInputType.number,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                            {
-                              'label': 'BUILT',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'COLOR OF EYES',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'DESCRIPTION OF EYES',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'COLOR OF HAIR',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'DESCRIPTION OF HAIR',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
+
                         UnderInfluenceCheckboxes(),
                         
                         SizedBox(height: 10),
@@ -1402,54 +1013,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'NAME OF GUARDIAN',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['NAME OF GUARDIAN']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'GUARDIAN ADDRESS',
-                              'required': false,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['GUARDIAN ADDRESS']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'HOME PHONE',
-                              'required': false,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                            {
-                              'label': 'MOBILE PHONE',
-                              'required': false,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['HOME PHONE', 'MOBILE PHONE']),
+
                         SizedBox(height: 10),
 
                         SectionTitle(
@@ -1875,25 +1444,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
 
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'NAME OF REPORTING PERSON',
-                              'required': true,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'SIGNATURE OF REPORTING PERSON',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['NAME OF REPORTING PERSON', 'SIGNATURE OF REPORTING PERSON']),
+
                         SizedBox(height: 10),
 
                         Container(
@@ -1910,53 +1462,10 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['NAME OF ADMINISTERING OFFICER(DUTY OFFICER)', 'SIGNATURE OF ADMINISTERING OFFICER(DUTY OFFICER)']),
+                        DisabledFormFields.buildDisabledFormRow(['RANK, NAME AND DESIGNATION OF POLICE OFFICER']),
+                        DisabledFormFields.buildDisabledFormRow(['SIGNATURE OF DUTY INVESTIGATOR/ INVESTIGATOR ON CASE/ ASSISTING POLICE OFFICER']),
 
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'NAME OF ADMINISTERING OFFICER(DUTY OFFICER)',
-                              'required': true,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'SIGNATURE OF ADMINISTERING OFFICER(DUTY OFFICER)',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'RANK, NAME AND DESIGNATION OF POLICE OFFICER (WHETHER HE/SHE IS THE DUTY INVESTIGATOR, INVESTIGATOR ON CASE OR THE ASSISTING POLICE OFFICER)',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'SIGNATURE OF DUTY INVESTIGATOR/ INVESTIGATOR ON CASE/ ASSISTING POLICE OFFICER',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
                         SizedBox(height: 10),
 
                         Container(
@@ -1973,38 +1482,9 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
+                        DisabledFormFields.buildDisabledFormRow(['RANK/NAME OF DESK OFFICER:']),
+                        DisabledFormFields.buildDisabledFormRow(['SIGNATURE OF DESK OFFICER:', 'BLOTTER ENTRY NR:']),
 
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'RANK/NAME OF DESK OFFICER:',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'SIGNATURE OF DESK OFFICER:',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'BLOTTER ENTRY NR:',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
                         SizedBox(height: 10),
                         
                         Container(
@@ -2021,64 +1501,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'Name of Police Station',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'Telephone',
-                              'required': true,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['Name of Police Station', 'Telephone']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'Investigator-on-Case',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'Mobile Phone',
-                              'required': true,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
+                        DisabledFormFields.buildDisabledFormRow(['Investigator-on-Case', 'Mobile Phone']),
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'Name of Chief/Head of Office',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'Mobile Phone',
-                              'required': true,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
+                        DisabledFormFields.buildDisabledFormRow(['Name of Chief/Head of Office', 'Mobile Phone']),
                         
                         SizedBox(height: 20),
                       ],

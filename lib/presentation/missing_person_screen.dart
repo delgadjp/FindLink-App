@@ -1,4 +1,6 @@
 import '../core/app_export.dart';
+import '../models/missing_person_model.dart';
+import '../core/network/missing_person_service.dart';
 
 class MissingPersonScreen extends StatefulWidget {
   @override
@@ -6,23 +8,7 @@ class MissingPersonScreen extends StatefulWidget {
 }
 
 class _MissingPersonScreenState extends State<MissingPersonScreen> {
-  final List<Map<String, String>> reports = [
-    {
-      'organization': 'Philippine National Police',
-      'image': ImageConstant.investigation,
-      'description': '"Help us find the missing person in Bicol"',
-      'date': '01.01.2001',
-      'profile': ImageConstant.logoPNP
-    },
-    {
-      'organization': 'PNP Juan Dela Cruz',
-      'image': ImageConstant.pic,
-      'description': '"Help us find the missing person in Bicol"',
-      'date': '01.01.2001',
-      'profile': ImageConstant.icon
-    }
-  ];
-
+  final MissingPersonService _missingPersonService = MissingPersonService();
   String searchQuery = '';
 
   @override
@@ -51,7 +37,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
       drawer: AppDrawer(),
       body: RefreshIndicator(
         onRefresh: () async {
-          // Implement refresh logic
+          setState(() {});
         },
         child: Column(
           children: [
@@ -100,17 +86,40 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                itemCount: reports.length,
-                itemBuilder: (context, index) {
-                  final report = reports[index];
-                  if (searchQuery.isEmpty || 
-                      report['description']!.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                      report['organization']!.toLowerCase().contains(searchQuery.toLowerCase())) {
-                    return MissingPersonCard(report: report);
+              child: StreamBuilder<List<MissingPerson>>(
+                stream: _missingPersonService.getMissingPersons(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    print('StreamBuilder error: ${snapshot.error}');
+                    return Center(child: Text('Error: ${snapshot.error}'));
                   }
-                  return SizedBox.shrink();
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasData) {
+                    final persons = snapshot.data!;
+                    for (var person in persons) {
+                      person.debugPrint();
+                    }
+                    final filteredPersons = persons.where((person) {
+                      final searchLower = searchQuery.toLowerCase();
+                      return searchQuery.isEmpty ||
+                          person.name.toLowerCase().contains(searchLower) ||
+                          person.descriptions.toLowerCase().contains(searchLower);
+                    }).toList();
+
+                    return ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filteredPersons.length,
+                      itemBuilder: (context, index) {
+                        return MissingPersonCard(person: filteredPersons[index]);
+                      },
+                    );
+                  }
+
+                  return Center(child: CircularProgressIndicator());
                 },
               ),
             ),
