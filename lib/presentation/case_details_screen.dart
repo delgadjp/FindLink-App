@@ -1,11 +1,17 @@
 import '../core/app_export.dart';
 import '../models/missing_person_model.dart';
+import 'image_viewer_screen.dart';
 
-class CaseDetailsScreen extends StatelessWidget {
+class CaseDetailsScreen extends StatefulWidget {
   final MissingPerson person;
 
   const CaseDetailsScreen({Key? key, required this.person}) : super(key: key);
 
+  @override
+  State<CaseDetailsScreen> createState() => _CaseDetailsScreenState();
+}
+
+class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
@@ -23,7 +29,10 @@ class CaseDetailsScreen extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(value),
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.grey[800]),
+            ),
           ),
         ],
       ),
@@ -34,47 +43,79 @@ class CaseDetailsScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: 300,
-      child: person.imageUrl.isNotEmpty
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                person.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
+      child: widget.person.imageUrl.isNotEmpty
+          ? GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ImageViewerScreen(
+                      imageUrl: widget.person.imageUrl,
+                      title: widget.person.name,
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  print('Error loading image: $error');
-                  return Container(
-                    color: Colors.grey[200],
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('Image not available'),
-                      ],
+                  ),
+                );
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      widget.person.imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('Error loading image: $error');
+                        return Container(
+                          color: Colors.blue.shade50,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, size: 48, color: Color(0xFF0D47A1)),
+                              SizedBox(height: 8),
+                              Text('Image not available', style: TextStyle(color: Color(0xFF0D47A1))),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.zoom_in,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ],
               ),
             )
           : Container(
-              color: Colors.grey[200],
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                  Icon(Icons.image_not_supported, size: 48, color: Color(0xFF0D47A1)),
                   SizedBox(height: 8),
-                  Text('No image available'),
+                  Text('No image available', style: TextStyle(color: Color(0xFF0D47A1))),
                 ],
               ),
             ),
@@ -87,40 +128,60 @@ class CaseDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('Case Details'),
         backgroundColor: Color(0xFF0D47A1),
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInfoRow('Name', person.name),
-                    _buildInfoRow('Case ID', person.caseId),
-                    _buildInfoRow('Description', person.descriptions),
-                    _buildInfoRow('Address', person.address),
-                    _buildInfoRow('Last Seen At', person.placeLastSeen),
-                    _buildInfoRow('Last Seen Date', person.datetimeLastSeen),
-                    _buildInfoRow('Date Reported', person.datetimeReported),
-                    _buildInfoRow('Complainant', person.complainant),
-                    _buildInfoRow('Relationship', person.relationship),
-                    _buildInfoRow('Contact', person.contactNo),
-                    if (person.additionalInfo.isNotEmpty)
-                      _buildInfoRow('Additional Info', person.additionalInfo),
-                  ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0D47A1), Colors.blue.shade100],
+            stops: [0.0, 50],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                elevation: 2,
+                color: Colors.blue.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInfoRow('Name', widget.person.name),
+                      _buildInfoRow('Case ID', widget.person.caseId),
+                      _buildInfoRow('Description', widget.person.descriptions),
+                      _buildInfoRow('Address', widget.person.address),
+                      _buildInfoRow('Last Seen At', widget.person.placeLastSeen),
+                      _buildInfoRow('Last Seen Date', widget.person.datetimeLastSeen),
+                      _buildInfoRow('Date Reported', widget.person.datetimeReported),
+                      _buildInfoRow('Complainant', widget.person.complainant),
+                      _buildInfoRow('Relationship', widget.person.relationship),
+                      _buildInfoRow('Contact', widget.person.contactNo),
+                      if (widget.person.additionalInfo.isNotEmpty)
+                        _buildInfoRow('Additional Info', widget.person.additionalInfo),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 16),
-            Card(
-              child: _buildImage(),
-            ),
-            // ...existing button code...
-          ],
+              SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                color: Colors.blue.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _buildImage(),
+              ),
+            ],
+          ),
         ),
       ),
     );

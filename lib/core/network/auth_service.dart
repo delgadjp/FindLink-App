@@ -90,6 +90,15 @@ class AuthService {
       return;
     }
 
+    // Check password strength
+    if (password.length < 8 || !password.contains(RegExp(r'[A-Z]')) || 
+        !password.contains(RegExp(r'[0-9]')) || !password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password must be at least 8 characters with uppercase, number, and special character')),
+      );
+      return;
+    }
+
     try {
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
