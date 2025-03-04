@@ -1,12 +1,14 @@
 import '../core/app_export.dart';
+import '../models/missing_person_model.dart';
+import '../presentation/submit_tip_screen.dart';
 
 class MissingPersonCard extends StatelessWidget {
-  final Map<String, String> report;
+  final MissingPerson person;
 
-  const MissingPersonCard({required this.report});
+  const MissingPersonCard({required this.person});
 
   Widget _buildStatusLabel() {
-    final status = report['status'] ?? 'ACTIVE';
+    final status = person.status ?? 'ACTIVE';
     Color bgColor;
     Color textColor;
 
@@ -41,6 +43,48 @@ class MissingPersonCard extends StatelessWidget {
     );
   }
 
+  Widget _buildImage() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      child: person.imageUrl.isNotEmpty
+          ? Image.network(
+              person.imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                print('Error loading image: $error');
+                return Container(
+                  color: Colors.grey[300],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 32, color: Colors.grey[600]),
+                      SizedBox(height: 8),
+                      Text('Image not available',
+                          style: TextStyle(color: Colors.grey[600])),
+                    ],
+                  ),
+                );
+              },
+            )
+          : Container(
+              color: Colors.grey[300],
+              child: Icon(Icons.image_not_supported, color: Colors.grey[600]),
+            ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -60,24 +104,16 @@ class MissingPersonCard extends StatelessWidget {
             ),
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                radius: 25,
-                backgroundImage: AssetImage(report['profile']!),
-              ),
               title: Text(
-                report['organization']!,
-                style: TextStyle(fontWeight: FontWeight.bold),
+                person.name,
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
               trailing: _buildStatusLabel(),
             ),
           ),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: Image.asset(
-              report['image']!,
-              fit: BoxFit.cover,
-              height: 200,
-            ),
+            child: _buildImage(), // Replace the existing Image.network with this
           ),
           Padding(
             padding: EdgeInsets.all(16),
@@ -85,16 +121,16 @@ class MissingPersonCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Missing Person in Bicol',
+                  'Last seen at ${person.placeLastSeen}',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold, 
+                    fontWeight: FontWeight.bold,
                     fontSize: 18,
                     color: Colors.blue.shade900,
                   ),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  report['description']!,
+                  person.descriptions,
                   style: TextStyle(fontSize: 14, height: 1.4),
                 ),
                 SizedBox(height: 12),
@@ -103,7 +139,7 @@ class MissingPersonCard extends StatelessWidget {
                     Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                     SizedBox(width: 8),
                     Text(
-                      'Missing since: ${report['date']!}',
+                      'Missing since: ${person.datetimeLastSeen}',
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
                   ],
@@ -119,7 +155,7 @@ class MissingPersonCard extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => SubmitTipScreen(),
+                              builder: (context) => SubmitTipScreen(person: person),
                             ),
                           );
                         },
@@ -142,7 +178,7 @@ class MissingPersonCard extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => CaseDetailsScreen(report: report),
+                              builder: (context) => CaseDetailsScreen(person: person),
                             ),
                           );
                         },
