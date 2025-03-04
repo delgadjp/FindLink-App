@@ -1,5 +1,4 @@
 import '../core/app_export.dart';
-import '../models/missing_person_model.dart';
 
 class AppRoutes {
   static const String home = '/home';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import '/core/app_export.dart';
 
 class CustomCheckbox extends StatelessWidget {
   final String label;

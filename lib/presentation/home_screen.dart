@@ -1,7 +1,5 @@
 import 'dart:ui';
 import '../core/app_export.dart';
-import '../routes/app_routes.dart'; // Add import for app_routes
-import '../core/network/statistics_service.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
