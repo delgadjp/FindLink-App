@@ -1,7 +1,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_export.dart';
-import '../widgets/profile/user_stats_card.dart';
 import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatefulWidget {

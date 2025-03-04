@@ -1,6 +1,4 @@
 import '../core/app_export.dart';
-import '../models/missing_person_model.dart';
-import '../presentation/submit_tip_screen.dart';
 
 class MissingPersonCard extends StatelessWidget {
   final MissingPerson person;

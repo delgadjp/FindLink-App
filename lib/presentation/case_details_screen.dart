@@ -1,5 +1,4 @@
 import '../core/app_export.dart';
-import '../models/missing_person_model.dart';
 import 'image_viewer_screen.dart';
 
 class CaseDetailsScreen extends StatefulWidget {

@@ -1,7 +1,6 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 import 'package:intl/intl.dart';
-import '../widgets/form/disabled_form_fields.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);

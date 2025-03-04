@@ -9,7 +9,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
-import '../models/missing_person_model.dart';
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;

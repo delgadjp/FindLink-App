@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import '/core/app_export.dart';
 import 'package:photo_view/photo_view.dart';
 
 class ImageViewerScreen extends StatelessWidget {

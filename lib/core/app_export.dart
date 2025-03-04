@@ -24,6 +24,8 @@ export 'package:findlink/widgets/profile/reported_forms_list.dart';
 export 'package:findlink/widgets/profile/filter_options_modal.dart';
 export 'package:findlink/widgets/form/custom_address_dropdowns.dart';
 export 'package:findlink/widgets/form/form_components.dart';
+export '/widgets/form/disabled_form_fields.dart';
+export '/widgets/profile/user_stats_card.dart';
 
 export 'package:findlink/presentation/home_screen.dart';
 export 'package:findlink/presentation/missing_person_screen.dart';
@@ -38,3 +40,6 @@ export 'package:findlink/presentation/chatbot_screen.dart';
 
 export 'package:findlink/core/network/auth_service.dart';
 export 'package:findlink/core/network/tip_service.dart';
+export '/core/network/statistics_service.dart';
+
+export '/models/missing_person_model.dart';

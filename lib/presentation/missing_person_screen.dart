@@ -1,5 +1,4 @@
 import '../core/app_export.dart';
-import '../models/missing_person_model.dart';
 import '../core/network/missing_person_service.dart';
 
 class MissingPersonScreen extends StatefulWidget {
