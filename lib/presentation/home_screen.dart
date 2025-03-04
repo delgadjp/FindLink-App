@@ -1,8 +1,16 @@
 import 'dart:ui';
 import '../core/app_export.dart';
 import '../routes/app_routes.dart'; // Add import for app_routes
+import '../core/network/statistics_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final StatisticsService _statisticsService = StatisticsService();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,18 +192,23 @@ class HomeScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildStatCard(
-                        "Active Cases",
-                        "127",
-                        Icons.cases_outlined,
-                        Colors.orange,
+                      child: StreamBuilder<int>(
+                        stream: _statisticsService.getTotalCasesCount(),
+                        builder: (context, snapshot) {
+                          return _buildStatCard(
+                            "Active Cases",
+                            snapshot.hasData ? snapshot.data.toString() : "0",
+                            Icons.cases_outlined,
+                            Colors.orange,
+                          );
+                        },
                       ),
                     ),
                     SizedBox(width: 16),
                     Expanded(
                       child: _buildStatCard(
                         "Resolved",
-                        "89",
+                        "0",
                         Icons.check_circle_outline,
                         Colors.green,
                       ),

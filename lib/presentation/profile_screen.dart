@@ -313,25 +313,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         UserStatsCard(
-          count: "5",
+          count: "0",
           label: "Reports",
           icon: Icons.description,
         ),
         SizedBox(width: 12),
         UserStatsCard(
-          count: "1",
+          count: "0",
           label: "Active",
           icon: Icons.auto_graph,
         ),
         SizedBox(width: 12),
         UserStatsCard(
-          count: "2",
+          count: "0",
           label: "Pending",
           icon: Icons.pending_actions,
         ),
         SizedBox(width: 12),
         UserStatsCard(
-          count: "3",
+          count: "0",
           label: "Resolved",
           icon: Icons.check_circle,
         ),

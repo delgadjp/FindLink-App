@@ -673,7 +673,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color.fromARGB(255, 0, 0, 0), Color(0xFF1565C0)],
+            colors: [Color(0xFF0D47A1), Colors.blue.shade100],
+            stops: [0.0, 50],
           ),
         ),
         child: Padding(
@@ -685,7 +686,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildSectionTitle("Submit Information"),
                   _buildCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
