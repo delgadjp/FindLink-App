@@ -30,7 +30,7 @@ class FindLinkApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color.fromARGB(255, 18, 32, 47),
       ),
-      initialRoute: AppRoutes.login,  // Use named routes
+      initialRoute: AppRoutes.home,  // Use named routes
       routes: AppRoutes.routes,       // Set the routes
     );
   }
