@@ -431,15 +431,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                       SizedBox(height: 20),
-                      Text(
-                        "Philippine National Police",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        ),
-                      ),
                       SizedBox(height: 8),
                       Text(
                         "INCIDENT RECORD FORM",
@@ -465,29 +456,9 @@ class FillUpForm extends State<FillUpFormScreen> {
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          color: const Color.fromARGB(255, 243, 243, 243), // Light gray background
-                          padding: EdgeInsets.all(8),
-                          child: Text(
-                            "INSTRUCTIONS: Refer to PNP SOP on 'Recording of Incidents in the Police Blotter' in filling up this form. This incident Record Form(IRF) may be reproduced, photocopied, and/or downloaded from the DIDM website, www.didm.pnp.gov.ph.",
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        
+                      children: [          
                         FormRowInputs(
                           fields: [
-                            {
-                              'label': 'IRF ENTRY NUMBER',
-                              'required': true,
-                              'keyboardType': TextInputType.number,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
                             {
                               'label': 'TYPE OF INCIDENT',
                               'required': true,
