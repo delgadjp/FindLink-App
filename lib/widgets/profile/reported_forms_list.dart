@@ -1,12 +1,41 @@
 import '../../core/app_export.dart';
 
 class ReportedFormsList extends StatelessWidget {
+  final List<Map<String, String>> allCaseData = [
+    {
+      'name': 'MISSING: Maria Santos',
+      'caseNumber': '12345',
+      'dateCreated': '03/15/2024',
+      'dateClosed': '03/22/2024',
+    },
+    {
+      'name': 'MISSING: Roberto Cruz',
+      'caseNumber': '12346',
+      'dateCreated': '03/16/2024',
+      'dateClosed': '03/23/2024',
+    },
+    {
+      'name': 'MISSING: Ana Reyes',
+      'caseNumber': '12347',
+      'dateCreated': '03/17/2024',
+      'dateClosed': '03/24/2024',
+    },
+    {
+      'name': 'MISSING: Pedro Lim',
+      'caseNumber': '12348',
+      'dateCreated': '03/18/2024',
+      'dateClosed': '03/25/2024',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: 2,
+      itemCount: allCaseData.length,
       itemBuilder: (context, index) {
+        final caseData = allCaseData[index];
+
         return Container(
           margin: EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
@@ -51,7 +80,7 @@ class ReportedFormsList extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'MISSING: Juan Dela Cruz',
+                                  caseData['name']!,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -59,8 +88,8 @@ class ReportedFormsList extends StatelessWidget {
                                   ),
                                 ),
                                 SizedBox(height: 4),
-                                _buildInfoRow(Icons.calendar_today, 'Date Created: mm/dd/yyyy'),
-                                _buildInfoRow(Icons.event_available, 'Date Case Closed: mm/dd/yyyy'),
+                                _buildInfoRow(Icons.calendar_today, 'Date Created: ${caseData['dateCreated']}'),
+                                _buildInfoRow(Icons.event_available, 'Date Case Closed: ${caseData['dateClosed']}'),
                               ],
                             ),
                           ),
@@ -105,7 +134,9 @@ class ReportedFormsList extends StatelessWidget {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => TrackCaseScreen()),
+                                MaterialPageRoute(
+                                  builder: (context) => TrackCaseScreen(caseData: caseData),
+                                ),
                               );
                             },
                             icon: Icon(Icons.track_changes, size: 18),

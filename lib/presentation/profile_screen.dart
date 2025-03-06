@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +8,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final StatisticsService _statisticsService = StatisticsService();
   String _name = 'Your Name';
   String _email = 'user@example.com';
   String _memberSince = 'Member since: Jan 2023';
@@ -311,16 +311,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        UserStatsCard(
-          count: "0",
-          label: "Reports",
-          icon: Icons.description,
+        StreamBuilder<int>(
+          stream: _statisticsService.getTotalCasesCount(),
+          builder: (context, snapshot) {
+            return UserStatsCard(
+              count: snapshot.hasData ? snapshot.data.toString() : "0",
+              label: "Reports",
+              icon: Icons.description,
+            );
+          },
         ),
         SizedBox(width: 12),
-        UserStatsCard(
-          count: "0",
-          label: "Active",
-          icon: Icons.auto_graph,
+        StreamBuilder<int>(
+          stream: _statisticsService.getTotalCasesCount(),
+          builder: (context, snapshot) {
+            return UserStatsCard(
+              count: snapshot.hasData ? snapshot.data.toString() : "0",
+              label: "Active",
+              icon: Icons.auto_graph,
+            );
+          },
         ),
         SizedBox(width: 12),
         UserStatsCard(

@@ -1,6 +1,10 @@
 import '../core/app_export.dart';
 
 class TrackCaseScreen extends StatelessWidget {
+  final Map<String, String> caseData;
+
+  TrackCaseScreen({required this.caseData});
+
   final List<Map<String, String>> statusStages = [
     {'stage': 'Reported', 'status': 'Completed'},
     {'stage': 'Under Investigation', 'status': 'In Progress'},
@@ -38,31 +42,56 @@ class TrackCaseScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Case Information Card
-                Card(
-                  elevation: 2,
-                  color: Colors.blue.shade50,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Case #12345",
-                          style: TextStyle(
-                            fontSize: 24, 
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0D47A1),
+                // Case Information Cards Row
+                Container(
+                  height: 160, // Fixed height for the row
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: ReportedFormsList().allCaseData.length,
+                    itemBuilder: (context, index) {
+                      final caseInfo = ReportedFormsList().allCaseData[index];
+                      return Container(
+                        width: 300, // Fixed width for each card
+                        margin: EdgeInsets.only(right: 16),
+                        child: Card(
+                          elevation: 2,
+                          color: Colors.blue.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Case #${caseInfo['caseNumber']}",
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  caseInfo['name']!,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Reported on: ${caseInfo['dateCreated']}",
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          "Reported on: 15 March 2024",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
                 SizedBox(height: 24),
