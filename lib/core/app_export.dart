@@ -37,6 +37,7 @@ export 'package:findlink/presentation/register_page.dart';
 export 'package:findlink/presentation/submit_tip_screen.dart';
 export 'package:findlink/presentation/fill_up_form_screen.dart';
 export 'package:findlink/presentation/chatbot_screen.dart';
+export 'package:findlink/presentation/faq_screen.dart';
 
 export 'package:findlink/core/network/auth_service.dart';
 export 'package:findlink/core/network/tip_service.dart';
