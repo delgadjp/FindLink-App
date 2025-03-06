@@ -14,11 +14,10 @@ class AppRoutes {
     home: (context) => HomeScreen(),
     missingPerson: (context) => MissingPersonScreen(),
     profile: (context) => ProfileScreen(),
-    trackCase: (context) => TrackCaseScreen(),
+    // Remove trackCase from static routes since it needs parameters
     login: (context) => LoginPage(),
     register: (context) => RegisterPage(),
     fillUpForm: (context) => FillUpFormScreen(),
-    chatbot: (context) => ChatbotScreen(),  // Added chatbot route
-    // Removed submitTip since we need to pass parameters
+    chatbot: (context) => ChatbotScreen(),
   };
 }

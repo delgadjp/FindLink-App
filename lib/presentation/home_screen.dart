@@ -174,9 +174,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       label: "TRACK THE CASE",
                       subtitle: "Monitor ongoing investigations",
                       onTap: () {
+                        // Add default case data for direct access from home
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => TrackCaseScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => TrackCaseScreen(
+                              caseData: {
+                                'name': 'MISSING: Maria Santos',
+                                'caseNumber': '12345',
+                                'dateCreated': '03/15/2024',
+                                'dateClosed': '03/22/2024',
+                              },
+                            ),
+                          ),
                         );
                       },
                     ),
