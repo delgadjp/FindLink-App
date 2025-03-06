@@ -433,45 +433,29 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
         final TipService tipService = TipService();
         
-        // Parse date string to DateTime
-        DateTime dateLastSeen = _dateLastSeenController.text.isNotEmpty 
-            ? DateFormat('yyyy-MM-dd').parse(_dateLastSeenController.text)
-            : DateTime.now();
-        
-        // Parse numeric values with error handling
-        int age = int.tryParse(_ageController.text) ?? 0;
-        
-        // Use height as string directly for feet/inches format
-        String height = _heightController.text.trim();
-        
-        double longitude = double.tryParse(_longitudeController.text) ?? 0.0;
-        double latitude = double.tryParse(_latitudeController.text) ?? 0.0;
-        
-        // Get current user ID if authenticated
+        // Get current user ID
         String userId = _auth.currentUser!.uid;
         
-        // Submit tip to Firestore - update to handle both mobile and web
+        // Submit tip with the new field structure
         await tipService.submitTip(
           name: _nameController.text,
           phone: _phoneController.text,
-          dateLastSeen: dateLastSeen,
+          dateLastSeen: _dateLastSeenController.text,
           timeLastSeen: _timeLastSeenController.text,
           gender: selectedGender ?? '',
-          age: age,
-          height: height, // Pass height as formatted string
+          age: _ageController.text,
+          height: _heightController.text,
           hairColor: selectedHairColor ?? '',
           eyeColor: selectedEyeColor == 'Other' 
               ? _customEyeColorController.text 
               : (selectedEyeColor ?? ''),
-          // Pass optional fields, empty string is fine as they're optional in service
           clothing: _clothingController.text,
           features: _featuresController.text,
           description: _descriptionController.text,
-          imageFile: kIsWeb ? null : _imageFile,
-          imageBytes: _webImage,
-          longitude: longitude,
-          latitude: latitude,
-          userId: userId, // Pass userId if user is logged in
+          location: _coordinatesController.text,
+          lat: double.parse(_latitudeController.text),
+          lng: double.parse(_longitudeController.text),
+          userId: userId,
         );
 
         // Remove loading indicator
