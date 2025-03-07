@@ -1,7 +1,7 @@
 import '../core/app_export.dart';
 
 class TrackCaseScreen extends StatelessWidget {
-  final Map<String, String> caseData;
+  final Map<String, dynamic> caseData;
 
   TrackCaseScreen({required this.caseData});
 
@@ -16,7 +16,8 @@ class TrackCaseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Track Case", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text("Track Case #${caseData['caseNumber']}", 
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Color(0xFF0D47A1),
         actions: [
           Padding(
@@ -42,56 +43,61 @@ class TrackCaseScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Case Information Cards Row
-                Container(
-                  height: 160, // Fixed height for the row
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: ReportedFormsList().allCaseData.length,
-                    itemBuilder: (context, index) {
-                      final caseInfo = ReportedFormsList().allCaseData[index];
-                      return Container(
-                        width: 300, // Fixed width for each card
-                        margin: EdgeInsets.only(right: 16),
-                        child: Card(
-                          elevation: 2,
-                          color: Colors.blue.shade50,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Case #${caseInfo['caseNumber']}",
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D47A1),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  caseInfo['name']!,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "Reported on: ${caseInfo['dateCreated']}",
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
+                // Case Summary Card
+                Card(
+                  elevation: 2,
+                  color: Colors.blue.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Case #${caseData['caseNumber']}",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D47A1),
+                              ),
                             ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                "In Progress",
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          caseData['name'] ?? "Unknown",
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      );
-                    },
+                        SizedBox(height: 4),
+                        Text(
+                          "Reported on: ${caseData['dateCreated'] ?? "Unknown date"}",
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 SizedBox(height: 24),

@@ -18,6 +18,6 @@ class AppRoutes {
     login: (context) => LoginPage(),
     register: (context) => RegisterPage(),
     fillUpForm: (context) => FillUpFormScreen(),
-    chatbot: (context) => ChatbotScreen(),
+    
   };
 }
