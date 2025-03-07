@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import '../core/app_export.dart';
-import 'package:url_launcher/url_launcher.dart';  // Add this import for phone calls
+import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';  // Add this import for older API
+import 'package:permission_handler/permission_handler.dart';
 
-class FAQScreen extends StatelessWidget {
+class FAQScreen extends StatefulWidget {
+  @override
+  State<FAQScreen> createState() => _FAQScreenState();
+}
+
+class _FAQScreenState extends State<FAQScreen> {
   final List<Map<String, String>> faqs = [
     {
       "question": "How do I report a missing person?",
@@ -34,16 +41,44 @@ class FAQScreen extends StatelessWidget {
     },
   ];
 
-  // Function to call PNP hotline
   Future<void> _callPNPHotline() async {
-    const String phoneNumber = '117';  // PNP emergency hotline
-    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-    
-    if (await canLaunchUrl(phoneUri)) {
-      await launchUrl(phoneUri);
+    const phoneNumber = '09948312246';
+    final Uri phoneUri = Uri.parse('tel:$phoneNumber');
+
+    // Request phone call permission
+    var status = await Permission.phone.status;
+    if (!status.isGranted) {
+      status = await Permission.phone.request();
+    }
+
+    if (status.isGranted) {
+      try {
+        if (await canLaunchUrl(phoneUri)) {
+          await launchUrl(
+            phoneUri,
+            mode: LaunchMode.externalApplication,
+          );
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Device cannot make phone calls')),
+            );
+          }
+        }
+      } catch (e) {
+        print('Error launching phone call: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to launch phone dialer')),
+          );
+        }
+      }
     } else {
-      // Handle error - unable to launch phone call
-      print('Cannot launch phone call');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission denied for phone calls')),
+        );
+      }
     }
   }
 
@@ -135,7 +170,7 @@ class FAQScreen extends StatelessWidget {
                       SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: Icon(Icons.call),
-                        label: Text("Call Hotline (117)"),
+                        label: Text("Call PNP Hotline (09948312246)"),
                         onPressed: _callPNPHotline,
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.white,
