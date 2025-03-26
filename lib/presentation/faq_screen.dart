@@ -42,7 +42,7 @@ class _FAQScreenState extends State<FAQScreen> {
   ];
 
   Future<void> _callPNPHotline() async {
-    const phoneNumber = '09948312246';
+    const phoneNumber = '117'; // Changed to official PNP emergency hotline
     final Uri phoneUri = Uri.parse('tel:$phoneNumber');
 
     // Request phone call permission
@@ -170,7 +170,7 @@ class _FAQScreenState extends State<FAQScreen> {
                       SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: Icon(Icons.call),
-                        label: Text("Call PNP Hotline (09948312246)"),
+                        label: Text("Call PNP Hotline (117)"), // Updated button text with new number
                         onPressed: _callPNPHotline,
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.white,
