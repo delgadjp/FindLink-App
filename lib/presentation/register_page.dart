@@ -38,7 +38,7 @@ class RegisterPage extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 115.0),
                       child: Image.asset(
-                        ImageConstant.placeholderLogo,
+                        ImageConstant.logoFinal,
                         width: 180,
                         height: 240,
                         fit: BoxFit.contain,

@@ -60,9 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Hero(
                           tag: 'logo',
                           child: Image.asset(
-                            ImageConstant.placeholderLogo,
-                            width: 200,
-                            height: 200,
+                            ImageConstant.logoFinal,
+                            width: 175,
+                            height: 175,
                           ),
                         ),
                       ),
