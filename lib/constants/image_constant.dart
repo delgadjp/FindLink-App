@@ -27,4 +27,6 @@ class ImageConstant {
   static String placeholderLogo = '$imagePath/placeholder-logo.png';
   
   static String chatBackground = '$imagePath/chat_bg.png';
+
+  static String logoFinal = '$imagePath/logofinal.png';
 }

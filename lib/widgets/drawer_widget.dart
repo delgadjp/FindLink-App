@@ -22,7 +22,7 @@ class AppDrawer extends StatelessWidget {
                         width: 500,
                         height: 500,
                         child: Image.asset(
-                          ImageConstant.placeholderLogo,
+                          ImageConstant.logoFinal,
                         ),
                       ),
                     ),
