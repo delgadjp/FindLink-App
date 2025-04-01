@@ -641,7 +641,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Submit Tip",
+          "Submit Report",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -782,7 +782,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: const Color.fromARGB(100, 0, 39, 76),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),

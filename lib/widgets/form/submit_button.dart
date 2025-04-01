@@ -48,7 +48,7 @@ class SubmitButton extends StatelessWidget {
                 Icon(Icons.send),
                 SizedBox(width: 8),
                 Text(
-                  'Submit Report',
+                  'Submit Form',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
