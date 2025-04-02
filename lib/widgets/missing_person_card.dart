@@ -6,22 +6,22 @@ class MissingPersonCard extends StatelessWidget {
   const MissingPersonCard({required this.person});
 
   Widget _buildStatusLabel() {
-    final status = person.status ?? 'ACTIVE';
+    final status = person.status ?? 'UNRESOLVED';
     Color bgColor;
     Color textColor;
 
     switch (status) {
-      case 'ACTIVE':
+      case 'Unresolved':
         bgColor = Colors.red.shade100;
         textColor = Colors.red.shade900;
         break;
-      case 'FOUND':
-        bgColor = Colors.green.shade100;
-        textColor = Colors.green.shade900;
-        break;
-      case 'INVESTIGATING':
+      case 'Pending':
         bgColor = Colors.orange.shade100;
         textColor = Colors.orange.shade900;
+        break;
+      case 'Resolved':
+        bgColor = Colors.green.shade100;
+        textColor = Colors.green.shade900;
         break;
       default:
         bgColor = Colors.grey.shade100;
