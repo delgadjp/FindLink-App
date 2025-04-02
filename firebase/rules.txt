@@ -85,8 +85,12 @@ service cloud.firestore {
       
       // Allow users to create their own documents or counter documents (during transactions)
       allow create: if request.auth != null && (
+        // Either this is their own document
         request.auth.uid == request.resource.data.userId ||
-        request.resource.data.type == 'counter'
+        // Or this is a counter document
+        request.resource.data.type == 'counter' ||
+        // Or this is a draft document (adding this fixes the permission issue)
+        request.resource.data.type == 'draft'
       );
       
       // Allow users to update their own documents or counter documents
