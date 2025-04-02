@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -126,11 +129,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateProfilePicture() async {
-    // This would typically involve using image_picker and Firebase Storage
-    // For now, we'll just show a message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Profile picture update functionality will be implemented soon.')),
-    );
+    try {
+      // Show options to pick image from gallery or camera
+      final source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Select Image Source'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                ListTile(
+                  leading: Icon(Icons.photo_library),
+                  title: Text('Gallery'),
+                  onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+                ),
+                ListTile(
+                  leading: Icon(Icons.camera_alt),
+                  title: Text('Camera'),
+                  onTap: () => Navigator.of(context).pop(ImageSource.camera),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (source == null) return;
+
+      // Pick image
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+
+      if (image == null) return;
+
+      // Show loading indicator
+      setState(() => _isLoading = true);
+      
+      // Upload to Firebase Storage
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception('User not logged in');
+
+      final File imageFile = File(image.path);
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('${currentUser.uid}.jpg');
+      
+      // Upload file
+      await storageRef.putFile(imageFile);
+      
+      // Get download URL
+      final String downloadURL = await storageRef.getDownloadURL();
+      
+      // Update Firebase Auth profile
+      await currentUser.updatePhotoURL(downloadURL);
+      
+      // Update Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .update({'photoURL': downloadURL});
+      
+      // Update local state
+      setState(() {
+        _profileImageUrl = downloadURL;
+        _isLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile picture updated successfully')),
+      );
+      
+    } catch (e) {
+      setState(() => _isLoading = false);
+      print('Error updating profile picture: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating profile picture. Please try again.')),
+      );
+    }
   }
 
   Future<void> _signOut() async {
@@ -144,18 +226,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         title: Text("Profile", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add_circle_outline, color: Colors.white),
-            tooltip: 'New Report',
-            onPressed: () => Navigator.pushNamed(context, '/new_report'),
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, color: Colors.white),
-            tooltip: 'Settings',
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
-          ),
-        ],
       ),
       drawer: AppDrawer(),
       body: _isLoading 
