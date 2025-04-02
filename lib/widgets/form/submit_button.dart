@@ -34,6 +34,8 @@ class SubmitButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
+          // Disable the button when loading
+          disabledBackgroundColor: Color(0xFF1E215A).withOpacity(0.6),
         ),
         onPressed: isLoading ? null : onPressed ?? () {
           if (formKey.currentState?.validate() ?? false) {
@@ -41,20 +43,21 @@ class SubmitButton extends StatelessWidget {
           }
         },
         child: isLoading 
-          ? CircularProgressIndicator(color: Colors.white)
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.send),
-                SizedBox(width: 8),
-                Text(
-                  'Submit Form',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+          ? SizedBox(
+              height: 24,
+              width: 24,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : Text(
+              'SUBMIT',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
       ),
     );

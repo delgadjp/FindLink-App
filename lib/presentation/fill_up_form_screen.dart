@@ -1,6 +1,9 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 import 'package:intl/intl.dart';
+import '../core/network/irf_service.dart';
+import '../models/irf_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -13,14 +16,67 @@ class FillUpForm extends State<FillUpFormScreen> {
   bool hasOtherAddressSuspect = false;
   bool hasOtherAddressVictim = false;
   bool hasPreviousCriminalRecord = false;
+  bool isSubmitting = false;
+  bool isSavingDraft = false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _dateOfBirthReportingController = TextEditingController();
-  final TextEditingController _dateOfBirthSuspectController = TextEditingController();
-  final TextEditingController _dateOfBirthVictimController = TextEditingController();
   
-  // Add controllers for date and time fields
+  // Service for Firebase operations
+  final IRFService _irfService = IRFService();
+  
+  // General information controllers
+  final TextEditingController _typeOfIncidentController = TextEditingController();
+  final TextEditingController _copyForController = TextEditingController();
   final TextEditingController _dateTimeReportedController = TextEditingController();
   final TextEditingController _dateTimeIncidentController = TextEditingController();
+  final TextEditingController _placeOfIncidentController = TextEditingController();
+  
+  // ITEM A - Reporting Person controllers
+  final TextEditingController _surnameReportingController = TextEditingController();
+  final TextEditingController _firstNameReportingController = TextEditingController();
+  final TextEditingController _middleNameReportingController = TextEditingController();
+  final TextEditingController _qualifierReportingController = TextEditingController();
+  final TextEditingController _nicknameReportingController = TextEditingController();
+  final TextEditingController _citizenshipReportingController = TextEditingController();
+  final TextEditingController _sexGenderReportingController = TextEditingController();
+  final TextEditingController _civilStatusReportingController = TextEditingController();
+  final TextEditingController _dateOfBirthReportingController = TextEditingController();
+  final TextEditingController _ageReportingController = TextEditingController();
+  final TextEditingController _placeOfBirthReportingController = TextEditingController();
+  final TextEditingController _homePhoneReportingController = TextEditingController();
+  final TextEditingController _mobilePhoneReportingController = TextEditingController();
+  final TextEditingController _currentAddressReportingController = TextEditingController();
+  final TextEditingController _villageSitioReportingController = TextEditingController();
+  final TextEditingController _educationReportingController = TextEditingController();
+  final TextEditingController _occupationReportingController = TextEditingController();
+  final TextEditingController _idCardPresentedController = TextEditingController();
+  final TextEditingController _emailReportingController = TextEditingController();
+  
+  // ITEM C - Victim controllers
+  final TextEditingController _surnameVictimController = TextEditingController();
+  final TextEditingController _firstNameVictimController = TextEditingController();
+  final TextEditingController _middleNameVictimController = TextEditingController();
+  final TextEditingController _qualifierVictimController = TextEditingController();
+  final TextEditingController _nicknameVictimController = TextEditingController();
+  final TextEditingController _citizenshipVictimController = TextEditingController();
+  final TextEditingController _sexGenderVictimController = TextEditingController();
+  final TextEditingController _civilStatusVictimController = TextEditingController();
+  final TextEditingController _dateOfBirthVictimController = TextEditingController();
+  final TextEditingController _ageVictimController = TextEditingController();
+  final TextEditingController _placeOfBirthVictimController = TextEditingController();
+  final TextEditingController _homePhoneVictimController = TextEditingController();
+  final TextEditingController _mobilePhoneVictimController = TextEditingController();
+  final TextEditingController _currentAddressVictimController = TextEditingController();
+  final TextEditingController _villageSitioVictimController = TextEditingController();
+  final TextEditingController _educationVictimController = TextEditingController();
+  final TextEditingController _occupationVictimController = TextEditingController();
+  final TextEditingController _workAddressVictimController = TextEditingController();
+  final TextEditingController _emailVictimController = TextEditingController();
+  
+  // ITEM D - Narrative controllers
+  final TextEditingController _typeOfIncidentDController = TextEditingController();
+  final TextEditingController _dateTimeIncidentDController = TextEditingController();
+  final TextEditingController _placeOfIncidentDController = TextEditingController();
+  final TextEditingController _narrativeController = TextEditingController();
   
   DateTime? dateTimeReported;
   DateTime? dateTimeIncident;
@@ -97,6 +153,15 @@ class FillUpForm extends State<FillUpFormScreen> {
     dateTimeReported = DateTime.now();
     _dateTimeReportedController.text = _formatDateTime(dateTimeReported!);
     
+    // Preset type of incident to "Missing Person" and make it read-only
+    _typeOfIncidentController.text = "Missing Person";
+    _typeOfIncidentDController.text = "Missing Person";
+    
+    // Also initialize the date time incident D controller with the same value if incident date exists
+    if (dateTimeIncident != null) {
+      _dateTimeIncidentDController.text = _formatDateTime(dateTimeIncident!);
+    }
+    
     // Initialize formState
     updateFormState();
   }
@@ -165,82 +230,8 @@ class FillUpForm extends State<FillUpFormScreen> {
         case 'reportingBarangay':
           reportingPersonBarangay = value;
           break;
-        // Similar for all other address fields
-        case 'reportingOtherRegion':
-          if (reportingPersonOtherRegion != value) {
-            reportingPersonOtherProvince = null;
-            reportingPersonOtherMunicipality = null;
-            reportingPersonOtherBarangay = null;
-          }
-          reportingPersonOtherRegion = value;
-          break;
-        case 'reportingOtherProvince':
-          if (reportingPersonOtherProvince != value) {
-            reportingPersonOtherMunicipality = null;
-            reportingPersonOtherBarangay = null;
-          }
-          reportingPersonOtherProvince = value;
-          break;
-        case 'reportingOtherMunicipality':
-          if (reportingPersonOtherMunicipality != value) {
-            reportingPersonOtherBarangay = null;
-          }
-          reportingPersonOtherMunicipality = value;
-          break;
-        case 'reportingOtherBarangay':
-          reportingPersonOtherBarangay = value;
-          break;
-        // Suspect address fields
-        case 'suspectRegion':
-          if (suspectRegion != value) {
-            suspectProvince = null;
-            suspectMunicipality = null;
-            suspectBarangay = null;
-          }
-          suspectRegion = value;
-          break;
-        case 'suspectProvince':
-          if (suspectProvince != value) {
-            suspectMunicipality = null;
-            suspectBarangay = null;
-          }
-          suspectProvince = value;
-          break;
-        case 'suspectMunicipality':
-          if (suspectMunicipality != value) {
-            suspectBarangay = null;
-          }
-          suspectMunicipality = value;
-          break;
-        case 'suspectBarangay':
-          suspectBarangay = value;
-          break;
-        // Suspect other address fields
-        case 'suspectOtherRegion':
-          if (suspectOtherRegion != value) {
-            suspectOtherProvince = null;
-            suspectOtherMunicipality = null;
-            suspectOtherBarangay = null;
-          }
-          suspectOtherRegion = value;
-          break;
-        case 'suspectOtherProvince':
-          if (suspectOtherProvince != value) {
-            suspectOtherMunicipality = null;
-            suspectOtherBarangay = null;
-          }
-          suspectOtherProvince = value;
-          break;
-        case 'suspectOtherMunicipality':
-          if (suspectOtherMunicipality != value) {
-            suspectOtherBarangay = null;
-          }
-          suspectOtherMunicipality = value;
-          break;
-        case 'suspectOtherBarangay':
-          suspectOtherBarangay = value;
-          break;
-        // Victim address fields
+          
+        // Add missing victim address field handlers
         case 'victimRegion':
           if (victimRegion != value) {
             victimProvince = null;
@@ -265,7 +256,8 @@ class FillUpForm extends State<FillUpFormScreen> {
         case 'victimBarangay':
           victimBarangay = value;
           break;
-        // Victim other address fields
+          
+        // Add missing victim other address field handlers  
         case 'victimOtherRegion':
           if (victimOtherRegion != value) {
             victimOtherProvince = null;
@@ -290,24 +282,40 @@ class FillUpForm extends State<FillUpFormScreen> {
         case 'victimOtherBarangay':
           victimOtherBarangay = value;
           break;
-        // Education and occupation fields
-        case 'reportingEducation':
-          reportingPersonEducation = value;
+          
+        // Handle similarly for other address sections if they exist
+        // ...existing code...
+        
+        // Handle dropdown values
+        case 'citizenshipReporting':
+          _citizenshipReportingController.text = value;
           break;
-        case 'reportingOccupation':
-          reportingPersonOccupation = value;
+        case 'sexGenderReporting':
+          _sexGenderReportingController.text = value;
           break;
-        case 'suspectEducation':
-          suspectEducation = value;
+        case 'civilStatusReporting':
+          _civilStatusReportingController.text = value;
           break;
-        case 'suspectOccupation':
-          suspectOccupation = value;
+        case 'educationReporting':
+          _educationReportingController.text = value;
           break;
-        case 'victimEducation':
-          victimEducation = value;
+        case 'occupationReporting':
+          _occupationReportingController.text = value;
           break;
-        case 'victimOccupation':
-          victimOccupation = value;
+        case 'citizenshipVictim':
+          _citizenshipVictimController.text = value;
+          break;
+        case 'sexGenderVictim':
+          _sexGenderVictimController.text = value;
+          break;
+        case 'civilStatusVictim':
+          _civilStatusVictimController.text = value;
+          break;
+        case 'educationVictim':
+          _educationVictimController.text = value;
+          break;
+        case 'occupationVictim':
+          _occupationVictimController.text = value;
           break;
       }
       updateFormState();
@@ -316,11 +324,62 @@ class FillUpForm extends State<FillUpFormScreen> {
 
   @override
   void dispose() {
-    _dateOfBirthReportingController.dispose();
-    _dateOfBirthSuspectController.dispose();
-    _dateOfBirthVictimController.dispose();
+    // Dispose all controllers
+    // General information controllers
+    _typeOfIncidentController.dispose();
+    _copyForController.dispose();
     _dateTimeReportedController.dispose();
     _dateTimeIncidentController.dispose();
+    _placeOfIncidentController.dispose();
+    
+    // ITEM A - Reporting Person controllers
+    _surnameReportingController.dispose();
+    _firstNameReportingController.dispose();
+    _middleNameReportingController.dispose();
+    _qualifierReportingController.dispose();
+    _nicknameReportingController.dispose();
+    _citizenshipReportingController.dispose();
+    _sexGenderReportingController.dispose();
+    _civilStatusReportingController.dispose();
+    _dateOfBirthReportingController.dispose();
+    _ageReportingController.dispose();
+    _placeOfBirthReportingController.dispose();
+    _homePhoneReportingController.dispose();
+    _mobilePhoneReportingController.dispose();
+    _currentAddressReportingController.dispose();
+    _villageSitioReportingController.dispose();
+    _educationReportingController.dispose();
+    _occupationReportingController.dispose();
+    _idCardPresentedController.dispose();
+    _emailReportingController.dispose();
+    
+    // ITEM C - Victim controllers
+    _surnameVictimController.dispose();
+    _firstNameVictimController.dispose();
+    _middleNameVictimController.dispose();
+    _qualifierVictimController.dispose();
+    _nicknameVictimController.dispose();
+    _citizenshipVictimController.dispose();
+    _sexGenderVictimController.dispose();
+    _civilStatusVictimController.dispose();
+    _dateOfBirthVictimController.dispose();
+    _ageVictimController.dispose();
+    _placeOfBirthVictimController.dispose();
+    _homePhoneVictimController.dispose();
+    _mobilePhoneVictimController.dispose();
+    _currentAddressVictimController.dispose();
+    _villageSitioVictimController.dispose();
+    _educationVictimController.dispose();
+    _occupationVictimController.dispose();
+    _workAddressVictimController.dispose();
+    _emailVictimController.dispose();
+    
+    // ITEM D - Narrative controllers
+    _typeOfIncidentDController.dispose();
+    _dateTimeIncidentDController.dispose();
+    _placeOfIncidentDController.dispose();
+    _narrativeController.dispose();
+    
     super.dispose();
   }
 
@@ -361,6 +420,297 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
 
+  // Helper method to collect all form data
+  Map<String, dynamic> collectFormData() {
+    Map<String, dynamic> formData = {
+      // General information
+      'typeOfIncident': _typeOfIncidentController.text,
+      'copyFor': _copyForController.text,
+      'dateTimeReported': dateTimeReported,
+      'dateTimeIncident': dateTimeIncident,
+      'placeOfIncident': _placeOfIncidentController.text,
+      
+      // ITEM A - Reporting Person
+      'itemA': {
+        'surname': _surnameReportingController.text,
+        'firstName': _firstNameReportingController.text,
+        'middleName': _middleNameReportingController.text,
+        'qualifier': _qualifierReportingController.text,
+        'nickname': _nicknameReportingController.text,
+        'citizenship': _citizenshipReportingController.text,
+        'sexGender': _sexGenderReportingController.text,
+        'civilStatus': _civilStatusReportingController.text,
+        'dateOfBirth': _dateOfBirthReportingController.text,
+        'age': _ageReportingController.text,
+        'placeOfBirth': _placeOfBirthReportingController.text,
+        'homePhone': _homePhoneReportingController.text,
+        'mobilePhone': _mobilePhoneReportingController.text,
+        'currentAddress': _currentAddressReportingController.text,
+        'villageSitio': _villageSitioReportingController.text,
+        'region': reportingPersonRegion?.regionName,
+        'province': reportingPersonProvince?.name,
+        'townCity': reportingPersonMunicipality?.name,
+        'barangay': reportingPersonBarangay,
+        'education': _educationReportingController.text,
+        'occupation': _occupationReportingController.text,
+        'idCardPresented': _idCardPresentedController.text,
+        'emailAddress': _emailReportingController.text,
+      },
+      
+      // ITEM C - Victim
+      'itemC': {
+        'surname': _surnameVictimController.text,
+        'firstName': _firstNameVictimController.text,
+        'middleName': _middleNameVictimController.text,
+        'qualifier': _qualifierVictimController.text,
+        'nickname': _nicknameVictimController.text,
+        'citizenship': _citizenshipVictimController.text,
+        'sexGender': _sexGenderVictimController.text,
+        'civilStatus': _civilStatusVictimController.text,
+        'dateOfBirth': _dateOfBirthVictimController.text,
+        'age': _ageVictimController.text,
+        'placeOfBirth': _placeOfBirthVictimController.text,
+        'homePhone': _homePhoneVictimController.text,
+        'mobilePhone': _mobilePhoneVictimController.text,
+        'currentAddress': _currentAddressVictimController.text,
+        'villageSitio': _villageSitioVictimController.text,
+        'region': victimRegion?.regionName,
+        'province': victimProvince?.name,
+        'townCity': victimMunicipality?.name,
+        'barangay': victimBarangay,
+        'education': _educationVictimController.text,
+        'occupation': _occupationVictimController.text,
+        'workAddress': _workAddressVictimController.text,
+        'emailAddress': _emailVictimController.text,
+      },
+      
+      // ITEM D - Narrative
+      'typeOfIncidentD': _typeOfIncidentDController.text,
+      'dateTimeIncidentD': _dateOfBirthVictimController.text,
+      'placeOfIncidentD': _placeOfIncidentDController.text,
+      'narrative': _narrativeController.text,
+    };
+    
+    // Add other address for reporting person if available
+    if (hasOtherAddressReporting) {
+      formData['itemA']['hasOtherAddress'] = true;
+      formData['itemA']['otherRegion'] = reportingPersonOtherRegion?.regionName;
+      formData['itemA']['otherProvince'] = reportingPersonOtherProvince?.name;
+      formData['itemA']['otherTownCity'] = reportingPersonOtherMunicipality?.name;
+      formData['itemA']['otherBarangay'] = reportingPersonOtherBarangay;
+    }
+    
+    // Add other address for victim if available
+    if (hasOtherAddressVictim) {
+      formData['itemC']['hasOtherAddress'] = true;
+      formData['itemC']['otherRegion'] = victimOtherRegion?.regionName;
+      formData['itemC']['otherProvince'] = victimOtherProvince?.name;
+      formData['itemC']['otherTownCity'] = victimOtherMunicipality?.name;
+      formData['itemC']['otherBarangay'] = victimOtherBarangay;
+    }
+    
+    return formData;
+  }
+
+  // Convert form data to IRFModel
+  IRFModel createIRFModel() {
+    // Parse date of birth strings to DateTime objects if present
+    DateTime? reportingDob;
+    if (_dateOfBirthReportingController.text.isNotEmpty) {
+      try {
+        reportingDob = DateFormat('dd/MM/yyyy').parse(_dateOfBirthReportingController.text);
+      } catch (e) {
+        print('Error parsing reporting person date of birth: $e');
+      }
+    }
+    
+    DateTime? victimDob;
+    if (_dateOfBirthVictimController.text.isNotEmpty) {
+      try {
+        victimDob = DateFormat('dd/MM/yyyy').parse(_dateOfBirthVictimController.text);
+      } catch (e) {
+        print('Error parsing victim date of birth: $e');
+      }
+    }
+    
+    int? reportingAge = _ageReportingController.text.isNotEmpty ? 
+      int.tryParse(_ageReportingController.text) : null;
+    
+    int? victimAge = _ageVictimController.text.isNotEmpty ?
+      int.tryParse(_ageVictimController.text) : null;
+    
+    return IRFModel(
+      typeOfIncident: _typeOfIncidentController.text,
+      copyFor: _copyForController.text,
+      dateTimeReported: dateTimeReported,
+      dateTimeIncident: dateTimeIncident,
+      placeOfIncident: _placeOfIncidentController.text,
+      
+      // ITEM A - Reporting Person
+      itemA: IRFModel.createPersonDetails(
+        surname: _surnameReportingController.text,
+        firstName: _firstNameReportingController.text,
+        middleName: _middleNameReportingController.text,
+        qualifier: _qualifierReportingController.text,
+        nickname: _nicknameReportingController.text,
+        citizenship: _citizenshipReportingController.text,
+        sexGender: _sexGenderReportingController.text,
+        civilStatus: _civilStatusReportingController.text,
+        dateOfBirth: reportingDob,
+        age: reportingAge,
+        placeOfBirth: _placeOfBirthReportingController.text,
+        homePhone: _homePhoneReportingController.text,
+        mobilePhone: _mobilePhoneReportingController.text,
+        currentAddress: _currentAddressReportingController.text,
+        villageSitio: _villageSitioReportingController.text,
+        region: reportingPersonRegion?.regionName,
+        province: reportingPersonProvince?.name,
+        townCity: reportingPersonMunicipality?.name,
+        barangay: reportingPersonBarangay,
+        highestEducationAttainment: _educationReportingController.text,
+        occupation: _occupationReportingController.text,
+        idCardPresented: _idCardPresentedController.text,
+        emailAddress: _emailReportingController.text,
+        otherRegion: hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
+        otherProvince: hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
+        otherTownCity: hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
+        otherBarangay: hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      ),
+      
+      // ITEM C - Victim
+      itemC: IRFModel.createPersonDetails(
+        surname: _surnameVictimController.text,
+        firstName: _firstNameVictimController.text,
+        middleName: _middleNameVictimController.text,
+        qualifier: _qualifierVictimController.text,
+        nickname: _nicknameVictimController.text,
+        citizenship: _citizenshipVictimController.text,
+        sexGender: _sexGenderVictimController.text,
+        civilStatus: _civilStatusVictimController.text,
+        dateOfBirth: victimDob,
+        age: victimAge,
+        placeOfBirth: _placeOfBirthVictimController.text,
+        homePhone: _homePhoneVictimController.text,
+        mobilePhone: _mobilePhoneVictimController.text,
+        currentAddress: _currentAddressVictimController.text,
+        villageSitio: _villageSitioVictimController.text,
+        region: victimRegion?.regionName,
+        province: victimProvince?.name,
+        townCity: victimMunicipality?.name,
+        barangay: victimBarangay,
+        highestEducationAttainment: _educationVictimController.text,
+        occupation: _occupationVictimController.text,
+        workAddress: _workAddressVictimController.text,
+        emailAddress: _emailVictimController.text,
+        otherRegion: hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
+        otherProvince: hasOtherAddressVictim ? victimOtherProvince?.name : null,
+        otherTownCity: hasOtherAddressVictim ? victimOtherMunicipality?.name : null,
+        otherBarangay: hasOtherAddressVictim ? victimOtherBarangay : null,
+      ),
+      
+      // ITEM D - Narrative
+      narrative: _narrativeController.text,
+      typeOfIncidentD: _typeOfIncidentDController.text,
+      dateTimeIncidentD: dateTimeIncident, // Using the same DateTime from the main form
+      placeOfIncidentD: _placeOfIncidentDController.text,
+    );
+  }
+  
+  // Submit form to Firebase
+  Future<void> submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      // Show validation error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please fill all required fields correctly'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      // Create IRF model from form data
+      IRFModel irfData = createIRFModel();
+      
+      // Submit to Firebase
+      DocumentReference<Object?> docRef = await _irfService.submitIRF(irfData);
+      
+      // Get the document to retrieve the formal ID
+      DocumentSnapshot doc = await docRef.get();
+      String formalId = (doc.data() as Map<String, dynamic>)['documentId'] ?? docRef.id;
+      
+      // Show success message with formal ID
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Form submitted successfully! Reference #: $formalId'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Navigate back
+      Navigator.pop(context);
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error submitting form: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      // Reset loading state
+      setState(() {
+        isSubmitting = false;
+      });
+    }
+  }
+  
+  // Save draft to Firebase
+  Future<void> saveDraft() async {
+    // For drafts, we don't need to validate all fields
+    setState(() {
+      isSavingDraft = true;
+    });
+
+    try {
+      // Create IRF model from form data
+      IRFModel irfData = createIRFModel();
+      
+      // Save draft to Firebase
+      DocumentReference<Object?> docRef = await _irfService.saveIRFDraft(irfData);
+      
+      // Get the document to retrieve the formal ID
+      DocumentSnapshot doc = await docRef.get();
+      String draftId = (doc.data() as Map<String, dynamic>)['documentId'] ?? docRef.id;
+      
+      // Show success message with formal draft ID
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Draft saved successfully! Reference #: $draftId'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving draft: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      // Reset loading state
+      setState(() {
+        isSavingDraft = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -369,10 +719,17 @@ class FillUpForm extends State<FillUpFormScreen> {
         actions: [
           // Save Draft button in AppBar
           TextButton.icon(
-            onPressed: () {
-              // Save draft logic
-            },
-            icon: Icon(Icons.save_outlined, color: Colors.white),
+            onPressed: isSavingDraft ? null : saveDraft,
+            icon: isSavingDraft 
+              ? SizedBox(
+                  height: 20, 
+                  width: 20, 
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  )
+                )
+              : Icon(Icons.save_outlined, color: Colors.white),
             label: Text('Save Draft', 
               style: TextStyle(color: Colors.white, fontSize: 14)
             ),
@@ -463,10 +820,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'TYPE OF INCIDENT',
                               'required': true,
                               'keyboardType': TextInputType.text,
+                              'controller': _typeOfIncidentController,
+                              'readOnly': true, // Make it read-only
+                              'backgroundColor': Color(0xFFF0F0F0), // Light gray background to indicate fixed field
                             },
                             {
                               'label': 'COPY FOR',
                               'required': false,
+                              'controller': _copyForController,
                             },
                           ],
                           formState: formState,
@@ -506,6 +867,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                                   (DateTime selectedDateTime) {
                                     setState(() {
                                       dateTimeIncident = selectedDateTime;
+                                      // Sync with Item D dateTime
+                                      _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
                                     });
                                   },
                                 );
@@ -514,6 +877,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'PLACE OF INCIDENT',
                               'required': true,
+                              'controller': _placeOfIncidentController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -534,20 +898,23 @@ class FillUpForm extends State<FillUpFormScreen> {
                         FormRowInputs(
                           fields: [
                             {
-                              'label': 'FAMILY NAME',
+                              'label': 'SURNAME',
                               'required': true,
+                              'controller': _surnameReportingController,
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                             },
                             {
                               'label': 'FIRST NAME',
                               'required': true,
+                              'controller': _firstNameReportingController,
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                             },
                             {
                               'label': 'MIDDLE NAME',
                               'required': false,
+                              'controller': _middleNameReportingController,
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                             },
@@ -563,11 +930,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'QUALIFIER',
                               'required': false,
+                              'controller': _qualifierReportingController,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'NICKNAME',
                               'required': false,
+                              'controller': _nicknameReportingController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -582,16 +951,19 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'CITIZENSHIP',
                               'required': true,
+                              'controller': _citizenshipReportingController,
                               'dropdownItems': citizenshipOptions,
                             },
                             {
                               'label': 'SEX/GENDER',
                               'required': true,
+                              'controller': _sexGenderReportingController,
                               'dropdownItems': genderOptions,
                             },
                             {
                               'label': 'CIVIL STATUS',
                               'required': true,
+                              'controller': _civilStatusReportingController,
                               'dropdownItems': civilStatusOptions,
                             },
                           ],
@@ -622,6 +994,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         "${pickedDate.month.toString().padLeft(2, '0')}/"
                                         "${pickedDate.year}";
                                     reportingPersonAge = calculateAge(pickedDate);
+                                    _ageReportingController.text = reportingPersonAge.toString();
                                   });
                                 }
                               },
@@ -629,12 +1002,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'AGE',
                               'required': true,
-                              'controller': TextEditingController(text: reportingPersonAge?.toString() ?? ''),
+                              'controller': _ageReportingController,
                               'readOnly': true,
                             },
                             {
                               'label': 'PLACE OF BIRTH',
                               'required': true,
+                              'controller': _placeOfBirthReportingController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -649,12 +1023,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'HOME PHONE',
                               'required': false,
+                              'controller': _homePhoneReportingController,
                               'keyboardType': TextInputType.phone,
                               'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
                             },
                             {
                               'label': 'MOBILE PHONE',
                               'required': true,
+                              'controller': _mobilePhoneReportingController,
                               'keyboardType': TextInputType.phone,
                               'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
                               'validator': (value) {
@@ -675,6 +1051,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
                               'required': true,
+                              'controller': _currentAddressReportingController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -689,6 +1066,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'VILLAGE/SITIO',
                               'required': true,
+                              'controller': _villageSitioReportingController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -835,12 +1213,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
                               'required': false,
+                              'controller': _educationReportingController,
                               'dropdownItems': educationOptions,
                               'section': 'reporting',
                             },
                             {
                               'label': 'OCCUPATION',
                               'required': false,
+                              'controller': _occupationReportingController,
                               'dropdownItems': occupationOptions,
                               'section': 'reporting',
                             },
@@ -856,11 +1236,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'ID CARD PRESENTED',
                               'required': false,
+                              'controller': _idCardPresentedController,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'EMAIL ADDRESS (If Any)',
                               'required': false,
+                              'controller': _emailReportingController,
                               'keyboardType': TextInputType.emailAddress,
                             },
                           ],
@@ -876,7 +1258,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['FAMILY NAME', 'FIRST NAME', 'MIDDLE NAME']),
+                        DisabledFormFields.buildDisabledFormRow(['SURNAME', 'FIRST NAME', 'MIDDLE NAME']),
                         SizedBox(height: 10),
                         DisabledFormFields.buildDisabledFormRow(['QUALIFIER', 'NICKNAME']),
                         SizedBox(height: 10),
@@ -1001,20 +1383,23 @@ class FillUpForm extends State<FillUpFormScreen> {
                         FormRowInputs(
                           fields: [
                             {
-                              'label': 'FAMILY NAME',
+                              'label': 'SURNAME',
                               'required': true,
+                              'controller': _surnameVictimController,
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                             },
                             {
                               'label': 'FIRST NAME',
                               'required': true,
+                              'controller': _firstNameVictimController,
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                             },
                             {
                               'label': 'MIDDLE NAME',
                               'required': false,
+                              'controller': _middleNameVictimController,
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                             },
@@ -1030,11 +1415,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'QUALIFIER',
                               'required': false,
+                              'controller': _qualifierVictimController,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'NICKNAME',
                               'required': false,
+                              'controller': _nicknameVictimController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -1049,16 +1436,19 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'CITIZENSHIP',
                               'required': true,
+                              'controller': _citizenshipVictimController,
                               'dropdownItems': citizenshipOptions,
                             },
                             {
                               'label': 'SEX/GENDER',
                               'required': true,
+                              'controller': _sexGenderVictimController,
                               'dropdownItems': genderOptions,
                             },
                             {
                               'label': 'CIVIL STATUS',
                               'required': true,
+                              'controller': _civilStatusVictimController,
                               'dropdownItems': civilStatusOptions,
                             },
                           ],
@@ -1089,6 +1479,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                         "${pickedDate.month.toString().padLeft(2, '0')}/"
                                         "${pickedDate.year}";
                                     victimAge = calculateAge(pickedDate);
+                                    _ageVictimController.text = victimAge.toString();
                                   });
                                 }
                               },
@@ -1096,12 +1487,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'AGE',
                               'required': true,
-                              'controller': TextEditingController(text: victimAge?.toString() ?? ''),
+                              'controller': _ageVictimController,
                               'readOnly': true,
                             },
                             {
                               'label': 'PLACE OF BIRTH',
                               'required': true,
+                              'controller': _placeOfBirthVictimController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -1116,12 +1508,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'HOME PHONE',
                               'required': false,
+                              'controller': _homePhoneVictimController,
                               'keyboardType': TextInputType.phone,
                               'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
                             },
                             {
                               'label': 'MOBILE PHONE',
                               'required': true,
+                              'controller': _mobilePhoneVictimController,
                               'keyboardType': TextInputType.phone,
                               'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
                               'validator': (value) {
@@ -1142,6 +1536,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
                               'required': true,
+                              'controller': _currentAddressVictimController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -1156,6 +1551,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'VILLAGE/SITIO',
                               'required': true,
+                              'controller': _villageSitioVictimController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -1300,12 +1696,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
                               'required': false,
+                              'controller': _educationVictimController,
                               'dropdownItems': educationOptions,
                               'section': 'victim',
                             },
                             {
                               'label': 'OCCUPATION',
                               'required': false,
+                              'controller': _occupationVictimController,
                               'dropdownItems': occupationOptions,
                               'section': 'victim',
                             },
@@ -1321,11 +1719,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'WORK ADDRESS',
                               'required': false,
+                              'controller': _workAddressVictimController,
                               'keyboardType': TextInputType.text,
                             },
                             {
                               'label': 'EMAIL ADDRESS (If Any)',
                               'required': false,
+                              'controller': _emailVictimController,
                               'keyboardType': TextInputType.emailAddress,
                             },
                           ],
@@ -1347,17 +1747,34 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'TYPE OF INCIDENT',
                               'required': true,
+                              'controller': _typeOfIncidentDController,
                               'keyboardType': TextInputType.text,
+                              'readOnly': true, // Make it read-only
+                              'backgroundColor': Color(0xFFF0F0F0), // Light gray background to indicate fixed field
                             },
                             {
                               'label': 'DATE/TIME OF INCIDENT',
                               'required': true,
-                              'controller': TextEditingController(text: dateTimeIncident != null ? _formatDateTime(dateTimeIncident!) : ''),
+                              'controller': _dateTimeIncidentDController,
                               'readOnly': true,
+                              'onTap': () {
+                                _pickDateTime(
+                                  _dateTimeIncidentDController,
+                                  dateTimeIncident,
+                                  (DateTime selectedDateTime) {
+                                    setState(() {
+                                      dateTimeIncident = selectedDateTime;
+                                      // Sync with general dateTime
+                                      _dateTimeIncidentController.text = _formatDateTime(selectedDateTime);
+                                    });
+                                  },
+                                );
+                              },
                             },
                             {
                               'label': 'PLACE OF INCIDENT',
                               'required': true,
+                              'controller': _placeOfIncidentDController,
                               'keyboardType': TextInputType.text,
                             },
                           ],
@@ -1381,18 +1798,25 @@ class FillUpForm extends State<FillUpFormScreen> {
                             ),
                             ),
                             SizedBox(height: 4),
-                            TextField(
-                            maxLines: 10, // Set max lines to make it a textarea
-                            style: TextStyle(fontSize: 15, color: Colors.black), // Set text color to black
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.black),
+                            TextFormField(
+                              controller: _narrativeController,
+                              maxLines: 10,
+                              style: TextStyle(fontSize: 15, color: Colors.black),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.black),
+                                ),
+                                contentPadding: EdgeInsets.all(8),
                               ),
-                              contentPadding: EdgeInsets.all(8),
-                            ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Narrative is required';
+                                }
+                                return null;
+                              },
                             ),
                           ],
                           ),
@@ -1486,7 +1910,60 @@ class FillUpForm extends State<FillUpFormScreen> {
             ),
           ),
         ),
-      bottomNavigationBar: SubmitButton(formKey: _formKey),
+      bottomNavigationBar: SubmitButton(
+        formKey: _formKey,
+        onSubmit: submitForm,
+        isSubmitting: isSubmitting,
+      ),
+    );
+  }
+}
+
+// Modified SubmitButton to show loading state
+class SubmitButton extends StatelessWidget {
+  final GlobalKey<FormState> formKey;
+  final Function()? onSubmit;
+  final bool isSubmitting;
+
+  const SubmitButton({
+    Key? key,
+    required this.formKey,
+    this.onSubmit,
+    this.isSubmitting = false,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      color: Colors.white,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF0D47A1),
+          padding: EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        onPressed: isSubmitting ? null : onSubmit,
+        child: isSubmitting 
+          ? SizedBox(
+              height: 20, 
+              width: 20, 
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              )
+            )
+          : Text(
+              'SUBMIT',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+      ),
     );
   }
 }
