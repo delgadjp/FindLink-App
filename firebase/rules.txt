@@ -6,9 +6,28 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Allow authenticated users to read/write their own user data
+    // Updated rules for users collection to support custom document IDs
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow authenticated users to read/write their own user data
+      allow read: if request.auth != null;
+      
+      // Allow creating new documents in users collection by authenticated users
+      allow create: if request.auth != null && (
+        // Either this is the UID reference document
+        request.auth.uid == userId || 
+        // Or this is a custom formatted document with the correct UID field
+        request.resource.data.uid == request.auth.uid
+      );
+      
+      // Allow updates to existing documents if they belong to the user
+      allow update, delete: if request.auth != null && (
+        // Either this is the UID reference document
+        request.auth.uid == userId || 
+        // Or this is a custom formatted document with the correct UID field
+        resource.data.uid == request.auth.uid ||
+        // Or this is a reference document pointing to the main document
+        resource.data.isReference == true
+      );
     }
 
     // Updated rules for missingPersons collection

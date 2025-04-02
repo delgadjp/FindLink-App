@@ -64,19 +64,52 @@ class AuthService {
     }
   }
 
-  // Modified method
+  // Modified method with custom document ID format
   Future<void> addUserToFirestore(User user, String email) async {
-    await _firestore.collection('users').doc(user.uid).set({
-      'uid': user.uid,
-      'email': email,
-      'createdAt': FieldValue.serverTimestamp(),
-      'displayName': user.displayName,
-      'photoURL': user.photoURL,
-      'role': 'user', // Added role field with default value
-    });
+    try {
+      // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
+      final now = DateTime.now();
+      final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+
+      // Create a unique part based on user info and timestamp
+      String uniquePart;
+      if (email.isNotEmpty) {
+        // Use first 3 chars of email + timestamp segment for uniqueness
+        String emailPrefix = email.split('@')[0].substring(0, email.split('@')[0].length > 3 ? 3 : email.split('@')[0].length).toUpperCase();
+        uniquePart = "${emailPrefix}${now.millisecondsSinceEpoch.toString().substring(7)}";
+      } else {
+        // Fallback if no email
+        uniquePart = now.millisecondsSinceEpoch.toString().substring(5);
+      }
+
+      final customDocId = "USER_${datePart}_$uniquePart";
+
+      // Store user data with the custom document ID
+      await _firestore.collection('users').doc(customDocId).set({
+        'uid': user.uid, // Store the Firebase Auth UID as a field
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'displayName': user.displayName ?? email.split('@')[0], // Fallback display name
+        'photoURL': user.photoURL,
+        'role': 'user',
+        'documentId': customDocId, // Store the document ID in the document itself
+      });
+
+      // Create a record with UID as document ID that points to the main record
+      // This allows easy lookup by UID without creating a separate collection
+      await _firestore.collection('users').doc(user.uid).set({
+        'mainDocumentId': customDocId,
+        'isReference': true,
+      });
+
+      print('User successfully added to Firestore with custom ID: $customDocId');
+    } catch (e) {
+      print('Error adding user to Firestore: $e');
+      throw e; // Re-throw to handle in the calling function
+    }
   }
 
-  // Modified Register function
+  // Modified Register function with improved error handling
   Future<void> registerUser({
     required String email,
     required String password,
@@ -100,6 +133,13 @@ class AuthService {
     }
 
     try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(child: CircularProgressIndicator()),
+      );
+      
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -108,11 +148,22 @@ class AuthService {
       // Add user to Firestore
       await addUserToFirestore(userCredential.user!, email);
 
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration successful! Please login.')),
       );
+      
+      // Navigate to login page
       Navigator.pushReplacementNamed(context, '/login');
     } on FirebaseAuthException catch (e) {
+      // Close loading dialog if open
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      
       if (e.code == 'weak-password') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('The password provided is too weak.')),
@@ -123,9 +174,18 @@ class AuthService {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration error: $e')),
+          SnackBar(content: Text('Registration error: ${e.message}')),
         );
       }
+    } catch (e) {
+      // Close loading dialog if open
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An unexpected error occurred: $e')),
+      );
     }
   }
 

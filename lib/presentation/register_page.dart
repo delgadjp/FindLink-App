@@ -145,8 +145,18 @@ class RegisterPage extends StatelessWidget {
                     SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
+                        // Add validation before registration
+                        if (emailController.text.isEmpty || 
+                            passwordController.text.isEmpty || 
+                            confirmPasswordController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Please fill all fields')),
+                          );
+                          return;
+                        }
+                        
                         _authService.registerUser(
-                          email: emailController.text,
+                          email: emailController.text.trim(),
                           password: passwordController.text,
                           confirmPassword: confirmPasswordController.text,
                           context: context,
