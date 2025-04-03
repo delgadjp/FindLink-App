@@ -37,7 +37,7 @@ class AuthService {
     }
   }
 
-  // Updated Google Sign In
+  // Updated Google Sign In with user existence check
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -53,8 +53,16 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       
-      // Add the user to Firestore
-      await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      // Check if user exists before adding to Firestore
+      final userExists = await checkIfUserExists(userCredential.user!.uid);
+      
+      if (!userExists) {
+        // Only add user to Firestore if they don't already exist
+        await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+        print('New user added to Firestore');
+      } else {
+        print('User already exists in Firestore');
+      }
       
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
@@ -64,14 +72,39 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format
+  // Updated checkIfUserExists method to handle custom IDs
+  Future<bool> checkIfUserExists(String uid) async {
+    try {
+      // Check for documents with matching uid field
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+          
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking if user exists: $e');
+      return false;
+    }
+  }
+
+  // Modified method to use custom document ID format
   Future<void> addUserToFirestore(User user, String email) async {
     try {
+      print('Adding user to Firestore: UID=${user.uid}, Email=${email.split('@')[0]}@xxx');
+      
+      // Check if user already exists first
+      bool exists = await checkIfUserExists(user.uid);
+      if (exists) {
+        print('User already exists in Firestore. Skipping document creation.');
+        return;
+      }
+      
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
       final now = DateTime.now();
       final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
 
-      // Create a unique part based on user info and timestamp
       String uniquePart;
       if (email.isNotEmpty) {
         // Use first 3 chars of email + timestamp segment for uniqueness
@@ -83,29 +116,23 @@ class AuthService {
       }
 
       final customDocId = "USER_${datePart}_$uniquePart";
+      print('Generated custom document ID: $customDocId');
 
-      // Store user data with the custom document ID
+      // Store user data with the custom document ID format
       await _firestore.collection('users').doc(customDocId).set({
         'uid': user.uid, // Store the Firebase Auth UID as a field
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
-        'displayName': user.displayName ?? email.split('@')[0], // Fallback display name
+        'displayName': user.displayName ?? email.split('@')[0],
         'photoURL': user.photoURL,
         'role': 'user',
-        'documentId': customDocId, // Store the document ID in the document itself
-      });
-
-      // Create a record with UID as document ID that points to the main record
-      // This allows easy lookup by UID without creating a separate collection
-      await _firestore.collection('users').doc(user.uid).set({
-        'mainDocumentId': customDocId,
-        'isReference': true,
+        'customId': customDocId, // Store the custom ID for reference
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
     } catch (e) {
       print('Error adding user to Firestore: $e');
-      throw e; // Re-throw to handle in the calling function
+      throw e;
     }
   }
 
