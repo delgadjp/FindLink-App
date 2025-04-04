@@ -53,14 +53,37 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       
-      // Add the user to Firestore
-      await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      // Check if user already exists in Firestore before adding
+      final bool userExists = await checkIfUserExists(userCredential.user!.uid);
+      
+      // Only add the user to Firestore if they don't already exist
+      if (!userExists) {
+        await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      }
       
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google Sign In failed: $e')),
       );
+    }
+  }
+
+  // New method to check if a user already exists in Firestore by UID
+  Future<bool> checkIfUserExists(String uid) async {
+    try {
+      // Query Firestore for any documents with the user's UID
+      final QuerySnapshot result = await _firestore
+          .collection('users')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+      
+      // If we found any documents, the user exists
+      return result.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking if user exists: $e');
+      return false;
     }
   }
 
