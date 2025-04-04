@@ -433,8 +433,10 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
         final TipService tipService = TipService();
         
-        // Get current user ID
+        // Get current user ID - ensure this is never null at this point
         String userId = _auth.currentUser!.uid;
+        
+        print("Submitting tip with userId: $userId");
         
         // Submit tip with the new field structure
         await tipService.submitTip(

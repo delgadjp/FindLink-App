@@ -50,7 +50,7 @@ class TipService {
         'phone': phone,
         'timeLastSeen': timeLastSeen,
         'timestamp': FieldValue.serverTimestamp(),
-        'userId': userId,
+        'uid': userId, // Add this line to match security rules which check for uid
       }).catchError((e) {
         print("Firestore write error: ${e.toString()}");
         throw e;
