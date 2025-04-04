@@ -452,7 +452,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           clothing: _clothingController.text,
           features: _featuresController.text,
           description: _descriptionController.text,
-          location: _coordinatesController.text,
           lat: double.parse(_latitudeController.text),
           lng: double.parse(_longitudeController.text),
           userId: userId,

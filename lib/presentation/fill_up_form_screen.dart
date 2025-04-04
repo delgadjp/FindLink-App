@@ -634,6 +634,11 @@ class FillUpForm extends State<FillUpFormScreen> {
     });
 
     try {
+      // Check if user is authenticated first
+      if (FirebaseAuth.instance.currentUser == null) {
+        throw Exception('User not authenticated. Please log in again.');
+      }
+      
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
@@ -655,18 +660,21 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Navigate back
       Navigator.pop(context);
     } catch (e) {
+      print('Form submission error: $e');
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error submitting form: $e'),
+          content: Text('Error submitting form: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
     } finally {
       // Reset loading state
-      setState(() {
-        isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
     }
   }
   
@@ -678,6 +686,11 @@ class FillUpForm extends State<FillUpFormScreen> {
     });
 
     try {
+      // Check if user is authenticated first
+      if (FirebaseAuth.instance.currentUser == null) {
+        throw Exception('User not authenticated. Please log in again.');
+      }
+      
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
@@ -696,18 +709,21 @@ class FillUpForm extends State<FillUpFormScreen> {
         ),
       );
     } catch (e) {
+      print('Draft saving error: $e');
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error saving draft: $e'),
+          content: Text('Error saving draft: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
     } finally {
       // Reset loading state
-      setState(() {
-        isSavingDraft = false;
-      });
+      if (mounted) {
+        setState(() {
+          isSavingDraft = false;
+        });
+      }
     }
   }
 

@@ -22,29 +22,35 @@ class IRFService {
     final String counterDocId = 'counter_$dateStr';
     final counterDocRef = irfCollection.doc(counterDocId);
     
-    // Use transaction to safely increment counter
-    return _firestore.runTransaction<String>((transaction) async {
-      DocumentSnapshot counterDoc = await transaction.get(counterDocRef);
-      
-      int currentCount = 1;
-      if (counterDoc.exists) {
-        // Increment existing counter
-        currentCount = (counterDoc.data() as Map<String, dynamic>)['count'] + 1;
-        transaction.update(counterDocRef, {'count': currentCount});
-      } else {
-        // Create counter if it doesn't exist
-        transaction.set(counterDocRef, {
-          'count': currentCount, 
-          'date': dateStr,
-          'type': 'counter', // Mark this document as a counter to distinguish it from IRF documents
-          'updatedAt': FieldValue.serverTimestamp()
-        });
-      }
-      
-      // Format sequential number with leading zeros
-      String sequentialNumber = currentCount.toString().padLeft(4, '0');
-      return 'IRF-$dateStr-$sequentialNumber';
-    });
+    try {
+      // Use transaction to safely increment counter
+      return _firestore.runTransaction<String>((transaction) async {
+        DocumentSnapshot counterDoc = await transaction.get(counterDocRef);
+        
+        int currentCount = 1;
+        if (counterDoc.exists) {
+          // Increment existing counter
+          currentCount = (counterDoc.data() as Map<String, dynamic>)['count'] + 1;
+          transaction.update(counterDocRef, {'count': currentCount});
+        } else {
+          // Create counter if it doesn't exist
+          transaction.set(counterDocRef, {
+            'count': currentCount, 
+            'date': dateStr,
+            'type': 'counter', // Mark this document as a counter to distinguish it from IRF documents
+            'updatedAt': FieldValue.serverTimestamp()
+          });
+        }
+        
+        // Format sequential number with leading zeros
+        String sequentialNumber = currentCount.toString().padLeft(4, '0');
+        return 'IRF-$dateStr-$sequentialNumber';
+      });
+    } catch (e) {
+      print('Error generating document ID: $e');
+      // Fallback to a timestamp-based ID if transaction fails
+      return 'IRF-$dateStr-${DateTime.now().millisecondsSinceEpoch % 10000}';
+    }
   }
   
   // Submit new IRF with formal document ID
@@ -53,24 +59,29 @@ class IRFService {
       throw Exception('User not authenticated');
     }
     
-    // Generate formal document ID
-    final String formalId = await generateFormalDocumentId();
-    
-    // Add user ID and timestamps
-    final dataWithMetadata = {
-      ...irfData.toMap(),
-      'documentId': formalId,
-      'userId': currentUserId,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'status': 'submitted', // pending, submitted, approved, rejected
-      'type': 'report' // Mark this document as an IRF report
-    };
-    
-    // Use the formal ID as the document ID
-    return await irfCollection.doc(formalId).set(dataWithMetadata).then((_) {
-      return irfCollection.doc(formalId);
-    });
+    try {
+      // Generate formal document ID
+      final String formalId = await generateFormalDocumentId();
+      
+      // Add user ID and timestamps
+      final dataWithMetadata = {
+        ...irfData.toMap(),
+        'documentId': formalId,
+        'userId': currentUserId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'status': 'submitted', // pending, submitted, approved, rejected
+        'type': 'report' // Mark this document as an IRF report
+      };
+      
+      // Use the formal ID as the document ID
+      final docRef = irfCollection.doc(formalId);
+      await docRef.set(dataWithMetadata);
+      return docRef;
+    } catch (e) {
+      print('Error submitting IRF: $e');
+      rethrow; // Rethrow to handle in UI
+    }
   }
   
   // Save IRF draft with formal document ID prefixed with DRAFT-
@@ -79,24 +90,29 @@ class IRFService {
       throw Exception('User not authenticated');
     }
     
-    // Generate formal document ID for draft
-    final String formalId = await generateFormalDocumentId();
-    final String draftId = 'DRAFT-$formalId';
-    
-    final dataWithMetadata = {
-      ...irfData.toMap(),
-      'documentId': draftId,
-      'userId': currentUserId,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'status': 'draft',
-      'type': 'draft' // Mark this document as a draft
-    };
-    
-    // Use the draft ID as the document ID
-    return await irfCollection.doc(draftId).set(dataWithMetadata).then((_) {
-      return irfCollection.doc(draftId);
-    });
+    try {
+      // Generate formal document ID for draft
+      final String formalId = await generateFormalDocumentId();
+      final String draftId = 'DRAFT-$formalId';
+      
+      final dataWithMetadata = {
+        ...irfData.toMap(),
+        'documentId': draftId,
+        'userId': currentUserId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'status': 'draft',
+        'type': 'draft' // Mark this document as a draft
+      };
+      
+      // Use the draft ID as the document ID
+      final docRef = irfCollection.doc(draftId);
+      await docRef.set(dataWithMetadata);
+      return docRef;
+    } catch (e) {
+      print('Error saving draft: $e');
+      rethrow; // Rethrow to handle in UI
+    }
   }
   
   // Update existing IRF

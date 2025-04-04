@@ -8,17 +8,23 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Add this line
 
-  // Login function
+  // Modified Login function to update last sign-in time
   Future<void> loginUser({
     required String email,
     required String password,
     required BuildContext context,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      
+      // Update last sign-in time
+      if (userCredential.user != null) {
+        await updateLastSignIn(userCredential.user!.uid);
+      }
+      
       Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
@@ -37,7 +43,7 @@ class AuthService {
     }
   }
 
-  // Updated Google Sign In
+  // Modified Google Sign In to update last sign-in time
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -59,6 +65,9 @@ class AuthService {
       // Only add the user to Firestore if they don't already exist
       if (!userExists) {
         await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      } else {
+        // Update last sign-in time for existing users
+        await updateLastSignIn(userCredential.user!.uid);
       }
       
       Navigator.pushReplacementNamed(context, '/home');
@@ -116,12 +125,36 @@ class AuthService {
         'photoURL': user.photoURL,
         'role': 'user',
         'documentId': customDocId, // Store the document ID in the document itself
+        'lastSignIn': FieldValue.serverTimestamp(), // Add last sign-in time
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
     } catch (e) {
       print('Error adding user to Firestore: $e');
       throw e; // Re-throw to handle in the calling function
+    }
+  }
+
+  // Add a method to update the user's last sign-in time
+  Future<void> updateLastSignIn(String uid) async {
+    try {
+      // Find the user document that contains this uid
+      QuerySnapshot userQuery = await _firestore
+          .collection('users')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        await userQuery.docs.first.reference.update({
+          'lastSignIn': FieldValue.serverTimestamp(),
+        });
+        print('Updated last sign-in time for user: $uid');
+      } else {
+        print('User document not found for uid: $uid');
+      }
+    } catch (e) {
+      print('Error updating last sign-in time: $e');
     }
   }
 
