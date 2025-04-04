@@ -64,7 +64,7 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format
+  // Modified method with custom document ID format only
   Future<void> addUserToFirestore(User user, String email) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -93,13 +93,6 @@ class AuthService {
         'photoURL': user.photoURL,
         'role': 'user',
         'documentId': customDocId, // Store the document ID in the document itself
-      });
-
-      // Create a record with UID as document ID that points to the main record
-      // This allows easy lookup by UID without creating a separate collection
-      await _firestore.collection('users').doc(user.uid).set({
-        'mainDocumentId': customDocId,
-        'isReference': true,
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
