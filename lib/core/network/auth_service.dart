@@ -96,7 +96,7 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format only
+  // Modified method with custom document ID format and privacy policy field
   Future<void> addUserToFirestore(User user, String email) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -126,6 +126,8 @@ class AuthService {
         'role': 'user',
         'documentId': customDocId, // Store the document ID in the document itself
         'lastSignIn': FieldValue.serverTimestamp(), // Add last sign-in time
+        'privacyPolicyAccepted': false, // Default to not accepted
+        'privacyPolicyAcceptedAt': null, // Will be set when user accepts
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
@@ -155,6 +157,27 @@ class AuthService {
       }
     } catch (e) {
       print('Error updating last sign-in time: $e');
+    }
+  }
+
+  // Method to get a user's privacy policy acceptance status
+  Future<bool> getPrivacyPolicyAcceptance(String uid) async {
+    try {
+      // Find the user document by uid
+      QuerySnapshot userQuery = await _firestore
+          .collection('users')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+        return userData['privacyPolicyAccepted'] == true;
+      }
+      return false; // Default to not accepted if user document not found
+    } catch (e) {
+      print('Error getting privacy policy acceptance status: $e');
+      return false; // Default to not accepted on error
     }
   }
 

@@ -26,6 +26,7 @@ class TipService {
     required double lat,
     required double lng,
     required String userId,
+    required String address, // Added address parameter
   }) async {
     try {
       // Generate unique ID for the document
@@ -39,6 +40,7 @@ class TipService {
           'lat': lat,
           'lng': lng
         },
+        'address': address, // Added address field
         'dateLastSeen': dateLastSeen,
         'description': description,
         'eyeColor': eyeColor,

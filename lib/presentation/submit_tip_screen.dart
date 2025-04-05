@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'package:geocoding/geocoding.dart'; // Add this import for geocoding
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -62,6 +63,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _coordinatesController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  bool _isGettingAddress = false;
+  String _addressError = '';
 
   final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
   final DateFormat _timeFormatter = DateFormat('HH:mm');
@@ -111,6 +115,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   Future<void> _getCurrentLocation() async {
     try {
+      // Show loading indicator
+      setState(() {
+        _isGettingAddress = true;
+      });
+
       // If we don't have a selected location yet, set a default one
       // This ensures the map shows something even if permissions fail
       if (selectedLocation == null) {
@@ -135,18 +144,39 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         setState(() {
           selectedLocation = LatLng(position.latitude, position.longitude);
           _updateMarkerAndControllers();
+          
+          // If we have a map controller, animate to the new position
+          if (mapController != null) {
+            mapController!.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: selectedLocation!,
+                  zoom: 15,
+                ),
+              ),
+            );
+          }
+
+          // Get address when location is updated
+          _getAddressFromCoordinates();
         });
       } else {
         // Show error message if permission is denied
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Location permission is required to show your location on the map')),
         );
+        setState(() {
+          _isGettingAddress = false;
+        });
       }
     } catch (e) {
       print('Error getting location: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error getting location. Please try again.')),
       );
+      setState(() {
+        _isGettingAddress = false;
+      });
     }
   }
 
@@ -163,12 +193,74 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               selectedLocation = newPosition;
               _longitudeController.text = newPosition.longitude.toString();
               _latitudeController.text = newPosition.latitude.toString();
+              _getAddressFromCoordinates(); // Get address when marker is dragged
             });
           },
         ),
       );
       _longitudeController.text = selectedLocation!.longitude.toString();
       _latitudeController.text = selectedLocation!.latitude.toString();
+    }
+  }
+
+  // Add new method to get address from coordinates
+  Future<void> _getAddressFromCoordinates() async {
+    if (selectedLocation == null) return;
+
+    setState(() {
+      _isGettingAddress = true;
+      _addressError = '';
+    });
+
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        selectedLocation!.latitude,
+        selectedLocation!.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        String address = '';
+        
+        // Build address string from components
+        if (place.street != null && place.street!.isNotEmpty) {
+          address += place.street!;
+        }
+        
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+          address += address.isEmpty ? place.subLocality! : ", ${place.subLocality}";
+        }
+        
+        if (place.locality != null && place.locality!.isNotEmpty) {
+          address += address.isEmpty ? place.locality! : ", ${place.locality}";
+        }
+        
+        if (place.postalCode != null && place.postalCode!.isNotEmpty) {
+          address += address.isEmpty ? place.postalCode! : ", ${place.postalCode}";
+        }
+        
+        if (place.country != null && place.country!.isNotEmpty) {
+          address += address.isEmpty ? place.country! : ", ${place.country}";
+        }
+        
+        setState(() {
+          _addressController.text = address;
+          _isGettingAddress = false;
+        });
+      } else {
+        setState(() {
+          _addressController.text = "Address not found";
+          _isGettingAddress = false;
+          _addressError = "Could not determine address for this location";
+        });
+      }
+    } catch (e) {
+      print('Error getting address: $e');
+      setState(() {
+        _addressController.text = "Error retrieving address";
+        _isGettingAddress = false;
+        _addressError = "Error: $e";
+      });
     }
   }
 
@@ -457,6 +549,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           lat: double.parse(_latitudeController.text),
           lng: double.parse(_longitudeController.text),
           userId: userId,
+          address: _addressController.text, // Add address to the tip submission
         );
 
         // Remove loading indicator
@@ -536,7 +629,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     children: [
                       Center(
                         child: Text(
-                          "Map View\n\nLongitude: ${selectedLocation!.longitude.toStringAsFixed(6)}\nLatitude: ${selectedLocation!.latitude.toStringAsFixed(6)}",
+                          "Map View\n\nAddress: ${_addressController.text}",
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.black54),
                         ),
@@ -552,6 +645,15 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ),
                     ],
                   ),
+          ),
+          SizedBox(height: 16),
+          // Add address field below the map
+          _buildTextField(
+            _addressController,
+            "Address",
+            icon: Icons.location_on,
+            maxLines: 2,
+            enabled: false, // Make it read-only
           ),
           SizedBox(height: 16),
           Row(
@@ -614,24 +716,70 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       setState(() {
                         selectedLocation = position;
                         _updateMarkerAndControllers();
+                        _getAddressFromCoordinates(); // Get address when map is tapped
                       });
                     },
                   ),
           ),
         ),
-        // Add a status indicator below the map
-        Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Text(
-            selectedLocation == null 
-                ? "Location status: Loading..." 
-                : "Location detected at: ${selectedLocation!.latitude}, ${selectedLocation!.longitude}",
-            style: TextStyle(
-              color: Colors.black87, 
-              fontStyle: FontStyle.italic,
-              fontSize: 12,
+        SizedBox(height: 16),
+        // Add address field below the map
+        _buildTextField(
+          _addressController,
+          "Address",
+          icon: Icons.location_on,
+          maxLines: 2,
+          enabled: false, // Make it read-only
+        ),
+        if (_isGettingAddress)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              children: [
+                SizedBox(
+                  height: 12,
+                  width: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  "Getting address...",
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
             ),
           ),
+        if (_addressError.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(
+              _addressError,
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _getCurrentLocation,
+                icon: Icon(Icons.my_location),
+                label: Text("Use My Location"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF0D47A1),
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -743,29 +891,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   ),
                   SizedBox(height: 16),
                   _buildCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionHeader("Location Details"),
-                        _buildTextField(
-                          _longitudeController,
-                          "Longitude",
-                          icon: Icons.compass_calibration,
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          validator: (value) => _validateCoordinate(value, 'longitude'),
-                        ),
-                        _buildTextField(
-                          _latitudeController,
-                          "Latitude",
-                          icon: Icons.compass_calibration,
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          validator: (value) => _validateCoordinate(value, 'latitude'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  _buildCard(
                     child: _buildMapSection(),
                   ),
                   SizedBox(height: 20),
@@ -848,6 +973,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     IconData? icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool enabled = true, // Add enabled parameter
   }) {
     List<TextInputFormatter>? formatters;
     // Get the field key
@@ -989,6 +1115,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         validator: validator,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        enabled: enabled, // Add this parameter to control editability
       ),
     );
   }
