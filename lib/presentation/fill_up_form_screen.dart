@@ -1188,7 +1188,7 @@ class FillUpForm extends State<FillUpFormScreen> {
 
                         // Section title using the new component
                         SectionTitle(
-                          title: 'ITEM "A" - REPORTING PERSON',
+                          title: 'REPORTING PERSON',
                           backgroundColor: Color(0xFF1E215A),
                         ),
 
@@ -1552,128 +1552,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                         SizedBox(height: 10),
 
                         SectionTitle(
-                          title: 'ITEM "B" - SUSPECT DATA',
-                          backgroundColor: Color(0xFF1E215A),
-                        ),
-                        
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['SURNAME', 'FIRST NAME', 'MIDDLE NAME']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['QUALIFIER', 'NICKNAME']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['CITIZENSHIP', 'SEX/GENDER', 'CIVIL STATUS']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['DATE OF BIRTH', 'AGE', 'PLACE OF BIRTH']),
-                        
-                        SizedBox(height: 10),
-
-                        // Replace Item B home phone and mobile fields with disabled version
-                        DisabledFormFields.buildDisabledFormRow(['HOME PHONE', 'MOBILE PHONE']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['CURRENT ADDRESS (HOUSE NUMBER/STREET)']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['VILLAGE/SITIO']),
-                        SizedBox(height: 10),
-                        
-                        Divider(color: const Color.fromARGB(255, 119, 119, 119), thickness: 2),
-                        SizedBox(height: 5),
-                        
-                        // Replace address fields with disabled version
-                        DisabledFormFields.buildDisabledFormRow(['REGION', 'PROVINCE']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['TOWN/CITY', 'BARANGAY']),
-                        
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['HIGHEST EDUCATION ATTAINMENT', 'OCCUPATION']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['WORK ADDRESS']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['RELATION TO VICTIM', 'EMAIL ADDRESS (If Any)']),
-
-                        // Replace the previous criminal record section with disabled fields
-                        Container(
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "WITH PREVIOUS CRIMINAL CASE RECORD?",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 20,
-                                    height: 20,
-                                    margin: EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      border: Border.all(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  Text(
-                                    "Yes",
-                                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                                  ),
-                                  SizedBox(width: 20),
-                                  Container(
-                                    width: 20,
-                                    height: 20,
-                                    margin: EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      border: Border.all(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  Text(
-                                    "No",
-                                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        DisabledFormFields.buildDisabledFormRow(['Specify Previous Criminal Case Record']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['STATUS OF PREVIOUS CASE']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['HEIGHT', 'WEIGHT', 'BUILT']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['COLOR OF EYES', 'DESCRIPTION OF EYES']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['COLOR OF HAIR', 'DESCRIPTION OF HAIR']),
-                        
-                        SizedBox(height: 10),
-
-                        UnderInfluenceCheckboxes(),
-                        
-                        SizedBox(height: 10),
-
-                        SectionTitle(
-                          title: 'FOR CHILDREN IN CONFLICT WITH LAW',
-                          backgroundColor: Color(0xFF1E215A),
-                        ),
-                        
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['NAME OF GUARDIAN']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['GUARDIAN ADDRESS']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['HOME PHONE', 'MOBILE PHONE']),
-
-                        SizedBox(height: 10),
-
-                        SectionTitle(
-                          title: 'ITEM "C" - VICTIM DATA',
+                          title: 'MISSING PERSON DATA',
                           backgroundColor: Color(0xFF1E215A),
                         ),
                         
@@ -2120,85 +1999,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ],
                           ),
                         ),
-                        
-                        SizedBox(height: 10),
-
-                        Container(
-                          color: const Color.fromARGB(255, 160, 173, 242), // Light gray background
-                          padding: EdgeInsets.all(8),
-                          child: Text(
-                            "I HEREBY CERTIFY TO THE CORRECTNESS OF THE FOREGOING TO THE BEST OF MY KNOWLEDGE AND BELIEF.",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 255, 255, 255),
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['NAME OF REPORTING PERSON', 'SIGNATURE OF REPORTING PERSON']),
-
-                        SizedBox(height: 10),
-
-                        Container(
-                          color: const Color.fromARGB(255, 160, 173, 242), // Light gray background
-                          padding: EdgeInsets.all(8),
-                          child: Text(
-                            "SUBSCRIBED AND SWORN TO BEFORE ME",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 255, 255, 255),
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['NAME OF ADMINISTERING OFFICER(DUTY OFFICER)', 'SIGNATURE OF ADMINISTERING OFFICER(DUTY OFFICER)']),
-                        DisabledFormFields.buildDisabledFormRow(['RANK, NAME AND DESIGNATION OF POLICE OFFICER']),
-                        DisabledFormFields.buildDisabledFormRow(['SIGNATURE OF DUTY INVESTIGATOR/ INVESTIGATOR ON CASE/ ASSISTING POLICE OFFICER']),
-
-                        SizedBox(height: 10),
-
-                        Container(
-                          color: const Color.fromARGB(255, 160, 173, 242), // Light gray background
-                          padding: EdgeInsets.all(8),
-                          child: Text(
-                            "INCIDENT RECORDED IN THE BLOTTER BY:",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 255, 255, 255),
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['RANK/NAME OF DESK OFFICER:']),
-                        DisabledFormFields.buildDisabledFormRow(['SIGNATURE OF DESK OFFICER:', 'BLOTTER ENTRY NR:']),
-
-                        SizedBox(height: 10),
-                        
-                        Container(
-                          color: const Color.fromARGB(255, 243, 243, 243), // Light gray background
-                          padding: EdgeInsets.all(8),
-                          child: Text(
-                            "REMINDER TO REPORTING PERSON: Keep the copy of this Incident Record Form (IRF). An update of the progress of the investigation of the crime or incident that you reported will be given to you upon presentation of this IRF. For your reference, the data below is the contact details of this police station.",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 0, 0, 0),
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['Name of Police Station', 'Telephone']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['Investigator-on-Case', 'Mobile Phone']),
-                        SizedBox(height: 10),
-                        DisabledFormFields.buildDisabledFormRow(['Name of Chief/Head of Office', 'Mobile Phone']),
                         
                         SizedBox(height: 20),
                       ],
