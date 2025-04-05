@@ -678,9 +678,8 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
   
-  // Save draft to Firebase
+  // Save draft locally
   Future<void> saveDraft() async {
-    // For drafts, we don't need to validate all fields
     setState(() {
       isSavingDraft = true;
     });
@@ -694,17 +693,13 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
-      // Save draft to Firebase
-      DocumentReference<Object?> docRef = await _irfService.saveIRFDraft(irfData);
+      // Save draft locally
+      String draftId = await _irfService.saveIRFDraft(irfData);
       
-      // Get the document to retrieve the formal ID
-      DocumentSnapshot doc = await docRef.get();
-      String draftId = (doc.data() as Map<String, dynamic>)['documentId'] ?? docRef.id;
-      
-      // Show success message with formal draft ID
+      // Show success message with local draft ID
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Draft saved successfully! Reference #: $draftId'),
+          content: Text('Draft saved locally! Reference #: ${draftId.split('_').last}'),
           backgroundColor: Colors.blue,
         ),
       );
@@ -727,12 +722,300 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
 
+  // Add this method to load a draft
+  Future<void> loadDraft(String draftId) async {
+    try {
+      // Show loading indicator
+      setState(() {
+        isSavingDraft = true; // Reuse this state for loading
+      });
+      
+      // Fetch the draft from local storage
+      var draftData = await _irfService.getIRF(draftId);
+      
+      if (draftData == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Draft not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Convert data to IRFModel if it's from local storage
+      IRFModel draft;
+      if (draftData is Map<String, dynamic>) {
+        // Convert Map to IRFModel
+        draft = _irfService.localDraftService.draftToModel(draftData);
+      } else {
+        // This would happen if it's a Firebase document
+        draft = IRFModel.fromDocument(draftData);
+      }
+      
+      // Populate form fields with draft data
+      _populateFormFields(draft);
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Draft loaded successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error loading draft: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading draft: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isSavingDraft = false;
+      });
+    }
+  }
+  
+  // Add this method to populate form fields from an IRFModel
+  void _populateFormFields(IRFModel draft) {
+    // General information
+    _typeOfIncidentController.text = draft.typeOfIncident ?? "Missing Person";
+    _copyForController.text = draft.copyFor ?? "";
+    
+    if (draft.dateTimeReported != null) {
+      dateTimeReported = draft.dateTimeReported;
+      _dateTimeReportedController.text = _formatDateTime(draft.dateTimeReported!);
+    }
+    
+    if (draft.dateTimeIncident != null) {
+      dateTimeIncident = draft.dateTimeIncident;
+      _dateTimeIncidentController.text = _formatDateTime(draft.dateTimeIncident!);
+      _dateTimeIncidentDController.text = _formatDateTime(draft.dateTimeIncident!);
+    }
+    
+    _placeOfIncidentController.text = draft.placeOfIncident ?? "";
+    
+    // ITEM A - Reporting Person
+    if (draft.itemA != null) {
+      Map<String, dynamic> itemA = draft.itemA!;
+      
+      _surnameReportingController.text = itemA['surname'] ?? "";
+      _firstNameReportingController.text = itemA['firstName'] ?? "";
+      _middleNameReportingController.text = itemA['middleName'] ?? "";
+      _qualifierReportingController.text = itemA['qualifier'] ?? "";
+      _nicknameReportingController.text = itemA['nickname'] ?? "";
+      _citizenshipReportingController.text = itemA['citizenship'] ?? "";
+      _sexGenderReportingController.text = itemA['sexGender'] ?? "";
+      _civilStatusReportingController.text = itemA['civilStatus'] ?? "";
+      
+      // Handle date of birth
+      if (itemA['dateOfBirth'] != null) {
+        if (itemA['dateOfBirth'] is DateTime) {
+          DateTime dob = itemA['dateOfBirth'];
+          _dateOfBirthReportingController.text = 
+              "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+        } else if (itemA['dateOfBirth'] is String) {
+          try {
+            DateTime dob = DateTime.parse(itemA['dateOfBirth']);
+            _dateOfBirthReportingController.text = 
+                "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+          } catch (e) {
+            print('Error parsing date: $e');
+            _dateOfBirthReportingController.text = itemA['dateOfBirth'];
+          }
+        }
+      }
+      
+      _ageReportingController.text = itemA['age']?.toString() ?? "";
+      _placeOfBirthReportingController.text = itemA['placeOfBirth'] ?? "";
+      _homePhoneReportingController.text = itemA['homePhone'] ?? "";
+      _mobilePhoneReportingController.text = itemA['mobilePhone'] ?? "";
+      _currentAddressReportingController.text = itemA['currentAddress'] ?? "";
+      _villageSitioReportingController.text = itemA['villageSitio'] ?? "";
+      _educationReportingController.text = itemA['education'] ?? "";
+      _occupationReportingController.text = itemA['occupation'] ?? "";
+      _idCardPresentedController.text = itemA['idCardPresented'] ?? "";
+      _emailReportingController.text = itemA['emailAddress'] ?? "";
+      
+      // Handle other address checkbox
+      hasOtherAddressReporting = itemA['otherRegion'] != null || 
+                               itemA['otherProvince'] != null ||
+                               itemA['otherTownCity'] != null ||
+                               itemA['otherBarangay'] != null;
+      
+      // We'll add address loading in a separate update to the form state
+    }
+    
+    // ITEM C - Victim
+    if (draft.itemC != null) {
+      Map<String, dynamic> itemC = draft.itemC!;
+      
+      _surnameVictimController.text = itemC['surname'] ?? "";
+      _firstNameVictimController.text = itemC['firstName'] ?? "";
+      _middleNameVictimController.text = itemC['middleName'] ?? "";
+      _qualifierVictimController.text = itemC['qualifier'] ?? "";
+      _nicknameVictimController.text = itemC['nickname'] ?? "";
+      _citizenshipVictimController.text = itemC['citizenship'] ?? "";
+      _sexGenderVictimController.text = itemC['sexGender'] ?? "";
+      _civilStatusVictimController.text = itemC['civilStatus'] ?? "";
+      
+      // Handle date of birth
+      if (itemC['dateOfBirth'] != null) {
+        if (itemC['dateOfBirth'] is DateTime) {
+          DateTime dob = itemC['dateOfBirth'];
+          _dateOfBirthVictimController.text = 
+              "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+        } else if (itemC['dateOfBirth'] is String) {
+          try {
+            DateTime dob = DateTime.parse(itemC['dateOfBirth']);
+            _dateOfBirthVictimController.text = 
+                "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+          } catch (e) {
+            print('Error parsing date: $e');
+            _dateOfBirthVictimController.text = itemC['dateOfBirth'];
+          }
+        }
+      }
+      
+      _ageVictimController.text = itemC['age']?.toString() ?? "";
+      _placeOfBirthVictimController.text = itemC['placeOfBirth'] ?? "";
+      _homePhoneVictimController.text = itemC['homePhone'] ?? "";
+      _mobilePhoneVictimController.text = itemC['mobilePhone'] ?? "";
+      _currentAddressVictimController.text = itemC['currentAddress'] ?? "";
+      _villageSitioVictimController.text = itemC['villageSitio'] ?? "";
+      _educationVictimController.text = itemC['education'] ?? "";
+      _occupationVictimController.text = itemC['occupation'] ?? "";
+      _workAddressVictimController.text = itemC['workAddress'] ?? "";
+      _emailVictimController.text = itemC['emailAddress'] ?? "";
+      
+      // Handle other address checkbox
+      hasOtherAddressVictim = itemC['otherRegion'] != null || 
+                            itemC['otherProvince'] != null ||
+                            itemC['otherTownCity'] != null ||
+                            itemC['otherBarangay'] != null;
+    }
+    
+    // ITEM D - Narrative
+    _typeOfIncidentDController.text = draft.typeOfIncidentD ?? "Missing Person";
+    if (draft.dateTimeIncidentD != null) {
+      _dateTimeIncidentDController.text = _formatDateTime(draft.dateTimeIncidentD!);
+    }
+    _placeOfIncidentDController.text = draft.placeOfIncidentD ?? "";
+    _narrativeController.text = draft.narrative ?? "";
+    
+    // Update the form state to reflect loaded data
+    setState(() {
+      // Form state will be updated based on the populated fields
+      updateFormState();
+    });
+  }
+  
+  // Show dialog to select a draft to load
+  Future<void> _showLoadDraftDialog() async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator()),
+    );
+    
+    try {
+      // Get all drafts
+      List<IRFModel> drafts = await _irfService.getUserDrafts();
+      
+      // Hide loading indicator
+      Navigator.pop(context);
+      
+      if (drafts.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No drafts found'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+        return;
+      }
+      
+      // Show draft selection dialog
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Select a Draft to Load'),
+            content: Container(
+              width: double.maxFinite,
+              height: 300,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: drafts.length,
+                itemBuilder: (context, index) {
+                  IRFModel draft = drafts[index];
+                  String createdDate = draft.createdAt != null 
+                      ? DateFormat('MM/dd/yyyy hh:mm a').format(draft.createdAt!)
+                      : 'Unknown date';
+                  
+                  String victimName = '';
+                  if (draft.itemC != null) {
+                    String surname = draft.itemC!['surname'] ?? '';
+                    String firstName = draft.itemC!['firstName'] ?? '';
+                    if (surname.isNotEmpty || firstName.isNotEmpty) {
+                      victimName = '$firstName $surname';
+                    }
+                  }
+                  
+                  return ListTile(
+                    title: Text(victimName.isNotEmpty ? victimName : 'Draft #${index + 1}'),
+                    subtitle: Text('Created: $createdDate'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      loadDraft(draft.documentId!);
+                    },
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      // Hide loading indicator if still showing
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading drafts: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF0D47A1),
         actions: [
+          // Load Draft button in AppBar
+          TextButton.icon(
+            onPressed: isSavingDraft ? null : _showLoadDraftDialog,
+            icon: Icon(Icons.file_open, color: Colors.white),
+            label: Text('Load Draft', 
+              style: TextStyle(color: Colors.white, fontSize: 14)
+            ),
+          ),
           // Save Draft button in AppBar
           TextButton.icon(
             onPressed: isSavingDraft ? null : saveDraft,
