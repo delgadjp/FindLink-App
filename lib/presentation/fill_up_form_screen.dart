@@ -460,11 +460,18 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Date and time picker function
   Future<void> _pickDateTime(TextEditingController controller, DateTime? initialDateTime, 
       Function(DateTime) onDateTimeSelected) async {
+    // Use current date or initialDateTime, but ensure it's not in the future
+    DateTime now = DateTime.now();
+    DateTime initialDate = initialDateTime ?? now;
+    if (initialDate.isAfter(now)) {
+      initialDate = now;
+    }
+    
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: initialDateTime ?? DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(Duration(days: 365)),
+      lastDate: DateTime.now(), // Restrict to current date as the maximum
     );
     
     if (pickedDate != null) {
@@ -472,9 +479,11 @@ class FillUpForm extends State<FillUpFormScreen> {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(initialDateTime ?? DateTime.now()),
+        // Note: Time picker doesn't have built-in max time restriction
       );
       
       if (pickedTime != null) {
+        // Create the selected date time
         final DateTime selectedDateTime = DateTime(
           pickedDate.year,
           pickedDate.month,
@@ -482,6 +491,36 @@ class FillUpForm extends State<FillUpFormScreen> {
           pickedTime.hour,
           pickedTime.minute,
         );
+        
+        // If selected date is today, validate that the time is not in the future
+        if (pickedDate.year == now.year && 
+            pickedDate.month == now.month && 
+            pickedDate.day == now.day) {
+          // If selected time is in the future, use current time instead
+          if (selectedDateTime.isAfter(now)) {
+            // Use the current time instead
+            final currentTime = TimeOfDay.fromDateTime(now);
+            final adjustedDateTime = DateTime(
+              pickedDate.year,
+              pickedDate.month,
+              pickedDate.day,
+              currentTime.hour,
+              currentTime.minute,
+            );
+            
+            onDateTimeSelected(adjustedDateTime);
+            controller.text = _formatDateTime(adjustedDateTime);
+            
+            // Show a message to inform the user
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Future time not allowed. Using current time instead.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+        }
         
         onDateTimeSelected(selectedDateTime);
         controller.text = _formatDateTime(selectedDateTime);
@@ -1213,17 +1252,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'required': true,
                               'controller': _dateTimeReportedController,
                               'readOnly': true,
-                              'onTap': () {
-                                _pickDateTime(
-                                  _dateTimeReportedController,
-                                  dateTimeReported,
-                                  (DateTime selectedDateTime) {
-                                    setState(() {
-                                      dateTimeReported = selectedDateTime;
-                                    });
-                                  },
-                                );
-                              },
                             },
                             {
                               'label': 'DATE AND TIME OF INCIDENT',
@@ -1985,7 +2013,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                         SizedBox(height: 10),
 
                         SectionTitle(
-                          title: 'ITEM "D" - NARRATIVE OF INCIDENT',
+                          title: 'NARRATIVE OF INCIDENT',
                           backgroundColor: Color(0xFF1E215A),
                         ),
                         
