@@ -11,7 +11,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final StatisticsService _statisticsService = StatisticsService();
   String _name = 'Your Name';
   String _email = 'user@example.com';
   String _memberSince = 'Member since: Jan 2023';
@@ -231,130 +230,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: _isLoading 
       ? Center(child: CircularProgressIndicator())
       : SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.blue.shade900,
-                    Colors.blue.shade800,
-                  ],
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(24.0),
-                    child: Column(
-                      children: [
-                        ProfileAvatar(
-                          imageUrl: _profileImageUrl,
-                          onEditPressed: () {
-                            _updateProfilePicture();
-                          },
-                        ),
-                        SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _name,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(width: 2),
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.white, size: 20),
-                              onPressed: () async {
-                                final newName = await _showEditNameDialog();
-                                if (newName != null && newName.isNotEmpty) {
-                                  await _updateUserName(newName);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        _buildContactInfo(Icons.email, _email),
-                        SizedBox(height: 8),
-                        _buildContactInfo(Icons.calendar_today, _memberSince),
-                        SizedBox(height: 16),
-                        _buildUserStats(),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.blue.shade900,
+                Colors.blue.shade800,
+              ],
             ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+          ),
+          width: double.infinity,
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                ProfileAvatar(
+                  imageUrl: _profileImageUrl,
+                  onEditPressed: () {
+                    _updateProfilePicture();
+                  },
                 ),
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(20, 24, 20, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Your Reported Forms',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade900,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => showFilterOptions(context),
-                          icon: Icon(Icons.filter_list),
-                          label: Text('Filter'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.blue.shade900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search reports...',
-                        filled: true,
-                        fillColor: Colors.white,
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _name,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  Container(
-                    height: 500,
-                    child: ReportedFormsList(),
-                  ),
-                  SizedBox(height: 20),
-                ],
-              ),
+                    SizedBox(width: 2),
+                    IconButton(
+                      icon: Icon(Icons.edit, color: Colors.white, size: 20),
+                      onPressed: () async {
+                        final newName = await _showEditNameDialog();
+                        if (newName != null && newName.isNotEmpty) {
+                          await _updateUserName(newName);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                _buildContactInfo(Icons.email, _email),
+                SizedBox(height: 8),
+                _buildContactInfo(Icons.calendar_today, _memberSince),
+                SizedBox(height: 16),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -372,47 +301,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.white70,
             fontSize: 14,
           ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildUserStats() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        StreamBuilder<int>(
-          stream: _statisticsService.getTotalCasesCount(),
-          builder: (context, snapshot) {
-            return UserStatsCard(
-              count: snapshot.hasData ? snapshot.data.toString() : "0",
-              label: "Reports",
-              icon: Icons.description,
-            );
-          },
-        ),
-        SizedBox(width: 12),
-        StreamBuilder<int>(
-          stream: _statisticsService.getTotalCasesCount(),
-          builder: (context, snapshot) {
-            return UserStatsCard(
-              count: snapshot.hasData ? snapshot.data.toString() : "0",
-              label: "Active",
-              icon: Icons.auto_graph,
-            );
-          },
-        ),
-        SizedBox(width: 12),
-        UserStatsCard(
-          count: "0",
-          label: "Pending",
-          icon: Icons.pending_actions,
-        ),
-        SizedBox(width: 12),
-        UserStatsCard(
-          count: "0",
-          label: "Resolved",
-          icon: Icons.check_circle,
         ),
       ],
     );
