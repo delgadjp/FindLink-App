@@ -184,7 +184,9 @@ class FillUpForm extends State<FillUpFormScreen> {
     });
     
     try {
-      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance();
+      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance(
+        screenType: ModalUtils.SCREEN_FILL_UP_FORM
+      );
       
       setState(() {
         hasAcceptedPrivacyPolicy = accepted;
@@ -213,6 +215,7 @@ class FillUpForm extends State<FillUpFormScreen> {
         // Show privacy policy after legal disclaimer is accepted
         ModalUtils.showPrivacyPolicyModal(
           context,
+          screenType: ModalUtils.SCREEN_FILL_UP_FORM,
           onAcceptanceUpdate: (accepted) {
             setState(() {
               hasAcceptedPrivacyPolicy = accepted;
@@ -1620,7 +1623,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                         SizedBox(height: 10),
 
                         SectionTitle(
-                          title: 'MISSING PERSON DATA',
+                          title: "MISSING PERSON'S DATA",
                           backgroundColor: Color(0xFF1E215A),
                         ),
                         

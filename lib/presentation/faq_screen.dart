@@ -138,51 +138,6 @@ class _FAQScreenState extends State<FAQScreen> {
                 },
               ),
             ),
-            
-            // Support Section - Updated
-            Container(
-              padding: EdgeInsets.all(16),
-              child: Card(
-                color: Colors.blue.shade50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Can't find what you're looking for?",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D47A1),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Contact the PNP hotline for immediate assistance",
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        icon: Icon(Icons.call),
-                        label: Text("Call PNP Hotline (117)"), // Updated button text with new number
-                        onPressed: _callPNPHotline,
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor: Color(0xFF0D47A1),
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),

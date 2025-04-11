@@ -128,7 +128,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     });
     
     try {
-      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance();
+      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance(
+        screenType: ModalUtils.SCREEN_SUBMIT_TIP
+      );
       
       setState(() {
         hasAcceptedPrivacyPolicy = accepted;
@@ -157,6 +159,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         // Show privacy policy after legal disclaimer is accepted
         ModalUtils.showPrivacyPolicyModal(
           context,
+          screenType: ModalUtils.SCREEN_SUBMIT_TIP,
           onAcceptanceUpdate: (accepted) {
             setState(() {
               hasAcceptedPrivacyPolicy = accepted;

@@ -7,6 +7,10 @@ class ModalUtils {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Screen types for tracking separate acceptances
+  static const String SCREEN_FILL_UP_FORM = 'fill_up_form';
+  static const String SCREEN_SUBMIT_TIP = 'submit_tip';
+
   // Show legal disclaimer modal before privacy policy
   static void showLegalDisclaimerModal(
     BuildContext context, {
@@ -65,6 +69,7 @@ class ModalUtils {
     BuildContext context, {
     required Function(bool) onAcceptanceUpdate,
     Function? onCancel,
+    String screenType = '', // Added screenType parameter
   }) {
     showDialog(
       context: context,
@@ -131,7 +136,7 @@ class ModalUtils {
                 ),
                 onPressed: () {
                   // Update the user's privacy policy status
-                  updatePrivacyPolicyAcceptance(false, onAcceptanceUpdate);
+                  updatePrivacyPolicyAcceptance(false, onAcceptanceUpdate, screenType);
                   // Close the dialog
                   Navigator.of(context).pop();
                   // Call the onCancel callback if provided
@@ -147,7 +152,7 @@ class ModalUtils {
                 ),
                 onPressed: () {
                   // Update the user's privacy policy status
-                  updatePrivacyPolicyAcceptance(true, onAcceptanceUpdate);
+                  updatePrivacyPolicyAcceptance(true, onAcceptanceUpdate, screenType);
                   Navigator.of(context).pop();
                 },
               ),
@@ -158,8 +163,8 @@ class ModalUtils {
     );
   }
 
-  // Helper method to check if user has accepted privacy policy
-  static Future<bool> checkPrivacyPolicyAcceptance() async {
+  // Helper method to check if user has accepted privacy policy for a specific screen
+  static Future<bool> checkPrivacyPolicyAcceptance({String screenType = ''}) async {
     try {
       final User? currentUser = _auth.currentUser;
       
@@ -174,10 +179,19 @@ class ModalUtils {
         if (userDoc.docs.isNotEmpty) {
           final userData = userDoc.docs.first.data() as Map<String, dynamic>;
           
-          // Check if privacy policy acceptance field exists and is true
-          if (userData.containsKey('privacyPolicyAccepted') && 
-              userData['privacyPolicyAccepted'] == true) {
-            return true;
+          if (screenType.isNotEmpty) {
+            // Check screen-specific acceptance
+            Map<String, dynamic>? screenAcceptances = 
+                userData['privacyPolicyAcceptances'] as Map<String, dynamic>?;
+                
+            if (screenAcceptances != null && screenAcceptances.containsKey(screenType)) {
+              return screenAcceptances[screenType] == true;
+            }
+            return false;
+          } else {
+            // General check (legacy support)
+            return userData.containsKey('privacyPolicyAccepted') && 
+                userData['privacyPolicyAccepted'] == true;
           }
         }
       }
@@ -192,6 +206,7 @@ class ModalUtils {
   static Future<void> updatePrivacyPolicyAcceptance(
     bool accepted,
     Function(bool) onAcceptanceUpdate,
+    String screenType,
   ) async {
     try {
       final User? currentUser = _auth.currentUser;
@@ -205,11 +220,24 @@ class ModalUtils {
             .get();
         
         if (userDoc.docs.isNotEmpty) {
+          Map<String, dynamic> updateData = {};
+          
+          if (screenType.isNotEmpty) {
+            // Update specific screen acceptance
+            updateData = {
+              'privacyPolicyAcceptances.$screenType': accepted,
+              'privacyPolicyAcceptances.${screenType}AcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
+            };
+          } else {
+            // Legacy support
+            updateData = {
+              'privacyPolicyAccepted': accepted,
+              'privacyPolicyAcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
+            };
+          }
+          
           // Update the user's document with the acceptance status
-          await userDoc.docs.first.reference.update({
-            'privacyPolicyAccepted': accepted,
-            'privacyPolicyAcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
-          });
+          await userDoc.docs.first.reference.update(updateData);
           
           // Call the callback function with the updated status
           onAcceptanceUpdate(accepted);

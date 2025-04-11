@@ -35,6 +35,8 @@ export 'package:findlink/presentation/register_page.dart';
 export 'package:findlink/presentation/submit_tip_screen.dart';
 export 'package:findlink/presentation/faq_screen.dart';
 
+export 'package:findlink/presentation/utils/modal_utils.dart';
+
 export 'package:findlink/core/network/auth_service.dart';
 export 'package:findlink/core/network/tip_service.dart';
 export '/core/network/statistics_service.dart';
