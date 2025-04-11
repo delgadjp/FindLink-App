@@ -10,6 +10,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:geocoding/geocoding.dart'; // Add this import for geocoding
+import 'utils/modal_utils.dart'; // Import the new modal utils
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -41,6 +42,10 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'longitude': GlobalKey<FormFieldState>(),
     'latitude': GlobalKey<FormFieldState>(),
   };
+
+  // Track privacy policy acceptance
+  bool hasAcceptedPrivacyPolicy = false;
+  bool isCheckingPrivacyStatus = true;
 
   File? _imageFile;
   Uint8List? _webImage;
@@ -111,6 +116,64 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   void initState() {
     super.initState();
     _getCurrentLocation();
+    
+    // Check if user has already accepted the privacy policy
+    checkPrivacyPolicyAcceptance();
+  }
+  
+  // Method to check privacy policy acceptance
+  Future<void> checkPrivacyPolicyAcceptance() async {
+    setState(() {
+      isCheckingPrivacyStatus = true;
+    });
+    
+    try {
+      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance();
+      
+      setState(() {
+        hasAcceptedPrivacyPolicy = accepted;
+      });
+      
+      if (!accepted) {
+        // Show legal disclaimer followed by privacy policy
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          showCompliance();
+        });
+      }
+    } catch (e) {
+      print('Error checking privacy policy acceptance: $e');
+    } finally {
+      setState(() {
+        isCheckingPrivacyStatus = false;
+      });
+    }
+  }
+  
+  // Method to show both modals in sequence
+  void showCompliance() {
+    ModalUtils.showLegalDisclaimerModal(
+      context,
+      onAccept: () {
+        // Show privacy policy after legal disclaimer is accepted
+        ModalUtils.showPrivacyPolicyModal(
+          context,
+          onAcceptanceUpdate: (accepted) {
+            setState(() {
+              hasAcceptedPrivacyPolicy = accepted;
+            });
+            
+            // If user disagrees, navigate back
+            if (!accepted) {
+              Navigator.of(context).pop();
+            }
+          },
+          onCancel: () {
+            // Navigate back if user cancels
+            Navigator.of(context).pop();
+          },
+        );
+      },
+    );
   }
 
   Future<void> _getCurrentLocation() async {
