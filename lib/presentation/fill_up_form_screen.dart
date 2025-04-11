@@ -188,7 +188,7 @@ class FillUpForm extends State<FillUpFormScreen> {
       if (currentUser != null) {
         // Query Firestore for the current user's document
         final QuerySnapshot userDoc = await _firestore
-            .collection('users')
+            .collection('users-app')  // Changed from 'users' to 'users-app' to match security rules
             .where('uid', isEqualTo: currentUser.uid)
             .limit(1)
             .get();
@@ -203,28 +203,28 @@ class FillUpForm extends State<FillUpFormScreen> {
               hasAcceptedPrivacyPolicy = true;
             });
           } else {
-            // If not accepted, show the privacy policy modal
+            // If not accepted, show the legal disclaimer modal first, then privacy policy
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showPrivacyPolicyModal();
+              _showLegalDisclaimerModal();
             });
           }
         } else {
-          // No user document found, show the privacy policy
+          // No user document found, show the legal disclaimer modal first
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showPrivacyPolicyModal();
+            _showLegalDisclaimerModal();
           });
         }
       } else {
-        // No user logged in, show the privacy policy
+        // No user logged in, show the legal disclaimer modal first
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showPrivacyPolicyModal();
+          _showLegalDisclaimerModal();
         });
       }
     } catch (e) {
       print('Error checking privacy policy acceptance: $e');
-      // On error, default to showing the privacy policy
+      // On error, default to showing the legal disclaimer modal first
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPrivacyPolicyModal();
+        _showLegalDisclaimerModal();
       });
     } finally {
       setState(() {
@@ -241,7 +241,7 @@ class FillUpForm extends State<FillUpFormScreen> {
       if (currentUser != null) {
         // Find the user's document
         final QuerySnapshot userDoc = await _firestore
-            .collection('users')
+            .collection('users-app')  // Changed from 'users' to 'users-app' to match security rules
             .where('uid', isEqualTo: currentUser.uid)
             .limit(1)
             .get();
@@ -1114,6 +1114,56 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
   
+  // Show legal disclaimer modal before privacy policy
+  void _showLegalDisclaimerModal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            title: Text(
+              'Important Notice',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.black,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Text(
+                'Submitting false information in this Report Form is a criminal offense. Misuse of this form can lead to legal consequences, including imprisonment. Ensure all details provided are accurate and truthful.\n\nBy proceeding, you acknowledge and agree to these terms.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: Text(
+                  'I Understand',
+                  style: TextStyle(color: Color(0xFF0D47A1)),
+                ),
+                onPressed: () {
+                  // Close the disclaimer modal
+                  Navigator.of(context).pop();
+                  // Then show the privacy policy modal
+                  _showPrivacyPolicyModal();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // Show privacy policy modal
   void _showPrivacyPolicyModal() {
     showDialog(
