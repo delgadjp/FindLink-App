@@ -220,6 +220,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Sample case data to display in profile screen
+    final Map<String, dynamic> sampleCaseData = {
+      'caseNumber': '2023-0042',
+      'name': 'John Smith',
+      'dateCreated': '15 Apr 2023',
+      'status': 'In Progress'
+    };
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -229,60 +237,518 @@ class _ProfileScreenState extends State<ProfileScreen> {
       drawer: AppDrawer(),
       body: _isLoading 
       ? Center(child: CircularProgressIndicator())
-      : SingleChildScrollView(
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.blue.shade900,
-                Colors.blue.shade800,
-              ],
-            ),
+      : Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0D47A1), Colors.blue.shade100],
+            stops: [0.0, 50],
           ),
-          width: double.infinity,
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                ProfileAvatar(
-                  imageUrl: _profileImageUrl,
-                  onEditPressed: () {
-                    _updateProfilePicture();
-                  },
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Profile section with blue gradient background
+              Container(
+                width: double.infinity,
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      ProfileAvatar(
+                        imageUrl: _profileImageUrl,
+                        onEditPressed: () {
+                          _updateProfilePicture();
+                        },
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _name,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 2),
+                          IconButton(
+                            icon: Icon(Icons.edit, color: Colors.white, size: 20),
+                            onPressed: () async {
+                              final newName = await _showEditNameDialog();
+                              if (newName != null && newName.isNotEmpty) {
+                                await _updateUserName(newName);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      _buildContactInfo(Icons.email, _email),
+                      SizedBox(height: 8),
+                      _buildContactInfo(Icons.calendar_today, _memberSince),
+                    ],
+                  ),
                 ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              ),
+              
+              // Track case content section
+              Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _name,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    // Case Summary Card
+                    Card(
+                      elevation: 2,
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Case #${sampleCaseData['caseNumber']}",
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    "In Progress",
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              sampleCaseData['name'] ?? "Unknown",
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Reported on: ${sampleCaseData['dateCreated'] ?? "Unknown date"}",
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    SizedBox(width: 2),
-                    IconButton(
-                      icon: Icon(Icons.edit, color: Colors.white, size: 20),
-                      onPressed: () async {
-                        final newName = await _showEditNameDialog();
-                        if (newName != null && newName.isNotEmpty) {
-                          await _updateUserName(newName);
-                        }
-                      },
+                    SizedBox(height: 24),
+                    
+                    // Status Timeline Section
+                    Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: Duration(milliseconds: 500),
+                          width: 4,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Color(0xFF0D47A1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "CASE PROGRESS",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            color: Color.fromARGB(255, 0, 0, 0),
+                          ),
+                        ),
+                      ],
                     ),
+                    SizedBox(height: 16),
+                    
+                    // Timeline Visualization in a Card
+                    Card(
+                      elevation: 2,
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Container(
+                          height: 120,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: [
+                              {'stage': 'Reported', 'status': 'Completed'},
+                              {'stage': 'Under Investigation', 'status': 'In Progress'},
+                              {'stage': 'Assigned Authorities', 'status': 'Pending'},
+                              {'stage': 'Resolved', 'status': 'Pending'},
+                            ].length,
+                            itemBuilder: (context, index) {
+                              final stages = [
+                                {'stage': 'Reported', 'status': 'Completed'},
+                                {'stage': 'Under Investigation', 'status': 'In Progress'},
+                                {'stage': 'Assigned Authorities', 'status': 'Pending'},
+                                {'stage': 'Resolved', 'status': 'Pending'},
+                              ];
+                              final stage = stages[index];
+                              Color color = stage['status'] == 'Completed' 
+                                  ? Colors.green 
+                                  : stage['status'] == 'In Progress' 
+                                      ? Colors.orange 
+                                      : Colors.grey;
+                              
+                              return Container(
+                                width: MediaQuery.of(context).size.width / 4,
+                                child: Column(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: color.withOpacity(0.2),
+                                      child: CircleAvatar(
+                                        radius: 15,
+                                        backgroundColor: color,
+                                        child: Icon(
+                                          stage['status'] == 'Completed' 
+                                              ? Icons.check 
+                                              : stage['status'] == 'In Progress' 
+                                                  ? Icons.refresh 
+                                                  : Icons.hourglass_empty,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      stage['stage']!,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      stage['status']!,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Latest Update Card
+                    Card(
+                      elevation: 2,
+                      margin: EdgeInsets.symmetric(vertical: 16),
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.update, color: Color(0xFF0D47A1)),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Latest Update",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "Investigation in progress by Officer John Doe",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromARGB(255, 0, 0, 0),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Updated 2 hours ago",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    // Previous Updates Cards
+                    Card(
+                      elevation: 2,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.person_search, color: Colors.orange),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Field Investigation",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "Search operation conducted in Barangay San Antonio",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromARGB(255, 0, 0, 0),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Updated 1 day ago",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    Card(
+                      elevation: 2,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.camera_alt, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Evidence Collected",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    "Verified",
+                                    style: TextStyle(
+                                      color: Colors.green,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "CCTV footage obtained from nearby establishment",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromARGB(255, 0, 0, 0),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Updated 3 days ago",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    Card(
+                      elevation: 2,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.people_alt, color: Color(0xFF0D47A1)),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Witness Interview",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                                Spacer(),
+                                Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "Conducted interviews with 3 witnesses",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromARGB(255, 0, 0, 0),
+                              ),
+                            ),
+                            Text(
+                              "[Additional details restricted]",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Updated 5 days ago",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    Card(
+                      elevation: 2,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.report_problem, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Initial Report",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "Case filed and assigned to Investigation Unit",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromARGB(255, 0, 0, 0),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.person_pin, size: 20, color: Colors.grey[600]),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "Assigned to: Det. Maria Santos",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Updated 1 week ago",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    // Add some bottom padding
+                    SizedBox(height: 16),
                   ],
                 ),
-                SizedBox(height: 8),
-                _buildContactInfo(Icons.email, _email),
-                SizedBox(height: 8),
-                _buildContactInfo(Icons.calendar_today, _memberSince),
-                SizedBox(height: 16),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
