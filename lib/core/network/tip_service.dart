@@ -11,6 +11,18 @@ class TipService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Uuid _uuid = Uuid();
 
+  // Helper method to generate custom document ID for reports
+  String _generateCustomReportId() {
+    final now = DateTime.now();
+    final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+    
+    // Create a unique suffix based on timestamp
+    final uniqueSuffix = now.millisecondsSinceEpoch.toString().substring(7);
+    
+    // Format: REPORT_YYYYMMDD_XXXXX
+    return "REPORT_${datePart}_$uniqueSuffix";
+  }
+
   // Helper method to upload image to Firebase Storage
   Future<String?> _uploadImage(dynamic imageData, String reportId) async {
     try {
@@ -83,8 +95,8 @@ class TipService {
     dynamic imageData, // New parameter for image data
   }) async {
     try {
-      // Generate unique ID for the document
-      final String reportId = _uuid.v4();
+      // Generate custom document ID for the report
+      final String reportId = _generateCustomReportId();
       
       // Create the data map with all fields except the image
       final Map<String, dynamic> reportData = {
@@ -105,6 +117,7 @@ class TipService {
         'timeLastSeen': timeLastSeen,
         'timestamp': FieldValue.serverTimestamp(),
         'uid': userId,
+        'documentId': reportId, // Store document ID in the document itself
       };
       
       // Upload image if provided
@@ -116,13 +129,14 @@ class TipService {
         }
       }
       
-      // Create the report document in Firestore with all data
+      // Create the report document in Firestore with custom document ID
       await _firestore.collection('reports-app').doc(reportId).set(reportData)
         .catchError((e) {
           print("Firestore write error: ${e.toString()}");
           throw e;
         });
 
+      print('Report successfully added with custom ID: $reportId');
     } catch (e) {
       print('Error submitting report: $e');
       if (e is FirebaseException) {
