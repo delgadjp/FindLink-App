@@ -119,7 +119,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.of(context).pop(); // Go back to home screen
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
         },
         icon: Icon(Icons.arrow_back),
         label: Text("Back"),

@@ -23,23 +23,24 @@ class TipService {
     required String clothing,
     required String features,
     required String description,
-    required String location,
     required double lat,
     required double lng,
     required String userId,
+    required String address, // Added address parameter
   }) async {
     try {
       // Generate unique ID for the document
       final String reportId = _uuid.v4();
 
       // Create the report document in Firestore with the exact field structure
-      await _firestore.collection('reports').doc(reportId).set({
+      await _firestore.collection('reports-app').doc(reportId).set({
         'age': age,
         'clothing': clothing,
         'coordinates': {
           'lat': lat,
           'lng': lng
         },
+        'address': address, // Added address field
         'dateLastSeen': dateLastSeen,
         'description': description,
         'eyeColor': eyeColor,
@@ -47,12 +48,11 @@ class TipService {
         'gender': gender,
         'hairColor': hairColor,
         'height': height,
-        'location': location,
         'name': name,
         'phone': phone,
         'timeLastSeen': timeLastSeen,
         'timestamp': FieldValue.serverTimestamp(),
-        'userId': userId,
+        'uid': userId, // Add this line to match security rules which check for uid
       }).catchError((e) {
         print("Firestore write error: ${e.toString()}");
         throw e;
@@ -70,7 +70,7 @@ class TipService {
   Future<List<Map<String, dynamic>>> getAllReports() async {
     try {
       final QuerySnapshot snapshot = await _firestore
-          .collection('reports')
+          .collection('reports-app')
           .orderBy('timestamp', descending: true)
           .get();
           

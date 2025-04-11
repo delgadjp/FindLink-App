@@ -8,17 +8,23 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Add this line
 
-  // Login function
+  // Modified Login function to update last sign-in time
   Future<void> loginUser({
     required String email,
     required String password,
     required BuildContext context,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      
+      // Update last sign-in time
+      if (userCredential.user != null) {
+        await updateLastSignIn(userCredential.user!.uid);
+      }
+      
       Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
@@ -37,7 +43,7 @@ class AuthService {
     }
   }
 
-  // Updated Google Sign In
+  // Modified Google Sign In to update last sign-in time
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -53,8 +59,16 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       
-      // Add the user to Firestore
-      await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      // Check if user already exists in Firestore before adding
+      final bool userExists = await checkIfUserExists(userCredential.user!.uid);
+      
+      // Only add the user to Firestore if they don't already exist
+      if (!userExists) {
+        await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+      } else {
+        // Update last sign-in time for existing users
+        await updateLastSignIn(userCredential.user!.uid);
+      }
       
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
@@ -64,7 +78,25 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format only
+  // New method to check if a user already exists in Firestore by UID
+  Future<bool> checkIfUserExists(String uid) async {
+    try {
+      // Query Firestore for any documents with the user's UID
+      final QuerySnapshot result = await _firestore
+          .collection('users-app')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+      
+      // If we found any documents, the user exists
+      return result.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking if user exists: $e');
+      return false;
+    }
+  }
+
+  // Modified method with custom document ID format and privacy policy field
   Future<void> addUserToFirestore(User user, String email) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -85,7 +117,7 @@ class AuthService {
       final customDocId = "USER_${datePart}_$uniquePart";
 
       // Store user data with the custom document ID
-      await _firestore.collection('users').doc(customDocId).set({
+      await _firestore.collection('users-app').doc(customDocId).set({
         'uid': user.uid, // Store the Firebase Auth UID as a field
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
@@ -93,12 +125,59 @@ class AuthService {
         'photoURL': user.photoURL,
         'role': 'user',
         'documentId': customDocId, // Store the document ID in the document itself
+        'lastSignIn': FieldValue.serverTimestamp(), // Add last sign-in time
+        'privacyPolicyAccepted': false, // Default to not accepted
+        'privacyPolicyAcceptedAt': null, // Will be set when user accepts
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
     } catch (e) {
       print('Error adding user to Firestore: $e');
       throw e; // Re-throw to handle in the calling function
+    }
+  }
+
+  // Add a method to update the user's last sign-in time
+  Future<void> updateLastSignIn(String uid) async {
+    try {
+      // Find the user document that contains this uid
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        await userQuery.docs.first.reference.update({
+          'lastSignIn': FieldValue.serverTimestamp(),
+        });
+        print('Updated last sign-in time for user: $uid');
+      } else {
+        print('User document not found for uid: $uid');
+      }
+    } catch (e) {
+      print('Error updating last sign-in time: $e');
+    }
+  }
+
+  // Method to get a user's privacy policy acceptance status
+  Future<bool> getPrivacyPolicyAcceptance(String uid) async {
+    try {
+      // Find the user document by uid
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+        return userData['privacyPolicyAccepted'] == true;
+      }
+      return false; // Default to not accepted if user document not found
+    } catch (e) {
+      print('Error getting privacy policy acceptance status: $e');
+      return false; // Default to not accepted on error
     }
   }
 
