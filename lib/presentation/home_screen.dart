@@ -1,7 +1,8 @@
 import 'dart:ui';
 import '../core/app_export.dart';
 import 'package:findlink/presentation/fill_up_form_screen.dart';
-
+import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -9,7 +10,46 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final StatisticsService _statisticsService = StatisticsService();
+  Future<void> _callPNPHotline() async {
+    const phoneNumber = '117'; // PNP emergency hotline
+    final Uri phoneUri = Uri.parse('tel:$phoneNumber');
+
+    // Request phone call permission
+    var status = await Permission.phone.status;
+    if (!status.isGranted) {
+      status = await Permission.phone.request();
+    }
+
+    if (status.isGranted) {
+      try {
+        if (await canLaunchUrl(phoneUri)) {
+          await launchUrl(
+            phoneUri,
+            mode: LaunchMode.externalApplication,
+          );
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Device cannot make phone calls')),
+            );
+          }
+        }
+      } catch (e) {
+        print('Error launching phone call: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to launch phone dialer')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission denied for phone calls')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +63,14 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Color(0xFF0D47A1),
       ),
       drawer: AppDrawer(),
-      body: Container(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _callPNPHotline,
+        icon: Icon(Icons.call),
+        label: Text("PNP Hotline"),
+        backgroundColor: Color(0xFF0D47A1), // Match app bar color
+        foregroundColor: Colors.white, // Make text and icon white
+      ),
+            body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -183,89 +230,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // Statistics Section
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: StreamBuilder<int>(
-                        stream: _statisticsService.getTotalCasesCount(),
-                        builder: (context, snapshot) {
-                          return _buildStatCard(
-                            "Active Cases",
-                            snapshot.hasData ? snapshot.data.toString() : "0",
-                            Icons.cases_outlined,
-                            Colors.orange,
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: _buildStatCard(
-                        "Resolved",
-                        "0",
-                        Icons.check_circle_outline,
-                        Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // About Us section with card design
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  elevation: 4,
-                  color: Colors.blue.shade50, // Added background color to match
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.info_outline, color: Color(0xFF0D47A1)),
-                            SizedBox(width: 8),
-                            Text(
-                              "About Us",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0D47A1),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          "FINDLINK is a platform designed to assist the community in reporting missing persons and other suspicious activities.",
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.5,
-                            color: Color.fromARGB(255, 0, 0, 0),
-                          ),
-                          textAlign: TextAlign.left,
-                        ),
-                        SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            ImageConstant.aboutus,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
               // New FAQ Card
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -330,6 +294,58 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // About Us section with card design
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Card(
+                  elevation: 4,
+                  color: Colors.blue.shade50, // Added background color to match
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Color(0xFF0D47A1)),
+                            SizedBox(width: 8),
+                            Text(
+                              "About Us",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          "FINDLINK is a platform designed to assist the community in reporting missing persons and other suspicious activities.",
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.5,
+                            color: Color.fromARGB(255, 0, 0, 0),
+                          ),
+                          textAlign: TextAlign.left,
+                        ),
+                        SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            ImageConstant.aboutus,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -414,35 +430,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 2,
-      color: Colors.blue.shade50, // Added background color to match
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 32),
-            SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              title,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

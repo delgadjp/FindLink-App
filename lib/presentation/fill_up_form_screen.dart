@@ -6,6 +6,7 @@ import '../models/irf_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui'; // Added import for ImageFilter
+import 'utils/modal_utils.dart'; // Import the new modal utils
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -176,56 +177,29 @@ class FillUpForm extends State<FillUpFormScreen> {
     checkPrivacyPolicyAcceptance();
   }
   
-  // New method to check if user has accepted privacy policy
+  // Method to check privacy policy acceptance
   Future<void> checkPrivacyPolicyAcceptance() async {
     setState(() {
       isCheckingPrivacyStatus = true;
     });
     
     try {
-      final User? currentUser = _auth.currentUser;
+      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance(
+        screenType: ModalUtils.SCREEN_FILL_UP_FORM
+      );
       
-      if (currentUser != null) {
-        // Query Firestore for the current user's document
-        final QuerySnapshot userDoc = await _firestore
-            .collection('users')
-            .where('uid', isEqualTo: currentUser.uid)
-            .limit(1)
-            .get();
-        
-        if (userDoc.docs.isNotEmpty) {
-          final userData = userDoc.docs.first.data() as Map<String, dynamic>;
-          
-          // Check if privacy policy acceptance field exists and is true
-          if (userData.containsKey('privacyPolicyAccepted') && 
-              userData['privacyPolicyAccepted'] == true) {
-            setState(() {
-              hasAcceptedPrivacyPolicy = true;
-            });
-          } else {
-            // If not accepted, show the privacy policy modal
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showPrivacyPolicyModal();
-            });
-          }
-        } else {
-          // No user document found, show the privacy policy
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showPrivacyPolicyModal();
-          });
-        }
-      } else {
-        // No user logged in, show the privacy policy
+      setState(() {
+        hasAcceptedPrivacyPolicy = accepted;
+      });
+      
+      if (!accepted) {
+        // Show legal disclaimer followed by privacy policy
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showPrivacyPolicyModal();
+          showCompliance();
         });
       }
     } catch (e) {
       print('Error checking privacy policy acceptance: $e');
-      // On error, default to showing the privacy policy
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPrivacyPolicyModal();
-      });
     } finally {
       setState(() {
         isCheckingPrivacyStatus = false;
@@ -233,41 +207,32 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
   
-  // New method to update privacy policy acceptance status in Firestore
-  Future<void> updatePrivacyPolicyAcceptance(bool accepted) async {
-    try {
-      final User? currentUser = _auth.currentUser;
-      
-      if (currentUser != null) {
-        // Find the user's document
-        final QuerySnapshot userDoc = await _firestore
-            .collection('users')
-            .where('uid', isEqualTo: currentUser.uid)
-            .limit(1)
-            .get();
-        
-        if (userDoc.docs.isNotEmpty) {
-          // Update the user's document with the acceptance status
-          await userDoc.docs.first.reference.update({
-            'privacyPolicyAccepted': accepted,
-            'privacyPolicyAcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
-          });
-          
-          setState(() {
-            hasAcceptedPrivacyPolicy = accepted;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error updating privacy policy acceptance: $e');
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating privacy policy status: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  // Method to show both modals in sequence
+  void showCompliance() {
+    ModalUtils.showLegalDisclaimerModal(
+      context,
+      onAccept: () {
+        // Show privacy policy after legal disclaimer is accepted
+        ModalUtils.showPrivacyPolicyModal(
+          context,
+          screenType: ModalUtils.SCREEN_FILL_UP_FORM,
+          onAcceptanceUpdate: (accepted) {
+            setState(() {
+              hasAcceptedPrivacyPolicy = accepted;
+            });
+            
+            // If user disagrees, navigate back
+            if (!accepted) {
+              Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+            }
+          },
+          onCancel: () {
+            // Navigate back if user cancels
+            Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+          },
+        );
+      },
+    );
   }
   
   // Update the combined form state to pass to FormRowInputs
@@ -722,10 +687,6 @@ class FillUpForm extends State<FillUpFormScreen> {
   
   // Submit form to Firebase
   Future<void> submitForm() async {
-    if (!_isSubmissionAllowed()) {
-      return;
-    }
-    
     if (!_formKey.currentState!.validate()) {
       // Show validation error
       ScaffoldMessenger.of(context).showSnackBar(
@@ -788,10 +749,6 @@ class FillUpForm extends State<FillUpFormScreen> {
   
   // Save draft locally
   Future<void> saveDraft() async {
-    if (!_isSubmissionAllowed()) {
-      return;
-    }
-    
     setState(() {
       isSavingDraft = true;
     });
@@ -1112,115 +1069,6 @@ class FillUpForm extends State<FillUpFormScreen> {
         ),
       );
     }
-  }
-  
-  // Show privacy policy modal
-  void _showPrivacyPolicyModal() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0), // Less rounded corners
-            ),
-            title: Text(
-              'Data Privacy Act Compliance',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.black,
-              ),
-            ),
-            content: SingleChildScrollView(
-              child: RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                  children: <TextSpan>[
-                    TextSpan(text: 'In accordance with '),
-                    TextSpan(
-                      text: 'Republic Act No. 10173',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(text: ', the '),
-                    TextSpan(
-                      text: 'Data Privacy Act of 2012',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text: ', we ensure that your personal data will be processed securely and used solely for law enforcement purposes.\n\n'
-                        'By submitting this form, you ',
-                    ),
-                    TextSpan(
-                      text: 'voluntarily provide your personal data',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text: ' for official police use. Your information will not be disclosed to unauthorized entities.\n\n'
-                        'For more details, visit the ',
-                    ),
-                    TextSpan(
-                      text: 'National Privacy Commission',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text(
-                  'Disagree',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () {
-                  // Update the user's privacy policy status
-                  updatePrivacyPolicyAcceptance(false);
-                  // Navigate back to home screen
-                  Navigator.of(context).pop(); // Close the dialog
-                  Navigator.of(context).pushReplacementNamed(AppRoutes.home); // Go to home screen
-                },
-              ),
-              TextButton(
-                child: Text(
-                  'Accept',
-                  style: TextStyle(color: Color(0xFF0D47A1)),
-                ),
-                onPressed: () {
-                  // Update the user's privacy policy status
-                  updatePrivacyPolicyAcceptance(true);
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Check if form submission is allowed based on privacy acceptance
-  bool _isSubmissionAllowed() {
-    if (!hasAcceptedPrivacyPolicy) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('You must accept the Data Privacy Policy to continue'),
-          backgroundColor: Colors.red,
-          action: SnackBarAction(
-            label: 'View Policy',
-            onPressed: _showPrivacyPolicyModal,
-          ),
-        ),
-      );
-      return false;
-    }
-    return true;
   }
   
   @override
@@ -1775,7 +1623,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                         SizedBox(height: 10),
 
                         SectionTitle(
-                          title: 'MISSING PERSON DATA',
+                          title: "MISSING PERSON'S DATA",
                           backgroundColor: Color(0xFF1E215A),
                         ),
                         
