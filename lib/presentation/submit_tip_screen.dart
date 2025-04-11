@@ -27,15 +27,13 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   
   // Create a map to store keys for form fields
   final Map<String, GlobalKey<FormFieldState>> _fieldKeys = {
-    'name': GlobalKey<FormFieldState>(),
-    'phone': GlobalKey<FormFieldState>(),
     'dateLastSeen': GlobalKey<FormFieldState>(),
     'timeLastSeen': GlobalKey<FormFieldState>(),
     'gender': GlobalKey<FormFieldState>(),
-    'age': GlobalKey<FormFieldState>(),
+    'ageRange': GlobalKey<FormFieldState>(), // Add key for age range
+    'heightRange': GlobalKey<FormFieldState>(), // Add key for height range
     'clothing': GlobalKey<FormFieldState>(),
     'features': GlobalKey<FormFieldState>(),
-    'height': GlobalKey<FormFieldState>(),
     'hairColor': GlobalKey<FormFieldState>(),
     'eyeColor': GlobalKey<FormFieldState>(),
     'description': GlobalKey<FormFieldState>(),
@@ -52,12 +50,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final picker = ImagePicker();
   final auth.FirebaseAuth _auth = auth.FirebaseAuth.instance;
 
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _dateLastSeenController = TextEditingController();
   final TextEditingController _timeLastSeenController = TextEditingController();
   final TextEditingController _genderController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
   final TextEditingController _clothingController = TextEditingController();
   final TextEditingController _featuresController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
@@ -78,27 +73,45 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   String? selectedGender;
   String? selectedHairColor;
   String? selectedEyeColor;
+  String? selectedAgeRange;
+  String? selectedHeightRange; // Add selected height range
 
   final List<String> genderOptions = ['Male', 'Female', 'Prefer not to say'];
   final List<String> hairColors = [
     'Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White',
-    'Dark Brown', 'Light Brown', 'Auburn', 'Strawberry Blonde'
+    'Dark Brown', 'Light Brown', 'Auburn', 'Strawberry Blonde', 'Unknown'
   ];
   final List<String> eyeColors = [
     'Brown', 'Blue', 'Green', 'Hazel', 'Gray',
-    'Amber', 'Black', 'Other'
+    'Amber', 'Black', 'Unknown'
+  ];
+  
+  // Define age range options
+  final List<String> ageRanges = [
+    'Under 12', '12-17', '18-24', '25-34', '35-44', 
+    '45-54', '55-64', '65 and older', 'Unknown'
+  ];
+  
+  // Define height range options
+  final List<String> heightRanges = [
+    'Under 4\' (< 122cm)',
+    '4\' - 4\'6" (122-137cm)', 
+    '4\'7" - 5\' (140-152cm)',
+    '5\'1" - 5\'6" (155-168cm)', 
+    '5\'7" - 6\' (170-183cm)',
+    '6\'1" - 6\'6" (185-198cm)', 
+    'Over 6\'6" (> 198cm)',
+    'Unknown'
   ];
 
   Map<String, String> tipData = {
-    'name': '',
-    'phone': '',
     'dateLastSeen': '',
     'timeLastSeen': '',
     'gender': '',
-    'age': '',
+    'ageRange': '',
+    'heightRange': '', // Add height range to tipData
     'clothing': '',
     'features': '',
-    'height': '',
     'hairColor': '',
     'eyeColor': '',
     'description': '',
@@ -330,85 +343,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     }
   }
 
-  String? _validatePhone(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter phone number';
-    if (value.length != 11) return 'Phone number must be 11 digits';
-    if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Only numbers are allowed';
-    return null;
-  }
-
-  String? _validateName(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter name';
-    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) return 'Only letters are allowed';
-    return null;
-  }
-
-  String? _validateAge(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter age';
-    int? age = int.tryParse(value);
-    if (age == null) return 'Please enter a valid number';
-    if (age < 0 || age > 120) return 'Please enter a valid age (0-120)';
-    return null;
-  }
-
-  String? _validateHeight(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter height';
-    
-    // Accept various height formats
-    
-    // Format: feet and inches (5'7, 5 7, 5ft 7in, etc.)
-    RegExp feetInchesRegex = RegExp(r"^(\d{1,2})(?:'|\s|ft\.?\s*)(?:(\d{1,2})(?:''|\s|in\.?)?)?$");
-    
-    // Format: centimeters (170cm, 170 cm)
-    RegExp centimeterRegex = RegExp(r"^(\d{2,3})(?:\s*cm)?$");
-    
-    // Format: meters (1.7m, 1.7 m)
-    RegExp meterRegex = RegExp(r"^(\d{1})\.(\d{1,2})(?:\s*m)?$");
-    
-    if (feetInchesRegex.hasMatch(value)) {
-      // Extract feet and inches
-      Match match = feetInchesRegex.firstMatch(value)!;
-      int? feet = int.tryParse(match.group(1) ?? '0');
-      int? inches = int.tryParse(match.group(2) ?? '0');
-      
-      // Validate feet is reasonable (2-8 feet)
-      if (feet! < 2 || feet > 8) 
-        return 'Please enter a valid height (2-8 feet)';
-      
-      // If inches provided, validate (0-11 inches)
-      if (inches != null && inches > 0 && (inches < 0 || inches > 11))
-        return 'Inches must be between 0 and 11';
-      
-      return null;
-    }
-    
-    // Check centimeter format
-    if (centimeterRegex.hasMatch(value)) {
-      int? cm = int.tryParse(centimeterRegex.firstMatch(value)!.group(1) ?? '0');
-      
-      // Validate reasonable height range (60cm-250cm)
-      if (cm! < 60 || cm > 250)
-        return 'Please enter a valid height (60-250 cm)';
-        
-      return null;
-    }
-    
-    // Check meter format
-    if (meterRegex.hasMatch(value)) {
-      Match match = meterRegex.firstMatch(value)!;
-      double meters = double.tryParse('${match.group(1)}.${match.group(2)}') ?? 0;
-      
-      // Validate reasonable height range (0.6m-2.5m)
-      if (meters < 0.6 || meters > 2.5)
-        return 'Please enter a valid height (0.6-2.5 meters)';
-        
-      return null;
-    }
-    
-    // If it doesn't match any acceptable format
-    return 'Enter height as feet\'inches (5\'7), centimeters (170cm), or meters (1.7m)';
-  }
-
   String? _validateCoordinate(String? value, String type) {
     if (value == null || value.isEmpty) return 'Please enter $type';
     if (!RegExp(r'^-?\d*\.?\d*$').hasMatch(value)) return 'Invalid $type format';
@@ -546,6 +480,10 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       if (firstErrorKey == null) {
         if (selectedGender == null) {
           firstErrorKey = _fieldKeys['gender'];
+        } else if (selectedAgeRange == null) {
+          firstErrorKey = _fieldKeys['ageRange'];
+        } else if (selectedHeightRange == null) {
+          firstErrorKey = _fieldKeys['heightRange']; 
         } else if (selectedHairColor == null) {
           firstErrorKey = _fieldKeys['hairColor'];
         } else if (selectedEyeColor == null || 
@@ -596,15 +534,21 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         
         print("Submitting tip with userId: $userId");
         
-        // Submit tip with the new field structure
+        // Prepare the image data to pass to TipService
+        dynamic imageData;
+        if (kIsWeb) {
+          imageData = _webImage; // Uint8List for web
+        } else if (_imageFile != null) {
+          imageData = _imageFile; // File for mobile
+        }
+        
+        // Submit tip with the image data
         await tipService.submitTip(
-          name: _nameController.text,
-          phone: _phoneController.text,
           dateLastSeen: _dateLastSeenController.text,
           timeLastSeen: _timeLastSeenController.text,
           gender: selectedGender ?? '',
-          age: _ageController.text,
-          height: _heightController.text,
+          ageRange: selectedAgeRange ?? 'Unknown',
+          heightRange: selectedHeightRange ?? 'Unknown',
           hairColor: selectedHairColor ?? '',
           eyeColor: selectedEyeColor == 'Other' 
               ? _customEyeColorController.text 
@@ -615,7 +559,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           lat: double.parse(_latitudeController.text),
           lng: double.parse(_longitudeController.text),
           userId: userId,
-          address: _addressController.text, // Add address to the tip submission
+          address: _addressController.text,
+          imageData: imageData, // Pass the image data to the service
         );
 
         // Remove loading indicator
@@ -630,12 +575,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
         // Clear form fields (these will only execute if navigation fails or is delayed)
         _formKey.currentState?.reset();
-        _nameController.clear();
-        _phoneController.clear();
         _dateLastSeenController.clear();
         _timeLastSeenController.clear();
         _genderController.clear();
-        _ageController.clear();
         _clothingController.clear();
         _featuresController.clear();
         _heightController.clear();
@@ -888,17 +830,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader("Contact Information"),
-                        _buildTextField(_nameController, "Name", icon: Icons.person),
-                        _buildTextField(_phoneController, "Phone", icon: Icons.phone),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  _buildCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
                         _buildSectionHeader("Sighting Details"),
                         _buildTextField(_dateLastSeenController, "Date Last Seen", icon: Icons.calendar_today),
                         SizedBox(height: 16), // Added extra spacing here
@@ -919,8 +850,22 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           (value) => setState(() => selectedGender = value),
                           Icons.person_outline,
                         ),
-                        _buildTextField(_ageController, "Age", icon: Icons.cake),
-                        _buildTextField(_heightController, "Height", icon: Icons.height),
+                        // Add age range dropdown
+                        _buildDropdownField(
+                          "Age Range",
+                          selectedAgeRange,
+                          ageRanges,
+                          (value) => setState(() => selectedAgeRange = value),
+                          Icons.cake,
+                        ),
+                        // Replace height text field with dropdown
+                        _buildDropdownField(
+                          "Height Range",
+                          selectedHeightRange,
+                          heightRanges,
+                          (value) => setState(() => selectedHeightRange = value),
+                          Icons.height,
+                        ),
                         _buildDropdownField(
                           "Hair Color",
                           selectedHairColor,
@@ -1047,23 +992,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
     // Set specific formatting and validation per field
     switch (label) {
-      case "Phone":
-        formatters = [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(11),
-        ];
-        validator = _validatePhone;
-        keyboardType = TextInputType.phone;
-        break;
-
-      case "Name":
-        formatters = [
-          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
-        ];
-        validator = _validateName;
-        keyboardType = TextInputType.name;
-        break;
-
       case "Date Last Seen":
         controller.text = controller.text.isEmpty ? 
           _dateFormatter.format(DateTime.now()) : controller.text;
@@ -1111,45 +1039,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               decoration: _getInputDecoration(label, icon),
               validator: (value) => value?.isEmpty ?? true ? 'Please select time' : null,
             ),
-          ),
-        );
-
-      case "Age":
-        formatters = [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(3),
-        ];
-        validator = _validateAge;
-        keyboardType = TextInputType.number;
-        break;
-
-      case "Height":
-        formatters = [
-          // Updated formatter to only allow numbers, apostrophes, periods, and spaces
-          FilteringTextInputFormatter.allow(RegExp(r"[0-9.' ]")),
-          LengthLimitingTextInputFormatter(10),
-        ];
-        validator = _validateHeight;
-        keyboardType = TextInputType.text;
-        return Padding(
-          padding: EdgeInsets.only(bottom: 16),
-          child: TextFormField(
-            key: _fieldKeys['height'], // Assign key to field
-            controller: controller,
-            style: TextStyle(color: Colors.black87),
-            decoration: _getInputDecoration(label, icon).copyWith(
-              hintText: "e.g. 5'7, 170, or 1.7", 
-              helperText: "Formats: feet'inches (5'7), centimeters (170), meters (1.7)",
-              helperStyle: TextStyle(
-                color: Colors.black54, 
-                fontSize: 12,
-                overflow: TextOverflow.ellipsis, // Add text overflow handling
-              ),
-              helperMaxLines: 2, // Allow helper text to take up to 2 lines before truncating
-            ),
-            inputFormatters: formatters,
-            validator: validator,
-            keyboardType: keyboardType,
           ),
         );
 
