@@ -8,6 +8,18 @@ service cloud.firestore {
 
     // Updated rules for users collection to support custom document IDs
     match /users/{userId} {
+      // Allow authenticated users to read their own user data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow authenticated users to create their own user document
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Allow updates to existing documents if they belong to the user
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Updated rules for users collection to support custom document IDs
+    match /users-app/{userId} {
       // Allow authenticated users to read user data
       allow read: if request.auth != null;
       
@@ -29,23 +41,6 @@ service cloud.firestore {
       );
     }
 
-    // Rules for tips about missing persons
-    match /tips-app/{tipId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    // Rules for case status updates
-    match /case-status/{statusId} {
-      allow read: if true;
-      allow write: if request.auth != null &&
-                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
     // Allow authenticated users to read/write reports data
     match /reports/{reportId} {
       allow read: if true;
@@ -56,6 +51,21 @@ service cloud.firestore {
       );
       allow delete: if request.auth != null && (
         request.auth.uid == resource.data.userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Updated reports-app rules to match the actual data structure used
+    match /reports-app/{reportId} {
+      allow read: if true;
+      // Changed from checking uid to checking the field that's actually set in the code
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.uid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow delete: if request.auth != null && (
+        request.auth.uid == resource.data.uid ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }

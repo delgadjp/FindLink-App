@@ -83,7 +83,7 @@ class AuthService {
     try {
       // Query Firestore for any documents with the user's UID
       final QuerySnapshot result = await _firestore
-          .collection('users')
+          .collection('users-app')
           .where('uid', isEqualTo: uid)
           .limit(1)
           .get();
@@ -117,7 +117,7 @@ class AuthService {
       final customDocId = "USER_${datePart}_$uniquePart";
 
       // Store user data with the custom document ID
-      await _firestore.collection('users').doc(customDocId).set({
+      await _firestore.collection('users-app').doc(customDocId).set({
         'uid': user.uid, // Store the Firebase Auth UID as a field
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
@@ -142,7 +142,7 @@ class AuthService {
     try {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users')
+          .collection('users-app')
           .where('uid', isEqualTo: uid)
           .limit(1)
           .get();
@@ -165,7 +165,7 @@ class AuthService {
     try {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users')
+          .collection('users-app')
           .where('uid', isEqualTo: uid)
           .limit(1)
           .get();

@@ -33,7 +33,7 @@ class TipService {
       final String reportId = _uuid.v4();
 
       // Create the report document in Firestore with the exact field structure
-      await _firestore.collection('reports').doc(reportId).set({
+      await _firestore.collection('reports-app').doc(reportId).set({
         'age': age,
         'clothing': clothing,
         'coordinates': {
@@ -70,7 +70,7 @@ class TipService {
   Future<List<Map<String, dynamic>>> getAllReports() async {
     try {
       final QuerySnapshot snapshot = await _firestore
-          .collection('reports')
+          .collection('reports-app')
           .orderBy('timestamp', descending: true)
           .get();
           
