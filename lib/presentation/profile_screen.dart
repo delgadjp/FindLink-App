@@ -361,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   "Case #${sampleCaseData['caseNumber']}",
                                   style: TextStyle(
-                                    fontSize: 24,
+                                    fontSize: 21,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF0D47A1),
                                   ),
@@ -377,6 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     style: TextStyle(
                                       color: Colors.orange,
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ),
