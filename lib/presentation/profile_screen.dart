@@ -83,33 +83,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<String?> _showEditNameDialog() async {
     TextEditingController nameController = TextEditingController(text: _name);
+    bool isValidName = true;
+    String errorText = '';
+    
     return showDialog<String>(
       context: context,
+      barrierDismissible: true, // Allow dismissing by tapping outside
+      barrierColor: Colors.black54, // Semi-transparent barrier
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Name'),
-          content: TextField(
-            controller: nameController,
-            decoration: InputDecoration(labelText: 'Name'),
-          ),
-          actions: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(nameController.text);
-              },
-              child: Text('Save'),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color.fromARGB(255, 255, 255, 255),
-                backgroundColor: const Color.fromARGB(255, 235, 96, 96),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              child: AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                titlePadding: EdgeInsets.fromLTRB(24, 24, 24, 8),
+                contentPadding: EdgeInsets.fromLTRB(24, 0, 24, 0),
+                backgroundColor: Colors.white,
+                elevation: 5,
+                title: Column(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      color: Color(0xFF0D47A1),
+                      size: 48,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Edit Your Name',
+                      style: TextStyle(
+                        color: Color(0xFF0D47A1),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                content: Container(
+                  width: double.maxFinite,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(height: 16),
+                      TextField(
+                        controller: nameController,
+                        autofocus: true,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value.isEmpty) {
+                              isValidName = false;
+                              errorText = 'Name cannot be empty';
+                            } else if (value.length < 3) {
+                              isValidName = false;
+                              errorText = 'Name must be at least 3 characters';
+                            } else {
+                              isValidName = true;
+                              errorText = '';
+                            }
+                          });
+                        },
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color.fromARGB(255, 0, 0, 0), // Changed text color to green
+                          fontWeight: FontWeight.w500,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Your Name',
+                          labelStyle: TextStyle(
+                            color: Color.fromARGB(255, 0, 0, 0), // Changed label color to green
+                            fontWeight: FontWeight.w500,
+                          ),
+                          errorText: !isValidName ? errorText : null,
+                          prefixIcon: Icon(Icons.person, color: Color(0xFF0D47A1)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: const Color.fromARGB(255, 0, 0, 0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color.fromARGB(255, 0, 0, 0), width: 2), // Changed focused border to green
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        ),
+                      ),
+                      SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey.shade700,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: Text(
+                      'CANCEL',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: isValidName ? () {
+                      Navigator.of(context).pop(nameController.text.trim());
+                    } : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF0D47A1),
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: Text(
+                      'SAVE',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+                actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                actionsAlignment: MainAxisAlignment.spaceBetween,
               ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Discard'),
-            ),
-          ],
+            );
+          }
         );
       },
     );
