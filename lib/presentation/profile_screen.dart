@@ -16,6 +16,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _memberSince = 'Member since: Jan 2023';
   String _profileImageUrl = '';
   bool _isLoading = true;
+  Map<String, dynamic>? _userData;
 
   @override
   void initState() {
@@ -30,14 +31,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       
       if (currentUser != null) {
-        // Get user data from Firestore
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
+        // Query users-app collection by uid field
+        final QuerySnapshot userQuery = await FirebaseFirestore.instance
+            .collection('users-app')
+            .where('uid', isEqualTo: currentUser.uid)
+            .limit(1)
             .get();
 
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
+        if (userQuery.docs.isNotEmpty) {
+          final userDoc = userQuery.docs.first;
+          final userData = userDoc.data() as Map<String, dynamic>;
+          _userData = userData;
           
           // Format the creation date
           String formattedDate = 'Member since: Jan 2023';
@@ -61,10 +65,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _profileImageUrl = currentUser.photoURL ?? '';
             _memberSince = 'Member since: ${DateFormat('MMM yyyy').format(currentUser.metadata.creationTime ?? DateTime.now())}';
           });
+          
+          // If user doesn't exist in Firestore, create a document for them
+          print('User document not found in Firestore. Creating a new document.');
+          await AuthService().addUserToFirestore(currentUser, currentUser.email ?? '');
         }
       }
     } catch (e) {
       print('Error fetching user data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading profile data. Please try again.')),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -108,16 +119,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-        // Update in Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .update({'displayName': newName});
-        
-        // Update in Firebase Auth
-        await currentUser.updateDisplayName(newName);
-        
-        setState(() => _name = newName);
+        // First, find the user document by uid
+        final QuerySnapshot userQuery = await FirebaseFirestore.instance
+            .collection('users-app')
+            .where('uid', isEqualTo: currentUser.uid)
+            .limit(1)
+            .get();
+            
+        if (userQuery.docs.isNotEmpty) {
+          // Update in Firestore using document reference
+          await userQuery.docs.first.reference.update({
+            'displayName': newName
+          });
+          
+          // Update in Firebase Auth
+          await currentUser.updateDisplayName(newName);
+          
+          setState(() => _name = newName);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Name updated successfully')),
+          );
+        } else {
+          throw Exception('User document not found');
+        }
       }
     } catch (e) {
       print('Error updating name: $e');
@@ -175,13 +200,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (currentUser == null) throw Exception('User not logged in');
 
       final File imageFile = File(image.path);
+      
+      // Create a reference with the user's UID
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('profile_images')
           .child('${currentUser.uid}.jpg');
       
+      // Upload the file with appropriate metadata
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'userId': currentUser.uid},
+      );
+      
       // Upload file
-      await storageRef.putFile(imageFile);
+      await storageRef.putFile(imageFile, metadata);
       
       // Get download URL
       final String downloadURL = await storageRef.getDownloadURL();
@@ -189,11 +222,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Update Firebase Auth profile
       await currentUser.updatePhotoURL(downloadURL);
       
-      // Update Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .update({'photoURL': downloadURL});
+      // Find user document and update in Firestore
+      final QuerySnapshot userQuery = await FirebaseFirestore.instance
+          .collection('users-app')
+          .where('uid', isEqualTo: currentUser.uid)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isNotEmpty) {
+        await userQuery.docs.first.reference.update({
+          'photoURL': downloadURL
+        });
+      } else {
+        throw Exception('User document not found');
+      }
       
       // Update local state
       setState(() {
@@ -209,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _isLoading = false);
       print('Error updating profile picture: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile picture. Please try again.')),
+        SnackBar(content: Text('Error updating profile picture: ${e.toString()}')),
       );
     }
   }

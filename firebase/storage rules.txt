@@ -12,7 +12,7 @@ service firebase.storage {
       allow read, write: if request.auth != null;
     }
 
-		// Allow read and write for authenticated users in the 'reports' folder
+    // Allow read and write for authenticated users in the 'reports-app' folder
     match /reports-app/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
@@ -21,7 +21,14 @@ service firebase.storage {
     match /missing_persons/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
-
+    
+    // Allow authenticated users to manage their profile images
+    match /profile_images/{userId} {
+      // Anyone can view profile images
+      allow read: if true;
+      // Users can only upload/update their own profile image
+      allow write: if request.auth != null;
+    }
   }
 }
 
