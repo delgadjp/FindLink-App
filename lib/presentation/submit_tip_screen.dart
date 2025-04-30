@@ -35,7 +35,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'clothing': GlobalKey<FormFieldState>(),
     'features': GlobalKey<FormFieldState>(),
     'hairColor': GlobalKey<FormFieldState>(),
-    'eyeColor': GlobalKey<FormFieldState>(),
     'description': GlobalKey<FormFieldState>(),
     'longitude': GlobalKey<FormFieldState>(),
     'latitude': GlobalKey<FormFieldState>(),
@@ -57,9 +56,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final TextEditingController _featuresController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _hairColorController = TextEditingController();
-  final TextEditingController _eyeColorController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _customEyeColorController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _coordinatesController = TextEditingController();
@@ -72,7 +69,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   String? selectedGender;
   String? selectedHairColor;
-  String? selectedEyeColor;
   String? selectedAgeRange;
   String? selectedHeightRange; // Add selected height range
 
@@ -80,10 +76,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final List<String> hairColors = [
     'Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White',
     'Dark Brown', 'Light Brown', 'Auburn', 'Strawberry Blonde', 'Unknown'
-  ];
-  final List<String> eyeColors = [
-    'Brown', 'Blue', 'Green', 'Hazel', 'Gray',
-    'Amber', 'Black', 'Unknown'
   ];
   
   // Define age range options
@@ -113,7 +105,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'clothing': '',
     'features': '',
     'hairColor': '',
-    'eyeColor': '',
     'description': '',
     'image': '',
     'longitude': '',
@@ -486,9 +477,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           firstErrorKey = _fieldKeys['heightRange']; 
         } else if (selectedHairColor == null) {
           firstErrorKey = _fieldKeys['hairColor'];
-        } else if (selectedEyeColor == null || 
-                 (selectedEyeColor == 'Other' && _customEyeColorController.text.isEmpty)) {
-          firstErrorKey = _fieldKeys['eyeColor'];
         }
       }
       
@@ -550,9 +538,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ageRange: selectedAgeRange ?? 'Unknown',
           heightRange: selectedHeightRange ?? 'Unknown',
           hairColor: selectedHairColor ?? '',
-          eyeColor: selectedEyeColor == 'Other' 
-              ? _customEyeColorController.text 
-              : (selectedEyeColor ?? ''),
           clothing: _clothingController.text,
           features: _featuresController.text,
           description: _descriptionController.text,
@@ -582,9 +567,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _featuresController.clear();
         _heightController.clear();
         _hairColorController.clear();
-        _eyeColorController.clear();
         _descriptionController.clear();
-        _customEyeColorController.clear();
         _longitudeController.clear();
         _latitudeController.clear();
         _coordinatesController.clear();
@@ -873,7 +856,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           (value) => setState(() => selectedHairColor = value),
                           Icons.face,
                         ),
-                        _buildEyeColorField(),
                       ],
                     ),
                   ),
@@ -1136,32 +1118,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         style: TextStyle(color: Colors.black87),
         dropdownColor: Colors.white,
       ),
-    );
-  }
-
-  Widget _buildEyeColorField() {
-    return Column(
-      children: [
-        _buildDropdownField(
-          "Eye Color",
-          selectedEyeColor,
-          eyeColors,
-          (value) => setState(() => selectedEyeColor = value),
-          Icons.remove_red_eye,
-        ),
-        if (selectedEyeColor == 'Other')
-          Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: TextFormField(
-              key: _fieldKeys['eyeColor'], // Assign key to field
-              controller: _customEyeColorController,
-              decoration: _getInputDecoration("Specify Eye Color", Icons.remove_red_eye),
-              validator: (value) => 
-                value?.isEmpty ?? true ? 'Please specify eye color' : null,
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-      ],
     );
   }
 

@@ -84,7 +84,6 @@ class TipService {
     String ageRange = "Unknown", 
     String heightRange = "Unknown", // Changed height to heightRange with default value
     required String hairColor,
-    required String eyeColor,
     required String clothing,
     required String features,
     required String description,
@@ -110,7 +109,6 @@ class TipService {
         'address': address,
         'dateLastSeen': dateLastSeen,
         'description': description,
-        'eyeColor': eyeColor,
         'features': features,
         'gender': gender,
         'hairColor': hairColor,
