@@ -65,12 +65,16 @@ class AuthService {
       // Only add the user to Firestore if they don't already exist
       if (!userExists) {
         await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+        
+        // Redirect to ID validation for new users
+        Navigator.pushReplacementNamed(context, '/id-validation');
       } else {
         // Update last sign-in time for existing users
         await updateLastSignIn(userCredential.user!.uid);
+        
+        // Redirect straight to home for existing users
+        Navigator.pushReplacementNamed(context, '/home');
       }
-
-      Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google Sign In failed: $e')),
@@ -96,7 +100,7 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format and additional user fields
+  // Modified method with custom document ID format and additional user fields including gender
   Future<void> addUserToFirestore(
     User user,
     String email, {
@@ -105,6 +109,7 @@ class AuthService {
     String? lastName,
     DateTime? dateOfBirth,
     int? age,
+    String? gender,
   }) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -133,6 +138,7 @@ class AuthService {
         'lastName': lastName ?? '',
         'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
         'age': age ?? 0,
+        'gender': gender ?? 'Not specified', // Added gender field
         'createdAt': FieldValue.serverTimestamp(),
         'displayName': firstName != null ? '$firstName ${lastName ?? ''}' : (user.displayName ?? email.split('@')[0]),
         'photoURL': user.photoURL,
@@ -141,6 +147,9 @@ class AuthService {
         'lastSignIn': FieldValue.serverTimestamp(), // Add last sign-in time
         'privacyPolicyAccepted': false, // Default to not accepted
         'privacyPolicyAcceptedAt': null, // Will be set when user accepts
+        'idVerified': false, // Default to not verified
+        'idSubmitted': false, // Track if ID was submitted for verification
+        'idRejected': false, // Track if ID verification was rejected
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
@@ -205,6 +214,7 @@ class AuthService {
     String? lastName,
     DateTime? dateOfBirth,
     int? age,
+    String? gender,
   }) async {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -244,6 +254,7 @@ class AuthService {
         lastName: lastName,
         dateOfBirth: dateOfBirth,
         age: age,
+        gender: gender,
       );
 
       // Close loading dialog
@@ -251,11 +262,11 @@ class AuthService {
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration successful! Please login.')),
+        SnackBar(content: Text('Registration successful! Please complete ID verification.')),
       );
 
-      // Navigate to login page
-      Navigator.pushReplacementNamed(context, '/login');
+      // Navigate to ID validation page
+      Navigator.pushReplacementNamed(context, '/id-validation');
     } on FirebaseAuthException catch (e) {
       // Close loading dialog if open
       if (Navigator.canPop(context)) {
@@ -284,6 +295,49 @@ class AuthService {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('An unexpected error occurred: $e')),
       );
+    }
+  }
+
+  // Method to update user's ID verification status
+  Future<void> updateIDVerificationStatus({
+    required String uid,
+    required bool submitted,
+    bool? verified,
+    bool? rejected,
+    String? idType,
+    String? frontImageURL,
+    String? backImageURL,
+    String? selfieImageURL,
+  }) async {
+    try {
+      // Find the user document
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        Map<String, dynamic> updateData = {
+          'idSubmitted': submitted,
+        };
+
+        if (verified != null) updateData['idVerified'] = verified;
+        if (rejected != null) updateData['idRejected'] = rejected;
+        if (idType != null) updateData['idType'] = idType;
+        if (frontImageURL != null) updateData['idFrontImage'] = frontImageURL;
+        if (backImageURL != null) updateData['idBackImage'] = backImageURL;
+        if (selfieImageURL != null) updateData['idSelfieImage'] = selfieImageURL;
+        
+        if (submitted) {
+          updateData['idSubmittedAt'] = FieldValue.serverTimestamp();
+        }
+
+        await userQuery.docs.first.reference.update(updateData);
+      }
+    } catch (e) {
+      print('Error updating ID verification status: $e');
+      throw e;
     }
   }
 

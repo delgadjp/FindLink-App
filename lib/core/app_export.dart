@@ -31,6 +31,8 @@ export 'package:findlink/presentation/login_page.dart';
 export 'package:findlink/presentation/register_page.dart';
 export 'package:findlink/presentation/submit_tip_screen.dart';
 export 'package:findlink/presentation/faq_screen.dart';
+export 'package:findlink/presentation/id_validation_screen.dart';
+export 'package:findlink/presentation/confirm_id_details_screen.dart';
 
 export 'package:findlink/presentation/utils/modal_utils.dart';
 

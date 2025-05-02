@@ -1,5 +1,7 @@
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:findlink/presentation/confirm_id_details_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -14,12 +16,14 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
   
+  String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
   int? age;
   final AuthService _authService = AuthService();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isFirstNameValid = true;
+  bool _isMiddleNameValid = true; // Added middle name validation
   bool _isLastNameValid = true;
   bool _isEmailValid = true;
   bool _isPasswordValid = true;
@@ -175,8 +179,8 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               SizedBox(height: 15),
 
-                              // Middle Name (Optional)
-                              _buildInputLabel('Middle Name (Optional)'),
+                              // Middle Name
+                              _buildInputLabel('Middle Name'),
                               SizedBox(height: 5),
                               TextFormField(
                                 controller: middleNameController,
@@ -184,7 +188,19 @@ class _RegisterPageState extends State<RegisterPage> {
                                 decoration: _buildInputDecoration(
                                   hintText: 'Enter your middle name',
                                   prefixIcon: Icons.person_outline,
+                                  isValid: _isMiddleNameValid,
                                 ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isMiddleNameValid = value.isNotEmpty;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your middle name';
+                                  }
+                                  return null;
+                                },
                               ),
                               SizedBox(height: 15),
 
@@ -283,6 +299,48 @@ class _RegisterPageState extends State<RegisterPage> {
                                     ),
                                   ),
                                 ],
+                              ),
+                              SizedBox(height: 15),
+                              
+                              // Gender field
+                              _buildInputLabel('Gender'),
+                              SizedBox(height: 5),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 15),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.people_outline, color: Color(0xFF53C0FF)),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<String>(
+                                          value: selectedGender,
+                                          style: TextStyle(color: Colors.black),
+                                          isExpanded: true,
+                                          dropdownColor: Colors.white,
+                                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF53C0FF)),
+                                          items: <String>['Male', 'Female', 'Prefer not to say']
+                                              .map<DropdownMenuItem<String>>((String value) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Text(value, style: TextStyle(color: Colors.black)),
+                                            );
+                                          }).toList(),
+                                          onChanged: (String? newValue) {
+                                            setState(() {
+                                              selectedGender = newValue!;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               SizedBox(height: 25),
                               
@@ -427,6 +485,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                         lastName: lastNameController.text.trim(),
                                         dateOfBirth: selectedDate,
                                         age: age,
+                                        gender: selectedGender,
                                         context: context,
                                       );
                                     }
@@ -444,6 +503,75 @@ class _RegisterPageState extends State<RegisterPage> {
                                     'CREATE ACCOUNT',
                                     style: TextStyle(
                                       fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              
+                              // Temporary ID Validation button
+                              SizedBox(height: 15),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => IDValidationScreen()),
+                                  );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 15),
+                                    side: BorderSide(color: Color(0xFF53C0FF), width: 1.5),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'GO TO ID VALIDATION (TEMP)',
+                                    style: TextStyle(
+                                      color: Color(0xFF53C0FF),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              
+                              // Temporary Confirm ID Details button
+                              SizedBox(height: 15),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    // Create dummy File objects since we need them for the screen
+                                    final File dummyFrontImage = File('dummy_front_path');
+                                    
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ConfirmIDDetailsScreen(
+                                          frontImage: dummyFrontImage,
+                                          backImage: null,
+                                          idType: 'Driver\'s License',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 15),
+                                    side: BorderSide(color: Color(0xFFFFD27E), width: 1.5),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'GO TO CONFIRM ID DETAILS (TEMP)',
+                                    style: TextStyle(
+                                      color: Color(0xFFFFD27E),
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 0.5,
                                     ),
