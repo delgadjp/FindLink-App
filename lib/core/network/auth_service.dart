@@ -1,12 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Add this import
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Add this line
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Modified Login function to update last sign-in time
   Future<void> loginUser({
@@ -19,12 +19,12 @@ class AuthService {
         email: email,
         password: password,
       );
-      
+
       // Update last sign-in time
       if (userCredential.user != null) {
         await updateLastSignIn(userCredential.user!.uid);
       }
-      
+
       Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
@@ -47,7 +47,7 @@ class AuthService {
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+
       if (googleUser == null) return;
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -58,10 +58,10 @@ class AuthService {
 
       // Sign in to Firebase with the Google credential
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      
+
       // Check if user already exists in Firestore before adding
       final bool userExists = await checkIfUserExists(userCredential.user!.uid);
-      
+
       // Only add the user to Firestore if they don't already exist
       if (!userExists) {
         await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
@@ -69,7 +69,7 @@ class AuthService {
         // Update last sign-in time for existing users
         await updateLastSignIn(userCredential.user!.uid);
       }
-      
+
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,7 +87,7 @@ class AuthService {
           .where('uid', isEqualTo: uid)
           .limit(1)
           .get();
-      
+
       // If we found any documents, the user exists
       return result.docs.isNotEmpty;
     } catch (e) {
@@ -96,8 +96,16 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format and privacy policy field
-  Future<void> addUserToFirestore(User user, String email) async {
+  // Modified method with custom document ID format and additional user fields
+  Future<void> addUserToFirestore(
+    User user,
+    String email, {
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    DateTime? dateOfBirth,
+    int? age,
+  }) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
       final now = DateTime.now();
@@ -120,8 +128,13 @@ class AuthService {
       await _firestore.collection('users-app').doc(customDocId).set({
         'uid': user.uid, // Store the Firebase Auth UID as a field
         'email': email,
+        'firstName': firstName ?? '',
+        'middleName': middleName ?? '',
+        'lastName': lastName ?? '',
+        'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
+        'age': age ?? 0,
         'createdAt': FieldValue.serverTimestamp(),
-        'displayName': user.displayName ?? email.split('@')[0], // Fallback display name
+        'displayName': firstName != null ? '$firstName ${lastName ?? ''}' : (user.displayName ?? email.split('@')[0]),
         'photoURL': user.photoURL,
         'role': 'user',
         'documentId': customDocId, // Store the document ID in the document itself
@@ -181,12 +194,17 @@ class AuthService {
     }
   }
 
-  // Modified Register function with improved error handling
+  // Modified Register function with improved error handling and additional user fields
   Future<void> registerUser({
     required String email,
     required String password,
     required String confirmPassword,
     required BuildContext context,
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    DateTime? dateOfBirth,
+    int? age,
   }) async {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -211,23 +229,31 @@ class AuthService {
         barrierDismissible: false,
         builder: (context) => Center(child: CircularProgressIndicator()),
       );
-      
+
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
-      // Add user to Firestore
-      await addUserToFirestore(userCredential.user!, email);
+
+      // Add user to Firestore with additional profile information
+      await addUserToFirestore(
+        userCredential.user!, 
+        email,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
+        dateOfBirth: dateOfBirth,
+        age: age,
+      );
 
       // Close loading dialog
       Navigator.of(context).pop();
-      
+
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration successful! Please login.')),
       );
-      
+
       // Navigate to login page
       Navigator.pushReplacementNamed(context, '/login');
     } on FirebaseAuthException catch (e) {
@@ -235,7 +261,7 @@ class AuthService {
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-      
+
       if (e.code == 'weak-password') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('The password provided is too weak.')),
@@ -254,7 +280,7 @@ class AuthService {
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('An unexpected error occurred: $e')),
       );

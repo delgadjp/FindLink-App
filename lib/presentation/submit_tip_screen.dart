@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:geocoding/geocoding.dart'; // Add this import for geocoding
 import 'utils/modal_utils.dart'; // Import the new modal utils
+import 'package:http/http.dart' as http; // Add HTTP package for API calls
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -21,9 +22,29 @@ class SubmitTipScreen extends StatefulWidget {
   _SubmitTipScreenState createState() => _SubmitTipScreenState();
 }
 
+// Add this enum for validation status states
+enum ValidationStatus {
+  none,
+  processing,
+  error,
+  warning,
+  noHuman,
+  humanDetected,
+  success
+}
+
 class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController(); // Add scroll controller
+  
+  // Key for validation section for scrolling
+  final GlobalKey _validationSectionKey = GlobalKey();
+  
+  // Validation state variables
+  bool _isSubmitting = false;
+  ValidationStatus _validationStatus = ValidationStatus.none;
+  String _validationMessage = '';
+  String _validationConfidence = '0.0';
   
   // Create a map to store keys for form fields
   final Map<String, GlobalKey<FormFieldState>> _fieldKeys = {
@@ -35,7 +56,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'clothing': GlobalKey<FormFieldState>(),
     'features': GlobalKey<FormFieldState>(),
     'hairColor': GlobalKey<FormFieldState>(),
-    'eyeColor': GlobalKey<FormFieldState>(),
     'description': GlobalKey<FormFieldState>(),
     'longitude': GlobalKey<FormFieldState>(),
     'latitude': GlobalKey<FormFieldState>(),
@@ -57,9 +77,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final TextEditingController _featuresController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _hairColorController = TextEditingController();
-  final TextEditingController _eyeColorController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _customEyeColorController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _coordinatesController = TextEditingController();
@@ -72,7 +90,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   String? selectedGender;
   String? selectedHairColor;
-  String? selectedEyeColor;
   String? selectedAgeRange;
   String? selectedHeightRange; // Add selected height range
 
@@ -80,10 +97,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final List<String> hairColors = [
     'Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White',
     'Dark Brown', 'Light Brown', 'Auburn', 'Strawberry Blonde', 'Unknown'
-  ];
-  final List<String> eyeColors = [
-    'Brown', 'Blue', 'Green', 'Hazel', 'Gray',
-    'Amber', 'Black', 'Unknown'
   ];
   
   // Define age range options
@@ -113,7 +126,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     'clothing': '',
     'features': '',
     'hairColor': '',
-    'eyeColor': '',
     'description': '',
     'image': '',
     'longitude': '',
@@ -486,9 +498,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           firstErrorKey = _fieldKeys['heightRange']; 
         } else if (selectedHairColor == null) {
           firstErrorKey = _fieldKeys['hairColor'];
-        } else if (selectedEyeColor == null || 
-                 (selectedEyeColor == 'Other' && _customEyeColorController.text.isEmpty)) {
-          firstErrorKey = _fieldKeys['eyeColor'];
         }
       }
       
@@ -516,16 +525,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
     if (_formKey.currentState?.validate() ?? false) {
       try {
-        // Show loading indicator
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return Center(
-              child: CircularProgressIndicator(),
-            );
-          },
-        );
+        // Update UI to show loading state
+        setState(() {
+          _isSubmitting = true;
+          _validationMessage = "Processing your submission...";
+          _validationStatus = ValidationStatus.processing;
+        });
 
         final TipService tipService = TipService();
         
@@ -542,6 +547,75 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           imageData = _imageFile; // File for mobile
         }
         
+        // If we have an image, try to validate it first
+        if (imageData != null) {
+          try {
+            // Update validation status
+            setState(() {
+              _validationMessage = "Validating image...";
+            });
+            
+            // Scroll to validation section
+            _scrollToValidationSection();
+            
+            // Pre-validate the image
+            Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(imageData);
+            
+            if (!validationResult['isValid']) {
+              setState(() {
+                _isSubmitting = false;
+                _validationMessage = 'Error validating image: ${validationResult['message']}';
+                _validationStatus = ValidationStatus.error;
+              });
+              
+              _scrollToValidationSection();
+              return;
+            }
+            
+            if (!validationResult['containsHuman']) {
+              setState(() {
+                _isSubmitting = false;
+                _validationMessage = 'No person detected in the image. Please ensure the image clearly shows the person or submit without an image.';
+                _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+                _validationStatus = ValidationStatus.noHuman;
+              });
+              
+              _scrollToValidationSection();
+              return;
+            }
+            
+            // Update validation status for successful validation
+            setState(() {
+              _validationMessage = 'Person detected in image! Submitting tip...';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.humanDetected;
+            });
+            
+            // Log success message if validation passes
+            print('Image validation successful: ${validationResult['message']}');
+            
+          } catch (e) {
+            // If validation fails with an exception, log and proceed without validation
+            print('Error during image validation: $e');
+            
+            setState(() {
+              _validationMessage = 'Image validation encountered an error. You can proceed without image validation.';
+              _validationStatus = ValidationStatus.warning;
+            });
+            
+            _scrollToValidationSection();
+            
+            // We'll pause briefly before continuing
+            await Future.delayed(Duration(seconds: 2));
+          }
+        }
+        
+        // Update validation status for submission
+        setState(() {
+          _validationMessage = "Submitting tip...";
+          _validationStatus = ValidationStatus.processing;
+        });
+        
         // Submit tip with the image data
         await tipService.submitTip(
           dateLastSeen: _dateLastSeenController.text,
@@ -550,9 +624,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ageRange: selectedAgeRange ?? 'Unknown',
           heightRange: selectedHeightRange ?? 'Unknown',
           hairColor: selectedHairColor ?? '',
-          eyeColor: selectedEyeColor == 'Other' 
-              ? _customEyeColorController.text 
-              : (selectedEyeColor ?? ''),
           clothing: _clothingController.text,
           features: _featuresController.text,
           description: _descriptionController.text,
@@ -561,47 +632,82 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           userId: userId,
           address: _addressController.text,
           imageData: imageData, // Pass the image data to the service
+          validateImage: true, // Enable image validation
         );
 
-        // Remove loading indicator
-        Navigator.pop(context);
-
+        // Update UI to show success
+        setState(() {
+          _isSubmitting = false;
+          _validationMessage = "Tip submitted successfully!";
+          _validationStatus = ValidationStatus.success;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tip submitted successfully!')),
+          SnackBar(
+            content: Text('Tip submitted successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
+        
+        // Wait a moment for the user to see the success message
+        await Future.delayed(Duration(seconds: 2));
         
         // Navigate back to the missing person screen
         Navigator.pushReplacementNamed(context, AppRoutes.missingPerson);
 
-        // Clear form fields (these will only execute if navigation fails or is delayed)
-        _formKey.currentState?.reset();
-        _dateLastSeenController.clear();
-        _timeLastSeenController.clear();
-        _genderController.clear();
-        _clothingController.clear();
-        _featuresController.clear();
-        _heightController.clear();
-        _hairColorController.clear();
-        _eyeColorController.clear();
-        _descriptionController.clear();
-        _customEyeColorController.clear();
-        _longitudeController.clear();
-        _latitudeController.clear();
-        _coordinatesController.clear();
-        setState(() {
-          _imageFile = null;
-          _webImage = null;
-        });
       } catch (e) {
-        // Remove loading indicator
-        Navigator.pop(context);
-        
         print('Error saving tip: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        
+        // Update UI to show error
+        setState(() {
+          _isSubmitting = false;
+          
+          // Show user-friendly error message based on the exception
+          if (e.toString().contains('No human detected in the image')) {
+            _validationMessage = 'No person detected in the image. Please upload a photo that clearly shows a person.';
+            _validationStatus = ValidationStatus.noHuman;
+          } else {
+            _validationMessage = 'Error: ${e.toString()}';
+            _validationStatus = ValidationStatus.error;
+          }
+        });
+        
+        _scrollToValidationSection();
       }
     }
+  }
+  
+  // Helper method to scroll to validation section
+  void _scrollToValidationSection() {
+    if (_validationSectionKey.currentContext != null) {
+      Scrollable.ensureVisible(
+        _validationSectionKey.currentContext!,
+        duration: Duration(milliseconds: 500),
+        alignment: 0.2,
+      );
+    }
+  }
+  
+  // Method to try again with a different image
+  void _tryDifferentImage() {
+    setState(() {
+      _imageFile = null;
+      _webImage = null;
+      _validationStatus = ValidationStatus.none;
+      _validationMessage = '';
+    });
+    _showImageSourceOptions();
+  }
+  
+  // Method to submit without image
+  void _submitWithoutImage() {
+    setState(() {
+      _imageFile = null;
+      _webImage = null;
+      _validationStatus = ValidationStatus.none;
+      _validationMessage = '';
+    });
+    _submitTip();
   }
 
   Widget _buildMapSection() {
@@ -873,7 +979,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           (value) => setState(() => selectedHairColor = value),
                           Icons.face,
                         ),
-                        _buildEyeColorField(),
                       ],
                     ),
                   ),
@@ -897,6 +1002,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       children: [
                         _buildSectionHeader("Photo Evidence"),
                         _buildImagePicker(),
+                        // Add validation feedback UI
+                        if (_validationStatus != ValidationStatus.none)
+                          _buildValidationFeedback(),
                       ],
                     ),
                   ),
@@ -1139,32 +1247,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     );
   }
 
-  Widget _buildEyeColorField() {
-    return Column(
-      children: [
-        _buildDropdownField(
-          "Eye Color",
-          selectedEyeColor,
-          eyeColors,
-          (value) => setState(() => selectedEyeColor = value),
-          Icons.remove_red_eye,
-        ),
-        if (selectedEyeColor == 'Other')
-          Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: TextFormField(
-              key: _fieldKeys['eyeColor'], // Assign key to field
-              controller: _customEyeColorController,
-              decoration: _getInputDecoration("Specify Eye Color", Icons.remove_red_eye),
-              validator: (value) => 
-                value?.isEmpty ?? true ? 'Please specify eye color' : null,
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-      ],
-    );
-  }
-
   Widget _buildImagePicker() {
     return Center(
       child: (kIsWeb ? _webImage != null : _imageFile != null)
@@ -1295,5 +1377,169 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         ),
       ),
     );
+  }
+
+  // Build validation feedback UI section
+  Widget _buildValidationFeedback() {
+    return Container(
+      key: _validationSectionKey,
+      margin: EdgeInsets.only(top: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _getValidationBorderColor(),
+          width: 2,
+        ),
+        color: _getValidationBackgroundColor(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _getValidationIcon(),
+                color: _getValidationIconColor(),
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _getValidationTitle(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: _getValidationIconColor(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            _validationMessage,
+            style: TextStyle(fontSize: 14, color: Colors.black), // Changed text color to black
+          ),
+          if (_validationStatus == ValidationStatus.processing)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(_getValidationIconColor()),
+                ),
+              ),
+            ),
+          if (_validationStatus == ValidationStatus.humanDetected)
+            Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                "Confidence score: $_validationConfidence%",
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                  color: Colors.black, // Changed text color to black
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Helper methods for validation UI
+  IconData _getValidationIcon() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Icons.hourglass_top;
+      case ValidationStatus.error:
+        return Icons.error_outline;
+      case ValidationStatus.warning:
+        return Icons.warning_amber;
+      case ValidationStatus.noHuman:
+        return Icons.person_off;
+      case ValidationStatus.humanDetected:
+        return Icons.person;
+      case ValidationStatus.success:
+        return Icons.check_circle_outline;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  Color _getValidationIconColor() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Colors.blue;
+      case ValidationStatus.error:
+        return Colors.red;
+      case ValidationStatus.warning:
+        return Colors.orange;
+      case ValidationStatus.noHuman:
+        return Colors.orange;
+      case ValidationStatus.humanDetected:
+        return Colors.green;
+      case ValidationStatus.success:
+        return Colors.green;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  Color _getValidationBorderColor() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Colors.blue.shade300;
+      case ValidationStatus.error:
+        return Colors.red.shade300;
+      case ValidationStatus.warning:
+        return Colors.orange.shade300;
+      case ValidationStatus.noHuman:
+        return Colors.orange.shade300;
+      case ValidationStatus.humanDetected:
+        return Colors.green.shade300;
+      case ValidationStatus.success:
+        return Colors.green.shade300;
+      default:
+        return Colors.grey.shade300;
+    }
+  }
+
+  Color _getValidationBackgroundColor() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Colors.blue.shade50;
+      case ValidationStatus.error:
+        return Colors.red.shade50;
+      case ValidationStatus.warning:
+        return Colors.orange.shade50;
+      case ValidationStatus.noHuman:
+        return Colors.orange.shade50;
+      case ValidationStatus.humanDetected:
+        return Colors.green.shade50;
+      case ValidationStatus.success:
+        return Colors.green.shade50;
+      default:
+        return Colors.grey.shade50;
+    }
+  }
+
+  String _getValidationTitle() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return "Processing...";
+      case ValidationStatus.error:
+        return "Error";
+      case ValidationStatus.warning:
+        return "Warning";
+      case ValidationStatus.noHuman:
+        return "No Person Detected";
+      case ValidationStatus.humanDetected:
+        return "Person Detected";
+      case ValidationStatus.success:
+        return "Success";
+      default:
+        return "Information";
+    }
   }
 }
