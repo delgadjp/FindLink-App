@@ -369,7 +369,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     return null;
   }
 
-  /// Enhanced image picker with better permission handling
+  /// Enhanced image picker with better permission handling and immediate validation
   Future<void> _pickImage(ImageSource source) async {
     try {
       // Handle camera permission differently - check permission status first
@@ -425,18 +425,74 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       // If we got here, permission is granted or we're using gallery
       final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
+        // Show loading state while processing the image
+        setState(() {
+          _validationMessage = "Processing image...";
+          _validationStatus = ValidationStatus.processing;
+        });
+        
+        // Prepare image data based on platform
+        dynamic imageData;
         if (kIsWeb) {
           // Handle web platform
           final bytes = await pickedFile.readAsBytes();
+          imageData = bytes;
           setState(() {
             _webImage = bytes;
             tipData['image'] = base64Encode(bytes); // Store as base64 for web
           });
         } else {
           // Handle mobile platforms
+          final file = File(pickedFile.path);
+          imageData = file;
           setState(() {
-            _imageFile = File(pickedFile.path);
+            _imageFile = file;
             tipData['image'] = pickedFile.path;
+          });
+        }
+        
+        // Immediately validate the image with Google Vision
+        try {
+          final TipService tipService = TipService();
+          Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(imageData);
+          
+          if (!validationResult['isValid']) {
+            setState(() {
+              _validationMessage = 'Error validating image: ${validationResult['message']}';
+              _validationStatus = ValidationStatus.error;
+            });
+          } else if (!validationResult['containsHuman']) {
+            // If no human is detected, clear the image and show notification
+            setState(() {
+              _imageFile = null;
+              _webImage = null;
+              tipData['image'] = '';
+              _validationMessage = 'No person detected in the image. Image has been automatically removed.';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.noHuman;
+            });
+            
+            // Show a snackbar notification
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image removed - no person detected'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else {
+            // Human detected - keep the image and show confirmation
+            setState(() {
+              _validationMessage = 'Person detected in image!';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.humanDetected;
+            });
+          }
+        } catch (e) {
+          print('Error during image validation: $e');
+          setState(() {
+            _validationMessage = 'Image validation error: ${e.toString()}';
+            _validationStatus = ValidationStatus.warning;
           });
         }
       }
@@ -547,69 +603,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           imageData = _imageFile; // File for mobile
         }
         
-        // If we have an image, try to validate it first
-        if (imageData != null) {
-          try {
-            // Update validation status
-            setState(() {
-              _validationMessage = "Validating image...";
-            });
-            
-            // Scroll to validation section
-            _scrollToValidationSection();
-            
-            // Pre-validate the image
-            Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(imageData);
-            
-            if (!validationResult['isValid']) {
-              setState(() {
-                _isSubmitting = false;
-                _validationMessage = 'Error validating image: ${validationResult['message']}';
-                _validationStatus = ValidationStatus.error;
-              });
-              
-              _scrollToValidationSection();
-              return;
-            }
-            
-            if (!validationResult['containsHuman']) {
-              setState(() {
-                _isSubmitting = false;
-                _validationMessage = 'No person detected in the image. Please ensure the image clearly shows the person or submit without an image.';
-                _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-                _validationStatus = ValidationStatus.noHuman;
-              });
-              
-              _scrollToValidationSection();
-              return;
-            }
-            
-            // Update validation status for successful validation
-            setState(() {
-              _validationMessage = 'Person detected in image! Submitting tip...';
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-              _validationStatus = ValidationStatus.humanDetected;
-            });
-            
-            // Log success message if validation passes
-            print('Image validation successful: ${validationResult['message']}');
-            
-          } catch (e) {
-            // If validation fails with an exception, log and proceed without validation
-            print('Error during image validation: $e');
-            
-            setState(() {
-              _validationMessage = 'Image validation encountered an error. You can proceed without image validation.';
-              _validationStatus = ValidationStatus.warning;
-            });
-            
-            _scrollToValidationSection();
-            
-            // We'll pause briefly before continuing
-            await Future.delayed(Duration(seconds: 2));
-          }
-        }
-        
         // Update validation status for submission
         setState(() {
           _validationMessage = "Submitting tip...";
@@ -632,7 +625,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           userId: userId,
           address: _addressController.text,
           imageData: imageData, // Pass the image data to the service
-          validateImage: true, // Enable image validation
+          validateImage: false, // Disable second validation since we already validated
         );
 
         // Update UI to show success
@@ -664,8 +657,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           
           // Show user-friendly error message based on the exception
           if (e.toString().contains('No human detected in the image')) {
-            _validationMessage = 'No person detected in the image. Please upload a photo that clearly shows a person.';
+            _validationMessage = 'No person detected in the image. Image has been automatically removed.';
             _validationStatus = ValidationStatus.noHuman;
+            // Clear the image
+            _imageFile = null;
+            _webImage = null;
+            tipData['image'] = '';
           } else {
             _validationMessage = 'Error: ${e.toString()}';
             _validationStatus = ValidationStatus.error;
@@ -904,7 +901,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Submit Report",
+          "Report a Sighting",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -1101,53 +1098,129 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     // Set specific formatting and validation per field
     switch (label) {
       case "Date Last Seen":
-        controller.text = controller.text.isEmpty ? 
-          _dateFormatter.format(DateTime.now()) : controller.text;
-        return InkWell(
-          onTap: () async {
-            final DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime.now().subtract(Duration(days: 365)),
-              lastDate: DateTime.now(),
-            );
-            if (picked != null) {
-              controller.text = _dateFormatter.format(picked);
+        // Remove auto-initialization with current date
+        return TextFormField(
+          key: _fieldKeys['dateLastSeen'],
+          controller: controller,
+          style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600),
+          decoration: _getInputDecoration(label, icon).copyWith(
+            suffixIcon: IconButton(
+              icon: Icon(Icons.calendar_today, color: Color(0xFF0D47A1)),
+              onPressed: () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2000), // Allow dates from year 2000
+                  lastDate: DateTime.now(), // Up to current date only
+                );
+                if (picked != null) {
+                  controller.text = _dateFormatter.format(picked);
+                }
+              },
+            ),
+            hintText: 'YYYY-MM-DD',
+          ),
+          keyboardType: TextInputType.datetime,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter date';
+            }
+            
+            // Try to parse the date
+            try {
+              final enteredDate = _dateFormatter.parse(value);
+              final now = DateTime.now();
+              
+              // Check if date is in the future
+              if (enteredDate.isAfter(DateTime(now.year, now.month, now.day))) {
+                return 'Cannot enter future dates';
+              }
+              
+              return null;
+            } catch (e) {
+              return 'Invalid date format (YYYY-MM-DD)';
             }
           },
-          child: IgnorePointer(
-            child: TextFormField(
-              key: _fieldKeys['dateLastSeen'], // Assign key to field
-              controller: controller,
-              style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600), // Updated text style
-              decoration: _getInputDecoration(label, icon),
-              validator: (value) => value?.isEmpty ?? true ? 'Please select date' : null,
-            ),
-          ),
+          inputFormatters: [
+            // Allow only digits and hyphens for date format
+            FilteringTextInputFormatter.allow(RegExp(r'[\d-]')),
+            // Format as YYYY-MM-DD
+            LengthLimitingTextInputFormatter(10),
+          ],
         );
 
       case "Time Last Seen":
-        controller.text = controller.text.isEmpty ? 
-          _timeFormatter.format(DateTime.now()) : controller.text;
-        return InkWell(
-          onTap: () async {
-            final TimeOfDay? picked = await showTimePicker(
-              context: context,
-              initialTime: TimeOfDay.now(),
-            );
-            if (picked != null) {
-              controller.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+        // Remove auto-initialization with current time
+        return TextFormField(
+          key: _fieldKeys['timeLastSeen'],
+          controller: controller,
+          style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600),
+          decoration: _getInputDecoration(label, icon).copyWith(
+            suffixIcon: IconButton(
+              icon: Icon(Icons.access_time, color: Color(0xFF0D47A1)),
+              onPressed: () async {
+                final TimeOfDay? picked = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                  builder: (BuildContext context, Widget? child) {
+                    return MediaQuery(
+                      data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                      child: child!,
+                    );
+                  },
+                );
+                if (picked != null) {
+                  controller.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                }
+              },
+            ),
+            hintText: 'HH:MM (24-hour format)',
+          ),
+          keyboardType: TextInputType.datetime,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter time';
+            }
+            
+            // Check time format
+            final timeRegex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
+            if (!timeRegex.hasMatch(value)) {
+              return 'Invalid time format (HH:MM)';
+            }
+            
+            // If date is today, check if time is in the future
+            final dateValue = _dateLastSeenController.text;
+            try {
+              final enteredDate = _dateFormatter.parse(dateValue);
+              final now = DateTime.now();
+              
+              if (enteredDate.year == now.year && 
+                  enteredDate.month == now.month && 
+                  enteredDate.day == now.day) {
+                
+                // Parse the time
+                final parts = value.split(':');
+                final hour = int.parse(parts[0]);
+                final minute = int.parse(parts[1]);
+                
+                // Check if time is in the future
+                if (hour > now.hour || (hour == now.hour && minute > now.minute)) {
+                  return 'Cannot enter future times for today';
+                }
+              }
+              
+              return null;
+            } catch (e) {
+              // If there's an error parsing the date, just validate the time format
+              return null;
             }
           },
-          child: IgnorePointer(
-            child: TextFormField(
-              key: _fieldKeys['timeLastSeen'], // Assign key to field
-              controller: controller,
-              style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600), // Updated text style
-              decoration: _getInputDecoration(label, icon),
-              validator: (value) => value?.isEmpty ?? true ? 'Please select time' : null,
-            ),
-          ),
+          inputFormatters: [
+            // Allow only digits and colon for time format
+            FilteringTextInputFormatter.allow(RegExp(r'[\d:]')),
+            // Format as HH:MM
+            LengthLimitingTextInputFormatter(5),
+          ],
         );
 
       case "Clothing Description":
@@ -1167,6 +1240,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         };
     }
 
+    // Rest of the method remains the same
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: TextFormField(

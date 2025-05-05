@@ -237,7 +237,7 @@ class TipService {
     required String timeLastSeen,
     required String gender,
     String ageRange = "Unknown", 
-    String heightRange = "Unknown", // Changed height to heightRange with default value
+    String heightRange = "Unknown", 
     required String hairColor,
     required String clothing,
     required String features,
@@ -246,12 +246,13 @@ class TipService {
     required double lng,
     required String userId,
     required String address,
-    dynamic imageData, // New parameter for image data
-    bool validateImage = true, // New parameter to control image validation
+    dynamic imageData, 
+    bool validateImage = true, 
   }) async {
     try {
       // Validate image if provided and validation is enabled
       Map<String, dynamic> imageValidation = {'isValid': true, 'containsHuman': true};
+      bool shouldUploadImage = imageData != null;
       
       if (imageData != null && validateImage) {
         imageValidation = await validateImageWithGoogleVision(imageData);
@@ -259,11 +260,12 @@ class TipService {
         // If validation failed completely, continue without the image
         if (!imageValidation['isValid']) {
           print('Image validation failed: ${imageValidation['message']}');
-          // We'll continue without the image, but log the error
+          shouldUploadImage = false;
         }
-        // If validation succeeded but no human detected, throw an error
+        // If validation succeeded but no human detected, don't upload the image
         else if (!imageValidation['containsHuman']) {
-          throw Exception('No human detected in the image. Please upload a photo that clearly shows a person.');
+          print('No human detected in the image. The image will be automatically removed.');
+          shouldUploadImage = false;
         }
       }
     
@@ -273,7 +275,7 @@ class TipService {
       // Create the data map with all fields except the image
       final Map<String, dynamic> reportData = {
         'ageRange': ageRange,
-        'heightRange': heightRange, // Store height range instead of height
+        'heightRange': heightRange,
         'clothing': clothing,
         'coordinates': {
           'lat': lat,
@@ -288,7 +290,7 @@ class TipService {
         'timeLastSeen': timeLastSeen,
         'timestamp': FieldValue.serverTimestamp(),
         'uid': userId,
-        'documentId': reportId, // Store document ID in the document itself
+        'documentId': reportId,
       };
       
       // Add image validation results if image was provided and validated
@@ -296,11 +298,12 @@ class TipService {
         reportData['imageValidation'] = {
           'containsHuman': imageValidation['containsHuman'],
           'confidence': imageValidation['confidence'],
+          'wasRemoved': !shouldUploadImage && imageData != null,
         };
       }
       
-      // Upload image if provided and validation passed or was skipped
-      if (imageData != null && (!validateImage || imageValidation['containsHuman'])) {
+      // Upload image only if validation passed or was skipped
+      if (shouldUploadImage) {
         final String? imageUrl = await _uploadImage(imageData, reportId);
         if (imageUrl != null) {
           // Add the image URL to the report data
