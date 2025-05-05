@@ -88,7 +88,7 @@ class AuthService {
       // Query Firestore for any documents with the user's UID
       final QuerySnapshot result = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -100,7 +100,7 @@ class AuthService {
     }
   }
 
-  // Modified method with custom document ID format and additional user fields including gender
+  // Modified method with custom document ID format and additional user fields
   Future<void> addUserToFirestore(
     User user,
     String email, {
@@ -110,6 +110,9 @@ class AuthService {
     DateTime? dateOfBirth,
     int? age,
     String? gender,
+    String? phoneNumber,
+    String? selectedIDType, // Added selectedIDType parameter
+    String? uploadedIDImage, // Added uploadedIDImage parameter
   }) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -131,25 +134,28 @@ class AuthService {
 
       // Store user data with the custom document ID
       await _firestore.collection('users-app').doc(customDocId).set({
-        'uid': user.uid, // Store the Firebase Auth UID as a field
+        'userId': user.uid, // Changed from 'uid' to 'userId'
         'email': email,
         'firstName': firstName ?? '',
         'middleName': middleName ?? '',
         'lastName': lastName ?? '',
         'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
         'age': age ?? 0,
-        'gender': gender ?? 'Not specified', // Added gender field
+        'gender': gender ?? 'Not specified',
+        'phoneNumber': phoneNumber ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'displayName': firstName != null ? '$firstName ${lastName ?? ''}' : (user.displayName ?? email.split('@')[0]),
         'photoURL': user.photoURL,
         'role': 'user',
-        'documentId': customDocId, // Store the document ID in the document itself
-        'lastSignIn': FieldValue.serverTimestamp(), // Add last sign-in time
-        'privacyPolicyAccepted': false, // Default to not accepted
-        'privacyPolicyAcceptedAt': null, // Will be set when user accepts
-        'idVerified': false, // Default to not verified
-        'idSubmitted': false, // Track if ID was submitted for verification
-        'idRejected': false, // Track if ID verification was rejected
+        'documentId': customDocId,
+        'lastSignIn': FieldValue.serverTimestamp(),
+        'privacyPolicyAccepted': false,
+        'privacyPolicyAcceptedAt': null,
+        'isValidated': false, // Changed from 'idVerified' to 'isValidated'
+        'idSubmitted': false,
+        'idRejected': false,
+        'selectedIDType': selectedIDType ?? '', // Added selectedIDType field
+        'uploadedIDImage': uploadedIDImage ?? '', // Added uploadedIDImage field
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
@@ -165,7 +171,7 @@ class AuthService {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -188,7 +194,7 @@ class AuthService {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -215,6 +221,9 @@ class AuthService {
     DateTime? dateOfBirth,
     int? age,
     String? gender,
+    String? phoneNumber,
+    String? selectedIDType, // Added selectedIDType parameter
+    String? uploadedIDImage, // Added uploadedIDImage parameter
   }) async {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,6 +264,9 @@ class AuthService {
         dateOfBirth: dateOfBirth,
         age: age,
         gender: gender,
+        phoneNumber: phoneNumber,
+        selectedIDType: selectedIDType, // Pass selectedIDType to Firestore
+        uploadedIDImage: uploadedIDImage, // Pass uploadedIDImage to Firestore
       );
 
       // Close loading dialog
@@ -308,12 +320,14 @@ class AuthService {
     String? frontImageURL,
     String? backImageURL,
     String? selfieImageURL,
+    String? selectedIDType, // Added selectedIDType parameter
+    String? uploadedIDImage, // Added uploadedIDImage parameter
   }) async {
     try {
       // Find the user document
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -322,12 +336,14 @@ class AuthService {
           'idSubmitted': submitted,
         };
 
-        if (verified != null) updateData['idVerified'] = verified;
+        if (verified != null) updateData['isValidated'] = verified; // Changed from 'idVerified' to 'isValidated'
         if (rejected != null) updateData['idRejected'] = rejected;
         if (idType != null) updateData['idType'] = idType;
         if (frontImageURL != null) updateData['idFrontImage'] = frontImageURL;
         if (backImageURL != null) updateData['idBackImage'] = backImageURL;
         if (selfieImageURL != null) updateData['idSelfieImage'] = selfieImageURL;
+        if (selectedIDType != null) updateData['selectedIDType'] = selectedIDType; // Add selectedIDType field
+        if (uploadedIDImage != null) updateData['uploadedIDImage'] = uploadedIDImage; // Add uploadedIDImage field
         
         if (submitted) {
           updateData['idSubmittedAt'] = FieldValue.serverTimestamp();

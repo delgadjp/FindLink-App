@@ -15,6 +15,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController phoneNumberController = TextEditingController(); // Add phone number controller
   
   String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
@@ -27,7 +28,29 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLastNameValid = true;
   bool _isEmailValid = true;
   bool _isPasswordValid = true;
+  bool _isPhoneNumberValid = true; // Add phone number validation state
   final _formKey = GlobalKey<FormState>();
+
+  // Philippines country code
+  final String countryCode = '+63';
+  
+  // Phone number validation regex - expects exactly 10 digits
+  final RegExp phoneRegex = RegExp(r'^\d{10}$');
+
+  // Validate phone number
+  bool _validatePhoneNumber(String phone) {
+    return phoneRegex.hasMatch(phone);
+  }
+
+  // Format phone number as user types (remove non-digit characters)
+  String _formatPhoneNumber(String text) {
+    return text.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+  
+  // Get the full phone number with country code
+  String get fullPhoneNumber {
+    return '$countryCode${phoneNumberController.text}';
+  }
 
   void _calculateAge(DateTime birthDate) {
     final today = DateTime.now();
@@ -376,6 +399,93 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               SizedBox(height: 15),
 
+                              // Phone Number
+                              _buildInputLabel('Phone Number'),
+                              SizedBox(height: 5),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Country code prefix container
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(9),
+                                          bottomLeft: Radius.circular(9),
+                                        ),
+                                        border: Border(
+                                          right: BorderSide(color: Colors.grey.shade300),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        countryCode,
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                    // Phone number input field
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: phoneNumberController,
+                                        style: TextStyle(color: Colors.black),
+                                        keyboardType: TextInputType.phone,
+                                        decoration: InputDecoration(
+                                          hintText: 'Enter your phone number',
+                                          prefixIcon: Icon(
+                                            Icons.phone_outlined,
+                                            color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(vertical: 15),
+                                          errorStyle: TextStyle(height: 0), // Hide error text as we'll use red border
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            phoneNumberController.text = _formatPhoneNumber(value);
+                                            phoneNumberController.selection = TextSelection.fromPosition(
+                                              TextPosition(offset: phoneNumberController.text.length),
+                                            );
+                                            _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
+                                          });
+                                        },
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Please enter your phone number';
+                                          }
+                                          if (!_validatePhoneNumber(value)) {
+                                            return 'Please enter a valid phone number (10 digits)';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              // Phone number format hint
+                              Padding(
+                                padding: EdgeInsets.only(left: 5),
+                                child: Text(
+                                  'Enter 10 digits (e.g., 9123456789)',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 15),
+
                               // Password
                               _buildInputLabel('Password'),
                               SizedBox(height: 5),
@@ -486,6 +596,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                         dateOfBirth: selectedDate,
                                         age: age,
                                         gender: selectedGender,
+                                        phoneNumber: fullPhoneNumber, // Pass full phone number
                                         context: context,
                                       );
                                     }

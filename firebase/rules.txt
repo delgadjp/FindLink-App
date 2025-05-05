@@ -24,11 +24,11 @@ service cloud.firestore {
       );
     }
 
-    // Rules for users-app collection
+    // Rules for users-app collection - Updated to use userId instead of uid
     match /users-app/{userId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Rules for missingPersons collection
