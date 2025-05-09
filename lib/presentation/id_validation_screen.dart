@@ -5,14 +5,23 @@ import 'dart:io';
 import 'package:findlink/presentation/confirm_id_details_screen.dart';
 
 class IDValidationScreen extends StatefulWidget {
+  // Add parameters for registration data and flow control
+  final Map<String, dynamic>? registrationData;
+  final bool isFromRegistration;
+  
+  IDValidationScreen({
+    Key? key,
+    this.registrationData,
+    this.isFromRegistration = false,
+  }) : super(key: key);
+  
   @override
   _IDValidationScreenState createState() => _IDValidationScreenState();
 }
 
 class _IDValidationScreenState extends State<IDValidationScreen> {
   final ImagePicker _picker = ImagePicker();
-  File? frontImage;
-  File? backImage;
+  File? idImage;
   bool isSubmitting = false;
   
   // ID types available for selection
@@ -23,7 +32,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
   
   String selectedIdType = 'Driver\'s License'; // Default value
 
-  Future<void> _pickImage(ImageSource source, int imageType) async {
+  Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
@@ -32,14 +41,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
 
       if (pickedFile != null) {
         setState(() {
-          switch (imageType) {
-            case 1:
-              frontImage = File(pickedFile.path);
-              break;
-            case 2:
-              backImage = File(pickedFile.path);
-              break;
-          }
+          idImage = File(pickedFile.path);
         });
       }
     } catch (e) {
@@ -52,7 +54,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
     }
   }
 
-  void _showImageSourceDialog(int imageType) {
+  void _showImageSourceDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -74,7 +76,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
-                    _pickImage(ImageSource.gallery, imageType);
+                    _pickImage(ImageSource.gallery);
                   },
                 ),
                 Padding(
@@ -94,7 +96,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
-                    _pickImage(ImageSource.camera, imageType);
+                    _pickImage(ImageSource.camera);
                   },
                 ),
               ],
@@ -105,44 +107,33 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
     );
   }
 
-  // Modified to validate and navigate to confirmation screen instead of direct submission
+  // Modified to validate and navigate to confirmation screen including registration data
   void _validateAndContinue() {
-    // Check if required images are provided based on ID type
-    if (frontImage == null) {
+    if (idImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please provide front image of your ID'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    
-    // Only check for back image if National ID is selected
-    if (selectedIdType == 'National ID' && backImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please provide both front and back images for National ID'),
+          content: Text('Please provide an image of your ID'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // Navigate to the confirmation screen
+    // Navigate to the confirmation screen with all required data
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ConfirmIDDetailsScreen(
-          frontImage: frontImage!, 
-          backImage: selectedIdType == 'National ID' ? backImage : null,
+          idImage: idImage!, 
           idType: selectedIdType,
+          registrationData: widget.isFromRegistration ? widget.registrationData : null,
+          isFromRegistration: widget.isFromRegistration,
         ),
       ),
     );
   }
 
-  Widget _buildImageUploader(String title, String description, File? image, int imageType) {
+  Widget _buildImageUploader(String title, String description, File? image) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -157,9 +148,9 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
         ),
         SizedBox(height: 10),
         InkWell(
-          onTap: () => _showImageSourceDialog(imageType),
+          onTap: _showImageSourceDialog,
           child: Container(
-            height: 150,
+            height: 200,
             width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
@@ -172,7 +163,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                     children: [
                       Icon(
                         Icons.add_photo_alternate,
-                        size: 40,
+                        size: 50,
                         color: Color(0xFF53C0FF),
                       ),
                       SizedBox(height: 10),
@@ -200,7 +191,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => _showImageSourceDialog(imageType),
+              onPressed: _showImageSourceDialog,
               child: Text(
                 'Change Image',
                 style: TextStyle(color: Color(0xFF53C0FF)),
@@ -216,6 +207,18 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
+      appBar: widget.isFromRegistration ? AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'ID Validation',
+          style: TextStyle(color: Colors.white),
+        ),
+      ) : null,
       body: Container(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
@@ -283,7 +286,9 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20),
                           child: Text(
-                            'Please provide valid ID to verify your identity',
+                            widget.isFromRegistration
+                                ? 'Please provide valid ID to complete your registration'
+                                : 'Please provide valid ID to verify your identity',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey.shade600,
@@ -345,25 +350,15 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                             ),
                             SizedBox(height: 25),
 
-                            // Image Upload Section
-                            _buildSectionHeader("Upload ID Images"),
+                            // ID Image Upload Section
+                            _buildSectionHeader("Upload ID Image"),
                             
-                            // Front of ID
+                            // ID Image
                             _buildImageUploader(
-                              'Front of ID', 
-                              'Upload a clear photo of the front of your ID', 
-                              frontImage, 
-                              1
+                              'ID Image', 
+                              'Upload a clear photo of your ID card', 
+                              idImage
                             ),
-                            
-                            // Back of ID - Only show for National ID
-                            if (selectedIdType == 'National ID')
-                              _buildImageUploader(
-                                'Back of ID', 
-                                'Upload a clear photo of the back of your ID', 
-                                backImage, 
-                                2
-                              ),
                             
                             SizedBox(height: 15),
                             
@@ -386,7 +381,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                             
                             SizedBox(height: 30),
                             
-                            // Continue Button (renamed from Submit)
+                            // Continue Button
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(

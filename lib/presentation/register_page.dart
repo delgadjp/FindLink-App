@@ -1,7 +1,7 @@
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
-import 'package:findlink/presentation/confirm_id_details_screen.dart';
+import 'package:findlink/presentation/id_validation_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -99,6 +99,45 @@ class _RegisterPageState extends State<RegisterPage> {
         selectedDate = picked;
         _calculateAge(picked);
       });
+    }
+  }
+
+  // Method to validate form and proceed to ID validation
+  void _validateAndProceedToIDValidation() {
+    if (_formKey.currentState!.validate()) {
+      if (selectedDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please select your date of birth'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Create a map with user registration data to pass to ID validation
+      Map<String, dynamic> registrationData = {
+        'email': emailController.text.trim(),
+        'password': passwordController.text,
+        'firstName': firstNameController.text.trim(),
+        'middleName': middleNameController.text.trim(),
+        'lastName': lastNameController.text.trim(),
+        'dateOfBirth': selectedDate,
+        'age': age,
+        'gender': selectedGender,
+        'phoneNumber': fullPhoneNumber,
+      };
+      
+      // Navigate to ID validation with registration data
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IDValidationScreen(
+            registrationData: registrationData,
+            isFromRegistration: true,
+          ),
+        ),
+      );
     }
   }
 
@@ -570,37 +609,11 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               SizedBox(height: 30),
 
-                              // Register Button - Improved design
+                              // Continue Button - Changed from Register to Continue
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      if (selectedDate == null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Please select your date of birth'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      
-                                      _authService.registerUser(
-                                        email: emailController.text.trim(),
-                                        password: passwordController.text,
-                                        confirmPassword: confirmPasswordController.text,
-                                        firstName: firstNameController.text.trim(),
-                                        middleName: middleNameController.text.trim(),
-                                        lastName: lastNameController.text.trim(),
-                                        dateOfBirth: selectedDate,
-                                        age: age,
-                                        gender: selectedGender,
-                                        phoneNumber: fullPhoneNumber, // Pass full phone number
-                                        context: context,
-                                      );
-                                    }
-                                  },
+                                  onPressed: _validateAndProceedToIDValidation,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Color(0xFFFFD27E),
                                     foregroundColor: Color(0xFF424242),
@@ -614,75 +627,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                     'CREATE ACCOUNT',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              
-                              // Temporary ID Validation button
-                              SizedBox(height: 15),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => IDValidationScreen()),
-                                  );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 15),
-                                    side: BorderSide(color: Color(0xFF53C0FF), width: 1.5),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'GO TO ID VALIDATION (TEMP)',
-                                    style: TextStyle(
-                                      color: Color(0xFF53C0FF),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              
-                              // Temporary Confirm ID Details button
-                              SizedBox(height: 15),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    // Create dummy File objects since we need them for the screen
-                                    final File dummyFrontImage = File('dummy_front_path');
-                                    
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => ConfirmIDDetailsScreen(
-                                          frontImage: dummyFrontImage,
-                                          backImage: null,
-                                          idType: 'Driver\'s License',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 15),
-                                    side: BorderSide(color: Color(0xFFFFD27E), width: 1.5),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'GO TO CONFIRM ID DETAILS (TEMP)',
-                                    style: TextStyle(
-                                      color: Color(0xFFFFD27E),
-                                      fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 0.5,
                                     ),

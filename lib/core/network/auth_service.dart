@@ -2,11 +2,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Modified Login function to update last sign-in time
   Future<void> loginUser({
@@ -100,6 +103,30 @@ class AuthService {
     }
   }
 
+  // Upload ID image to Firebase Storage
+  Future<String?> uploadIDImage({
+    required String uid, 
+    required File idImage,
+  }) async {
+    try {
+      final String imagePath = 'user_ids_app/$uid/id_image.jpg';
+      final Reference imageRef = _storage.ref().child(imagePath);
+      
+      final UploadTask uploadTask = imageRef.putFile(
+        idImage,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      
+      final TaskSnapshot snapshot = await uploadTask;
+      final String imageURL = await snapshot.ref.getDownloadURL();
+      
+      return imageURL;
+    } catch (e) {
+      print('Error uploading ID image: $e');
+      throw e;
+    }
+  }
+
   // Modified method with custom document ID format and additional user fields
   Future<void> addUserToFirestore(
     User user,
@@ -111,8 +138,8 @@ class AuthService {
     int? age,
     String? gender,
     String? phoneNumber,
-    String? selectedIDType, // Added selectedIDType parameter
-    String? uploadedIDImage, // Added uploadedIDImage parameter
+    String? selectedIDType,
+    File? uploadedIDImage,
   }) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -131,10 +158,19 @@ class AuthService {
       }
 
       final customDocId = "USER_${datePart}_$uniquePart";
+      
+      // Upload ID image if provided
+      String? idImageURL;
+      if (uploadedIDImage != null) {
+        idImageURL = await uploadIDImage(
+          uid: user.uid,
+          idImage: uploadedIDImage,
+        );
+      }
 
       // Store user data with the custom document ID
       await _firestore.collection('users-app').doc(customDocId).set({
-        'userId': user.uid, // Changed from 'uid' to 'userId'
+        'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
         'middleName': middleName ?? '',
@@ -145,17 +181,16 @@ class AuthService {
         'phoneNumber': phoneNumber ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'displayName': firstName != null ? '$firstName ${lastName ?? ''}' : (user.displayName ?? email.split('@')[0]),
-        'photoURL': user.photoURL,
         'role': 'user',
         'documentId': customDocId,
         'lastSignIn': FieldValue.serverTimestamp(),
         'privacyPolicyAccepted': false,
         'privacyPolicyAcceptedAt': null,
-        'isValidated': false, // Changed from 'idVerified' to 'isValidated'
-        'idSubmitted': false,
+        'isValidated': false,
+        'idSubmitted': uploadedIDImage != null,
         'idRejected': false,
-        'selectedIDType': selectedIDType ?? '', // Added selectedIDType field
-        'uploadedIDImage': uploadedIDImage ?? '', // Added uploadedIDImage field
+        'selectedIDType': selectedIDType ?? '',
+        'uploadedIDImageURL': idImageURL ?? '',
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
@@ -222,8 +257,8 @@ class AuthService {
     int? age,
     String? gender,
     String? phoneNumber,
-    String? selectedIDType, // Added selectedIDType parameter
-    String? uploadedIDImage, // Added uploadedIDImage parameter
+    String? selectedIDType,
+    File? uploadedIDImage,
   }) async {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -265,8 +300,8 @@ class AuthService {
         age: age,
         gender: gender,
         phoneNumber: phoneNumber,
-        selectedIDType: selectedIDType, // Pass selectedIDType to Firestore
-        uploadedIDImage: uploadedIDImage, // Pass uploadedIDImage to Firestore
+        selectedIDType: selectedIDType,
+        uploadedIDImage: uploadedIDImage,
       );
 
       // Close loading dialog
@@ -277,8 +312,13 @@ class AuthService {
         SnackBar(content: Text('Registration successful! Please complete ID verification.')),
       );
 
-      // Navigate to ID validation page
-      Navigator.pushReplacementNamed(context, '/id-validation');
+      // Navigate to ID validation page if ID image wasn't provided during registration
+      if (uploadedIDImage == null) {
+        Navigator.pushReplacementNamed(context, '/id-validation');
+      } else {
+        // Navigate directly to home if ID was already provided
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } on FirebaseAuthException catch (e) {
       // Close loading dialog if open
       if (Navigator.canPop(context)) {
@@ -317,17 +357,13 @@ class AuthService {
     bool? verified,
     bool? rejected,
     String? idType,
-    String? frontImageURL,
-    String? backImageURL,
-    String? selfieImageURL,
-    String? selectedIDType, // Added selectedIDType parameter
-    String? uploadedIDImage, // Added uploadedIDImage parameter
+    File? uploadedIDImage,
   }) async {
     try {
       // Find the user document
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
+          .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
 
@@ -336,14 +372,21 @@ class AuthService {
           'idSubmitted': submitted,
         };
 
-        if (verified != null) updateData['isValidated'] = verified; // Changed from 'idVerified' to 'isValidated'
+        // Upload ID image if provided
+        if (uploadedIDImage != null) {
+          String? idImageURL = await uploadIDImage(
+            uid: uid,
+            idImage: uploadedIDImage,
+          );
+          
+          if (idImageURL != null) {
+            updateData['uploadedIDImageURL'] = idImageURL;
+          }
+        }
+
+        if (verified != null) updateData['isValidated'] = verified;
         if (rejected != null) updateData['idRejected'] = rejected;
         if (idType != null) updateData['idType'] = idType;
-        if (frontImageURL != null) updateData['idFrontImage'] = frontImageURL;
-        if (backImageURL != null) updateData['idBackImage'] = backImageURL;
-        if (selfieImageURL != null) updateData['idSelfieImage'] = selfieImageURL;
-        if (selectedIDType != null) updateData['selectedIDType'] = selectedIDType; // Add selectedIDType field
-        if (uploadedIDImage != null) updateData['uploadedIDImage'] = uploadedIDImage; // Add uploadedIDImage field
         
         if (submitted) {
           updateData['idSubmittedAt'] = FieldValue.serverTimestamp();
