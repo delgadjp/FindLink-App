@@ -148,7 +148,7 @@ class MissingPersonCard extends StatelessWidget {
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: Icon(Icons.tips_and_updates),
-                        label: Text('Submit Report'),
+                        label: Text('Report a Sighting'),
                         onPressed: () {
                           Navigator.push(
                             context,

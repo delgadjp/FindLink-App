@@ -1,34 +1,54 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    
     // Deny all read and write access by default
     match /{allPaths=**} {
       allow read, write: if false;
     }
 
-    // Allow read and write for authenticated users in the 'reports' folder
+    // Allow read and write for authenticated users in specific folders
     match /reports/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
 
-    // Allow read and write for authenticated users in the 'reports-app' folder
     match /reports-app/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
 
-    // Allow authenticated users to read and write in the 'missing_persons' folder
-    match /missing_persons/{allPaths=**} {
-      allow read, write: if request.auth != null;
+    match /missing_persons/{fileName} {
+      allow read: if request.auth != null; // Allow authenticated users to read
+      allow write: if request.auth != null; // Allow authenticated users to write
     }
-    
-    // Allow authenticated users to manage their profile images
+
+    // Allow profile image access
     match /profile_images/{userId} {
-      // Anyone can view profile images
       allow read: if true;
-      // Users can only upload/update their own profile image
-      allow write: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow users to manage their own ID uploads
+    match /user_ids/{fileName} {
+      allow read, write: if request.auth != null && request.auth.uid == fileName.split('_')[0];
+    }
+
+    // Allow users to upload incident images directly in the incident_images folder
+    match /incident_images/{fileName} {
+      allow read: if request.auth != null; // Allow authenticated users to read
+      allow write: if request.auth != null; // Allow authenticated users to write
+    }
+
+    // Allow authenticated users to manage their ID images in user_ids_app folder
+    match /user_ids_app/{userId}/{allPaths=**} {
+      // Only the user themselves and admins can view their ID images
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        exists(/databases/$(database)/documents/users-app/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users-app/$(request.auth.uid)).data.role == 'admin'
+      );
+      
+      // Users can only upload/update their own ID images
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
-

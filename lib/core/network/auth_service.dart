@@ -2,11 +2,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Modified Login function to update last sign-in time
   Future<void> loginUser({
@@ -65,12 +68,16 @@ class AuthService {
       // Only add the user to Firestore if they don't already exist
       if (!userExists) {
         await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
+        
+        // Redirect to ID validation for new users
+        Navigator.pushReplacementNamed(context, '/id-validation');
       } else {
         // Update last sign-in time for existing users
         await updateLastSignIn(userCredential.user!.uid);
+        
+        // Redirect straight to home for existing users
+        Navigator.pushReplacementNamed(context, '/home');
       }
-
-      Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google Sign In failed: $e')),
@@ -84,7 +91,7 @@ class AuthService {
       // Query Firestore for any documents with the user's UID
       final QuerySnapshot result = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -93,6 +100,30 @@ class AuthService {
     } catch (e) {
       print('Error checking if user exists: $e');
       return false;
+    }
+  }
+
+  // Upload ID image to Firebase Storage
+  Future<String?> uploadIDImage({
+    required String uid, 
+    required File idImage,
+  }) async {
+    try {
+      final String imagePath = 'user_ids_app/$uid/id_image.jpg';
+      final Reference imageRef = _storage.ref().child(imagePath);
+      
+      final UploadTask uploadTask = imageRef.putFile(
+        idImage,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      
+      final TaskSnapshot snapshot = await uploadTask;
+      final String imageURL = await snapshot.ref.getDownloadURL();
+      
+      return imageURL;
+    } catch (e) {
+      print('Error uploading ID image: $e');
+      throw e;
     }
   }
 
@@ -105,6 +136,10 @@ class AuthService {
     String? lastName,
     DateTime? dateOfBirth,
     int? age,
+    String? gender,
+    String? phoneNumber,
+    String? selectedIDType,
+    File? uploadedIDImage,
   }) async {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
@@ -123,24 +158,39 @@ class AuthService {
       }
 
       final customDocId = "USER_${datePart}_$uniquePart";
+      
+      // Upload ID image if provided
+      String? idImageURL;
+      if (uploadedIDImage != null) {
+        idImageURL = await uploadIDImage(
+          uid: user.uid,
+          idImage: uploadedIDImage,
+        );
+      }
 
       // Store user data with the custom document ID
       await _firestore.collection('users-app').doc(customDocId).set({
-        'uid': user.uid, // Store the Firebase Auth UID as a field
+        'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
         'middleName': middleName ?? '',
         'lastName': lastName ?? '',
         'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
         'age': age ?? 0,
+        'gender': gender ?? 'Not specified',
+        'phoneNumber': phoneNumber ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'displayName': firstName != null ? '$firstName ${lastName ?? ''}' : (user.displayName ?? email.split('@')[0]),
-        'photoURL': user.photoURL,
         'role': 'user',
-        'documentId': customDocId, // Store the document ID in the document itself
-        'lastSignIn': FieldValue.serverTimestamp(), // Add last sign-in time
-        'privacyPolicyAccepted': false, // Default to not accepted
-        'privacyPolicyAcceptedAt': null, // Will be set when user accepts
+        'documentId': customDocId,
+        'lastSignIn': FieldValue.serverTimestamp(),
+        'privacyPolicyAccepted': false,
+        'privacyPolicyAcceptedAt': null,
+        'isValidated': false,
+        'idSubmitted': uploadedIDImage != null,
+        'idRejected': false,
+        'selectedIDType': selectedIDType ?? '',
+        'uploadedIDImageURL': idImageURL ?? '',
       });
 
       print('User successfully added to Firestore with custom ID: $customDocId');
@@ -156,7 +206,7 @@ class AuthService {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -179,7 +229,7 @@ class AuthService {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('uid', isEqualTo: uid)
+          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
           .limit(1)
           .get();
 
@@ -205,6 +255,10 @@ class AuthService {
     String? lastName,
     DateTime? dateOfBirth,
     int? age,
+    String? gender,
+    String? phoneNumber,
+    String? selectedIDType,
+    File? uploadedIDImage,
   }) async {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -244,6 +298,10 @@ class AuthService {
         lastName: lastName,
         dateOfBirth: dateOfBirth,
         age: age,
+        gender: gender,
+        phoneNumber: phoneNumber,
+        selectedIDType: selectedIDType,
+        uploadedIDImage: uploadedIDImage,
       );
 
       // Close loading dialog
@@ -251,11 +309,16 @@ class AuthService {
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration successful! Please login.')),
+        SnackBar(content: Text('Registration successful! Please complete ID verification.')),
       );
 
-      // Navigate to login page
-      Navigator.pushReplacementNamed(context, '/login');
+      // Navigate to ID validation page if ID image wasn't provided during registration
+      if (uploadedIDImage == null) {
+        Navigator.pushReplacementNamed(context, '/id-validation');
+      } else {
+        // Navigate directly to home if ID was already provided
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } on FirebaseAuthException catch (e) {
       // Close loading dialog if open
       if (Navigator.canPop(context)) {
@@ -284,6 +347,56 @@ class AuthService {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('An unexpected error occurred: $e')),
       );
+    }
+  }
+
+  // Method to update user's ID verification status
+  Future<void> updateIDVerificationStatus({
+    required String uid,
+    required bool submitted,
+    bool? verified,
+    bool? rejected,
+    String? idType,
+    File? uploadedIDImage,
+  }) async {
+    try {
+      // Find the user document
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('userId', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        Map<String, dynamic> updateData = {
+          'idSubmitted': submitted,
+        };
+
+        // Upload ID image if provided
+        if (uploadedIDImage != null) {
+          String? idImageURL = await uploadIDImage(
+            uid: uid,
+            idImage: uploadedIDImage,
+          );
+          
+          if (idImageURL != null) {
+            updateData['uploadedIDImageURL'] = idImageURL;
+          }
+        }
+
+        if (verified != null) updateData['isValidated'] = verified;
+        if (rejected != null) updateData['idRejected'] = rejected;
+        if (idType != null) updateData['idType'] = idType;
+        
+        if (submitted) {
+          updateData['idSubmittedAt'] = FieldValue.serverTimestamp();
+        }
+
+        await userQuery.docs.first.reference.update(updateData);
+      }
+    } catch (e) {
+      print('Error updating ID verification status: $e');
+      throw e;
     }
   }
 

@@ -1,5 +1,7 @@
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:findlink/presentation/id_validation_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -13,17 +15,42 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController phoneNumberController = TextEditingController(); // Add phone number controller
   
+  String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
   int? age;
   final AuthService _authService = AuthService();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isFirstNameValid = true;
+  bool _isMiddleNameValid = true; // Added middle name validation
   bool _isLastNameValid = true;
   bool _isEmailValid = true;
   bool _isPasswordValid = true;
+  bool _isPhoneNumberValid = true; // Add phone number validation state
   final _formKey = GlobalKey<FormState>();
+
+  // Philippines country code
+  final String countryCode = '+63';
+  
+  // Phone number validation regex - expects exactly 10 digits
+  final RegExp phoneRegex = RegExp(r'^\d{10}$');
+
+  // Validate phone number
+  bool _validatePhoneNumber(String phone) {
+    return phoneRegex.hasMatch(phone);
+  }
+
+  // Format phone number as user types (remove non-digit characters)
+  String _formatPhoneNumber(String text) {
+    return text.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+  
+  // Get the full phone number with country code
+  String get fullPhoneNumber {
+    return '$countryCode${phoneNumberController.text}';
+  }
 
   void _calculateAge(DateTime birthDate) {
     final today = DateTime.now();
@@ -72,6 +99,45 @@ class _RegisterPageState extends State<RegisterPage> {
         selectedDate = picked;
         _calculateAge(picked);
       });
+    }
+  }
+
+  // Method to validate form and proceed to ID validation
+  void _validateAndProceedToIDValidation() {
+    if (_formKey.currentState!.validate()) {
+      if (selectedDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please select your date of birth'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Create a map with user registration data to pass to ID validation
+      Map<String, dynamic> registrationData = {
+        'email': emailController.text.trim(),
+        'password': passwordController.text,
+        'firstName': firstNameController.text.trim(),
+        'middleName': middleNameController.text.trim(),
+        'lastName': lastNameController.text.trim(),
+        'dateOfBirth': selectedDate,
+        'age': age,
+        'gender': selectedGender,
+        'phoneNumber': fullPhoneNumber,
+      };
+      
+      // Navigate to ID validation with registration data
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IDValidationScreen(
+            registrationData: registrationData,
+            isFromRegistration: true,
+          ),
+        ),
+      );
     }
   }
 
@@ -175,8 +241,8 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               SizedBox(height: 15),
 
-                              // Middle Name (Optional)
-                              _buildInputLabel('Middle Name (Optional)'),
+                              // Middle Name
+                              _buildInputLabel('Middle Name'),
                               SizedBox(height: 5),
                               TextFormField(
                                 controller: middleNameController,
@@ -184,7 +250,19 @@ class _RegisterPageState extends State<RegisterPage> {
                                 decoration: _buildInputDecoration(
                                   hintText: 'Enter your middle name',
                                   prefixIcon: Icons.person_outline,
+                                  isValid: _isMiddleNameValid,
                                 ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isMiddleNameValid = value.isNotEmpty;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your middle name';
+                                  }
+                                  return null;
+                                },
                               ),
                               SizedBox(height: 15),
 
@@ -284,6 +362,48 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                 ],
                               ),
+                              SizedBox(height: 15),
+                              
+                              // Gender field
+                              _buildInputLabel('Gender'),
+                              SizedBox(height: 5),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 15),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.people_outline, color: Color(0xFF53C0FF)),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<String>(
+                                          value: selectedGender,
+                                          style: TextStyle(color: Colors.black),
+                                          isExpanded: true,
+                                          dropdownColor: Colors.white,
+                                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF53C0FF)),
+                                          items: <String>['Male', 'Female', 'Prefer not to say']
+                                              .map<DropdownMenuItem<String>>((String value) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Text(value, style: TextStyle(color: Colors.black)),
+                                            );
+                                          }).toList(),
+                                          onChanged: (String? newValue) {
+                                            setState(() {
+                                              selectedGender = newValue!;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               SizedBox(height: 25),
                               
                               // Account Information Section
@@ -315,6 +435,93 @@ class _RegisterPageState extends State<RegisterPage> {
                                   }
                                   return null;
                                 },
+                              ),
+                              SizedBox(height: 15),
+
+                              // Phone Number
+                              _buildInputLabel('Phone Number'),
+                              SizedBox(height: 5),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Country code prefix container
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(9),
+                                          bottomLeft: Radius.circular(9),
+                                        ),
+                                        border: Border(
+                                          right: BorderSide(color: Colors.grey.shade300),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        countryCode,
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                    // Phone number input field
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: phoneNumberController,
+                                        style: TextStyle(color: Colors.black),
+                                        keyboardType: TextInputType.phone,
+                                        decoration: InputDecoration(
+                                          hintText: 'Enter your phone number',
+                                          prefixIcon: Icon(
+                                            Icons.phone_outlined,
+                                            color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(vertical: 15),
+                                          errorStyle: TextStyle(height: 0), // Hide error text as we'll use red border
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            phoneNumberController.text = _formatPhoneNumber(value);
+                                            phoneNumberController.selection = TextSelection.fromPosition(
+                                              TextPosition(offset: phoneNumberController.text.length),
+                                            );
+                                            _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
+                                          });
+                                        },
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Please enter your phone number';
+                                          }
+                                          if (!_validatePhoneNumber(value)) {
+                                            return 'Please enter a valid phone number (10 digits)';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              // Phone number format hint
+                              Padding(
+                                padding: EdgeInsets.only(left: 5),
+                                child: Text(
+                                  'Enter 10 digits (e.g., 9123456789)',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
                               ),
                               SizedBox(height: 15),
 
@@ -402,35 +609,11 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                               SizedBox(height: 30),
 
-                              // Register Button - Improved design
+                              // Continue Button - Changed from Register to Continue
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      if (selectedDate == null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Please select your date of birth'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      
-                                      _authService.registerUser(
-                                        email: emailController.text.trim(),
-                                        password: passwordController.text,
-                                        confirmPassword: confirmPasswordController.text,
-                                        firstName: firstNameController.text.trim(),
-                                        middleName: middleNameController.text.trim(),
-                                        lastName: lastNameController.text.trim(),
-                                        dateOfBirth: selectedDate,
-                                        age: age,
-                                        context: context,
-                                      );
-                                    }
-                                  },
+                                  onPressed: _validateAndProceedToIDValidation,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Color(0xFFFFD27E),
                                     foregroundColor: Color(0xFF424242),

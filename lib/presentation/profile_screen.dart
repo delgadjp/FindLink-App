@@ -17,6 +17,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _profileImageUrl = '';
   bool _isLoading = true;
   Map<String, dynamic>? _userData;
+  bool _isVerified = false; // Track verification status
+  String _verificationStatus = 'Not Verified'; // Text status for verification
+  
+  // Sample case data to display in profile screen
+  final List<Map<String, dynamic>> _casesData = [
+    {
+      'caseNumber': '2023-0042',
+      'name': 'John Smith',
+      'dateCreated': '15 Apr 2023',
+      'status': 'In Progress',
+      'progress': [
+        {'stage': 'Reported', 'status': 'Completed'},
+        {'stage': 'Under Review', 'status': 'Completed'},
+        {'stage': 'Case Verified', 'status': 'Completed'},
+        {'stage': 'In Progress', 'status': 'In Progress'},
+        {'stage': 'Resolved Case', 'status': 'Pending'},
+        {'stage': 'Unresolved Case', 'status': 'Pending'},
+      ]
+    },
+    {
+      'caseNumber': '2023-0051',
+      'name': 'Sarah Johnson',
+      'dateCreated': '22 May 2023',
+      'status': 'Under Review',
+      'progress': [
+        {'stage': 'Reported', 'status': 'Completed'},
+        {'stage': 'Under Review', 'status': 'In Progress'},
+        {'stage': 'Case Verified', 'status': 'Pending'},
+        {'stage': 'In Progress', 'status': 'Pending'},
+        {'stage': 'Resolved Case', 'status': 'Pending'},
+        {'stage': 'Unresolved Case', 'status': 'Pending'},
+      ]
+    },
+    {
+      'caseNumber': '2023-0063',
+      'name': 'Michael Brown',
+      'dateCreated': '07 Jun 2023',
+      'status': 'Resolved',
+      'progress': [
+        {'stage': 'Reported', 'status': 'Completed'},
+        {'stage': 'Under Review', 'status': 'Completed'},
+        {'stage': 'Case Verified', 'status': 'Completed'},
+        {'stage': 'In Progress', 'status': 'Completed'},
+        {'stage': 'Resolved Case', 'status': 'Completed'},
+        {'stage': 'Unresolved Case', 'status': 'N/A'},
+      ]
+    }
+  ];
+  
+  int _selectedCaseIndex = 0; // Track which case is currently selected
 
   @override
   void initState() {
@@ -34,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Query users-app collection by uid field
         final QuerySnapshot userQuery = await FirebaseFirestore.instance
             .collection('users-app')
-            .where('uid', isEqualTo: currentUser.uid)
+            .where('userId', isEqualTo: currentUser.uid) // Changed from 'uid' to 'userId'
             .limit(1)
             .get();
 
@@ -56,6 +106,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _email = userData['email'] ?? currentUser.email ?? 'user@example.com';
             _profileImageUrl = userData['photoURL'] ?? currentUser.photoURL ?? '';
             _memberSince = formattedDate;
+            
+            // Set verification status
+            _isVerified = userData['isValidated'] == true;
+            
+            // Set verification status text
+            if (_isVerified) {
+              _verificationStatus = 'Verified';
+            } else if (userData['idSubmitted'] == true) {
+              _verificationStatus = 'Pending Verification';
+            } else if (userData['idRejected'] == true) {
+              _verificationStatus = 'Verification Rejected';
+            } else {
+              _verificationStatus = 'Not Verified';
+            }
           });
         } else {
           // Fallback to Firebase Auth user data if Firestore document doesn't exist
@@ -363,16 +427,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await AuthService().signOutUser(context);
   }
 
+  // Function to get verification status color
+  Color _getVerificationStatusColor() {
+    switch (_verificationStatus) {
+      case 'Verified':
+        return Colors.green;
+      case 'Pending Verification':
+        return Colors.orange;
+      case 'Verification Rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Function to get verification status icon
+  IconData _getVerificationStatusIcon() {
+    switch (_verificationStatus) {
+      case 'Verified':
+        return Icons.verified;
+      case 'Pending Verification':
+        return Icons.hourglass_top;
+      case 'Verification Rejected':
+        return Icons.cancel;
+      default:
+        return Icons.person_off;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Sample case data to display in profile screen
-    final Map<String, dynamic> sampleCaseData = {
-      'caseNumber': '2023-0042',
-      'name': 'John Smith',
-      'dateCreated': '15 Apr 2023',
-      'status': 'In Progress'
-    };
-
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -394,18 +478,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Profile section with blue gradient background
+              // Enhanced Profile section with verification status
               Container(
                 width: double.infinity,
                 child: Padding(
                   padding: EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      ProfileAvatar(
-                        imageUrl: _profileImageUrl,
-                        onEditPressed: () {
-                          _updateProfilePicture();
-                        },
+                      Stack(
+                        children: [
+                          ProfileAvatar(
+                            imageUrl: _profileImageUrl,
+                            onEditPressed: () {
+                              _updateProfilePicture();
+                            },
+                          ),
+                          if (_isVerified)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.verified,
+                                  color: Colors.green,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       SizedBox(height: 16),
                       Row(
@@ -432,9 +544,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       SizedBox(height: 8),
-                      _buildContactInfo(Icons.email, _email),
-                      SizedBox(height: 8),
-                      _buildContactInfo(Icons.calendar_today, _memberSince),
+                      // Verification status badge
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _getVerificationStatusColor().withOpacity(0.7),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getVerificationStatusIcon(),
+                              size: 16,
+                              color: _getVerificationStatusColor(),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              _verificationStatus,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      // User details in a card with better visual hierarchy
+                      Container(
+                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildContactInfo(Icons.email, _email),
+                            Divider(height: 16, thickness: 0.5, color: Colors.white30),
+                            _buildContactInfo(Icons.calendar_today, _memberSince),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      // Action buttons
+                      if (!_isVerified) 
+                        TextButton.icon(
+                          icon: Icon(Icons.verified_user, color: Colors.white),
+                          label: Text(
+                            "Verify Your Account",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.green.withOpacity(0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          onPressed: () {
+                            // Navigate to ID verification screen
+                            Navigator.pushNamed(context, '/id-validation');
+                          },
+                        ),
                     ],
                   ),
                 ),
@@ -446,62 +630,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Case Summary Card
-                    Card(
-                      elevation: 2,
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Case #${sampleCaseData['caseNumber']}",
-                                  style: TextStyle(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D47A1),
-                                  ),
+                    // Case Summary Header
+                    Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: Duration(milliseconds: 500),
+                          width: 4,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Color(0xFF0D47A1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "MY CASES",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            color: Color.fromARGB(255, 0, 0, 0),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    
+                    // Case Cards
+                    Container(
+                      height: 220,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _casesData.length,
+                        itemBuilder: (context, index) {
+                          final caseData = _casesData[index];
+                          // Determine card color based on status
+                          Color statusColor;
+                          switch(caseData['status']) {
+                            case 'In Progress':
+                              statusColor = Colors.orange;
+                              break;
+                            case 'Resolved':
+                              statusColor = Colors.green;
+                              break;
+                            case 'Under Review':
+                              statusColor = Colors.blue;
+                              break;
+                            default:
+                              statusColor = Colors.grey;
+                          }
+                          
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedCaseIndex = index;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: Duration(milliseconds: 300),
+                              margin: EdgeInsets.only(right: 16, bottom: 4),
+                              width: MediaQuery.of(context).size.width * 0.75,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                color: _selectedCaseIndex == index ? 
+                                  Colors.blue.shade50 : 
+                                  Colors.white,
+                                border: Border.all(
+                                  color: _selectedCaseIndex == index ? 
+                                    Color(0xFF0D47A1) : 
+                                    Colors.grey.shade300,
+                                  width: _selectedCaseIndex == index ? 2 : 1,
                                 ),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    spreadRadius: 0,
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
                                   ),
-                                  child: Text(
-                                    "In Progress",
-                                    style: TextStyle(
-                                      color: Colors.orange,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                ],
+                              ),
+                              child: Stack(
+                                children: [
+                                  if (_selectedCaseIndex == index)
+                                    Positioned(
+                                      top: 12,
+                                      right: 12,
+                                      child: Container(
+                                        padding: EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFF0D47A1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  Padding(
+                                    padding: EdgeInsets.all(20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: statusColor.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(color: statusColor, width: 1),
+                                              ),
+                                              child: Text(
+                                                caseData['status'],
+                                                style: TextStyle(
+                                                  color: statusColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          "Case #${caseData['caseNumber']}",
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF0D47A1),
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          "Missing Person:",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          caseData['name'],
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        Spacer(),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today,
+                                              size: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              "Reported: ${caseData['dateCreated']}",
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              sampleCaseData['name'] ?? "Unknown",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w500,
+                                ],
                               ),
                             ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Reported on: ${sampleCaseData['dateCreated'] ?? "Unknown date"}",
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     ),
                     SizedBox(height: 24),
@@ -540,31 +845,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Padding(
                         padding: EdgeInsets.all(16),
                         child: Container(
-                          height: 120,
+                          height: 90,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
-                            itemCount: [
-                              {'stage': 'Reported', 'status': 'Completed'},
-                              {'stage': 'Under Investigation', 'status': 'In Progress'},
-                              {'stage': 'Assigned Authorities', 'status': 'Pending'},
-                              {'stage': 'Resolved', 'status': 'Pending'},
-                            ].length,
+                            itemCount: _casesData[_selectedCaseIndex]['progress'].length,
                             itemBuilder: (context, index) {
-                              final stages = [
-                                {'stage': 'Reported', 'status': 'Completed'},
-                                {'stage': 'Under Investigation', 'status': 'In Progress'},
-                                {'stage': 'Assigned Authorities', 'status': 'Pending'},
-                                {'stage': 'Resolved', 'status': 'Pending'},
-                              ];
-                              final stage = stages[index];
+                              final stage = _casesData[_selectedCaseIndex]['progress'][index];
                               Color color = stage['status'] == 'Completed' 
                                   ? Colors.green 
                                   : stage['status'] == 'In Progress' 
                                       ? Colors.orange 
-                                      : Colors.grey;
+                                      : stage['status'] == 'N/A'
+                                          ? Colors.grey.shade400
+                                          : Colors.grey;
                               
                               return Container(
-                                width: MediaQuery.of(context).size.width / 4,
+                                width: MediaQuery.of(context).size.width / 3.5,
                                 child: Column(
                                   children: [
                                     CircleAvatar(
@@ -578,7 +874,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               ? Icons.check 
                                               : stage['status'] == 'In Progress' 
                                                   ? Icons.refresh 
-                                                  : Icons.hourglass_empty,
+                                                  : stage['status'] == 'N/A'
+                                                      ? Icons.remove
+                                                      : Icons.hourglass_empty,
                                           color: Colors.white,
                                           size: 18,
                                         ),
@@ -586,7 +884,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     SizedBox(height: 8),
                                     Text(
-                                      stage['stage']!,
+                                      stage['stage'],
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         color: color,
@@ -596,7 +894,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     SizedBox(height: 4),
                                     Text(
-                                      stage['status']!,
+                                      stage['status'],
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: Colors.grey[600],
@@ -610,287 +908,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    
-                    // Latest Update Card
-                    Card(
-                      elevation: 2,
-                      margin: EdgeInsets.symmetric(vertical: 16),
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.update, color: Color(0xFF0D47A1)),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Latest Update",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D47A1),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              "Investigation in progress by Officer John Doe",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color.fromARGB(255, 0, 0, 0),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Updated 2 hours ago",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    // Previous Updates Cards
-                    Card(
-                      elevation: 2,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.person_search, color: Colors.orange),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Field Investigation",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              "Search operation conducted in Barangay San Antonio",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color.fromARGB(255, 0, 0, 0),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Updated 1 day ago",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Card(
-                      elevation: 2,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.camera_alt, color: Colors.green),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Evidence Collected",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    "Verified",
-                                    style: TextStyle(
-                                      color: Colors.green,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              "CCTV footage obtained from nearby establishment",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color.fromARGB(255, 0, 0, 0),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Updated 3 days ago",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Card(
-                      elevation: 2,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.people_alt, color: Color(0xFF0D47A1)),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Witness Interview",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D47A1),
-                                  ),
-                                ),
-                                Spacer(),
-                                Icon(Icons.lock_outline, size: 16, color: Colors.grey),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              "Conducted interviews with 3 witnesses",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color.fromARGB(255, 0, 0, 0),
-                              ),
-                            ),
-                            Text(
-                              "[Additional details restricted]",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Updated 5 days ago",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Card(
-                      elevation: 2,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.report_problem, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Initial Report",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              "Case filed and assigned to Investigation Unit",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color.fromARGB(255, 0, 0, 0),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.person_pin, size: 20, color: Colors.grey[600]),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    "Assigned to: Det. Maria Santos",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Updated 1 week ago",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    // Add some bottom padding
-                    SizedBox(height: 16),
                   ],
                 ),
               ),
