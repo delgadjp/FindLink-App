@@ -7,6 +7,7 @@ class CitizenshipOptions {
   /// Comprehensive list of citizenship options, with placeholder as the first item
   static const List<String> options = [
     placeholder,
+    'Filipino',
     'Afghan',
     'Albanian',
     'Algerian',
@@ -69,7 +70,6 @@ class CitizenshipOptions {
     'Swazi',
     'Ethiopian',
     'Fijian',
-    'Filipino',
     'Finnish',
     'French',
     'Gabonese',

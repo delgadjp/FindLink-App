@@ -1,6 +1,7 @@
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:findlink/presentation/id_validation_screen.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -29,6 +30,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isEmailValid = true;
   bool _isPasswordValid = true;
   bool _isPhoneNumberValid = true; // Add phone number validation state
+  bool _termsAccepted = false; // Add Terms of Service checkbox state
   final _formKey = GlobalKey<FormState>();
 
   // Philippines country code
@@ -36,6 +38,114 @@ class _RegisterPageState extends State<RegisterPage> {
   
   // Phone number validation regex - expects exactly 10 digits
   final RegExp phoneRegex = RegExp(r'^\d{10}$');
+
+  // Show Terms of Service modal
+  void _showTermsOfServiceModal() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10.0,
+                  offset: Offset(0.0, 10.0),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Terms and Conditions',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2A5298),
+                  ),
+                ),
+                SizedBox(height: 15),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome to the Missing Person Alarm Sheet (MPAS). By creating an account, you agree to the following terms:',
+                          style: TextStyle(fontSize: 14, color: Colors.black87),
+                        ),
+                        SizedBox(height: 10),
+                        _buildTermItem('You will provide accurate and truthful information when submitting or updating any case or report.'),
+                        _buildTermItem('All tips, sightings, or leads submitted are subject to verification by authorized personnel.'),
+                        _buildTermItem('You will not misuse or falsify information that may hinder active investigations or cause unnecessary panic.'),
+                        _buildTermItem('Your personal data will be kept confidential and used solely for case coordination and communication purposes.'),
+                        _buildTermItem('Authorities have the right to deactivate accounts found misusing the platform.'),
+                        _buildTermItem('This platform is for community help and should not be treated as a substitute for direct police reporting.'),
+                        SizedBox(height: 10),
+                        Text(
+                          'For more information, please contact our support team. Your cooperation helps save lives.',
+                          style: TextStyle(fontSize: 14, color: Colors.black87, fontStyle: FontStyle.italic),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),                SizedBox(height: 15),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'Close',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTermItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('• ', style: TextStyle(fontSize: 14, color: Color(0xFF2A5298), fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // Validate phone number
   bool _validatePhoneNumber(String phone) {
@@ -607,13 +717,68 @@ class _RegisterPageState extends State<RegisterPage> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 30),
-
-                              // Continue Button - Changed from Register to Continue
+                              SizedBox(height: 15),                              // Terms of Service checkbox
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Checkbox(
+                                    value: _termsAccepted,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _termsAccepted = value ?? false;
+                                      });
+                                    },
+                                    activeColor: Color(0xFFFFD27E),
+                                    checkColor: Color(0xFF424242),
+                                  ),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(
+                                          color: Color(0xFF2A5298),
+                                          fontSize: 14,
+                                        ),
+                                        children: [
+                                          TextSpan(
+                                            text: 'I agree to all statements in ',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: 'Terms of Service',
+                                            style: TextStyle(
+                                              color: Color.fromARGB(255, 13, 95, 236),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () {
+                                                _showTermsOfServiceModal();
+                                              },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 30),// Continue Button - Changed from Register to Continue
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: _validateAndProceedToIDValidation,
+                                  onPressed: () {
+                                    // Validate that the Terms of Service checkbox is checked
+                                    if (!_termsAccepted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Please accept the Terms of Service to continue'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    _validateAndProceedToIDValidation();
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Color(0xFFFFD27E),
                                     foregroundColor: Color(0xFF424242),
@@ -624,7 +789,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     ),
                                   ),
                                   child: Text(
-                                    'CREATE ACCOUNT',
+                                    'SIGN UP',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
