@@ -1,14 +1,178 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../models/irf_model.dart';
 import 'package:intl/intl.dart';
 import '../storage/local_draft_service.dart';  // Import the new local draft service
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart';
 
 class IRFService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final LocalDraftService _localDraftService = LocalDraftService();  // Add local draft service
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final LocalDraftService _localDraftService = LocalDraftService();
   
+  // Google Vision API key - use the same one as in TipService
+  final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
+
+  // Add helper method to upload image to Firebase Storage
+  Future<String?> _uploadImage(dynamic imageData, String irfId) async {
+    try {
+      // Create reference to the file path in storage
+      final Reference storageRef = _storage
+          .ref()
+          .child('irf-attachments')
+          .child('$irfId.jpg');
+      
+      late UploadTask uploadTask;
+      
+      // Handle different types of image data (File for mobile, Uint8List for web)
+      if (kIsWeb) {
+        if (imageData is String) {
+          final Uint8List bytes = Uri.parse(imageData).data!.contentAsBytes();
+          uploadTask = storageRef.putData(bytes);
+        } else if (imageData is Uint8List) {
+          uploadTask = storageRef.putData(imageData);
+        } else {
+          throw Exception('Unsupported image data type for web');
+        }
+      } else {
+        if (imageData is File) {
+          uploadTask = storageRef.putFile(imageData);
+        } else if (imageData is String && imageData.isNotEmpty) {
+          final File file = File(imageData);
+          if (await file.exists()) {
+            uploadTask = storageRef.putFile(file);
+          } else {
+            throw Exception('File does not exist at path: $imageData');
+          }
+        } else {
+          throw Exception('Unsupported image data type for mobile');
+        }
+      }
+      
+      await uploadTask.whenComplete(() => null);
+      final String downloadUrl = await storageRef.getDownloadURL();
+      
+      print('Image uploaded successfully. URL: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  // Add method to validate image using Google Vision API
+  Future<Map<String, dynamic>> validateImageWithGoogleVision(dynamic imageData) async {
+    try {
+      Map<String, dynamic> result = {
+        'isValid': false,
+        'containsHuman': false,
+        'confidence': 0.0,
+        'message': 'Image validation failed'
+      };
+      
+      String base64Image;
+      
+      if (kIsWeb) {
+        if (imageData is Uint8List) {
+          base64Image = base64Encode(imageData);
+        } else if (imageData is String) {
+          if (imageData.startsWith('data:image')) {
+            base64Image = imageData.split(',')[1];
+          } else {
+            final Uint8List bytes = Uri.parse(imageData).data!.contentAsBytes();
+            base64Image = base64Encode(bytes);
+          }
+        } else {
+          throw Exception('Unsupported image data type for web validation');
+        }
+      } else {
+        if (imageData is File) {
+          final bytes = await imageData.readAsBytes();
+          base64Image = base64Encode(bytes);
+        } else if (imageData is String && imageData.isNotEmpty) {
+          final File file = File(imageData);
+          if (await file.exists()) {
+            final bytes = await file.readAsBytes();
+            base64Image = base64Encode(bytes);
+          } else {
+            throw Exception('File does not exist at path: $imageData');
+          }
+        } else if (imageData is Uint8List) {
+          base64Image = base64Encode(imageData);
+        } else {
+          throw Exception('Unsupported image data type for mobile validation');
+        }
+      }
+      
+      final response = await http.post(
+        Uri.parse('https://vision.googleapis.com/v1/images:annotate?key=$_visionApiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'requests': [{
+            'image': {
+              'content': base64Image
+            },
+            'features': [
+              {'type': 'LABEL_DETECTION', 'maxResults': 10},
+              {'type': 'FACE_DETECTION', 'maxResults': 5},
+              {'type': 'OBJECT_LOCALIZATION', 'maxResults': 10}
+            ]
+          }]
+        })
+      );
+      
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        bool containsHuman = false;
+        double confidence = 0.0;
+        
+        final annotations = jsonResponse['responses'][0];
+        
+        if (annotations.containsKey('faceAnnotations')) {
+          containsHuman = true;
+          confidence = annotations['faceAnnotations'][0]['detectionConfidence'] * 100;
+        }
+        
+        if (!containsHuman && annotations.containsKey('labelAnnotations')) {
+          for (var label in annotations['labelAnnotations']) {
+            String description = label['description'].toString().toLowerCase();
+            if (description.contains('person') || description.contains('human') || 
+                description.contains('face') || description.contains('people')) {
+              containsHuman = true;
+              confidence = label['score'] * 100;
+              break;
+            }
+          }
+        }
+        
+        result = {
+          'isValid': true,
+          'containsHuman': containsHuman,
+          'confidence': confidence.round() / 100,
+          'message': containsHuman 
+              ? 'Image validated successfully. Human detected with ${confidence.toStringAsFixed(1)}% confidence.'
+              : 'No human detected in the image.'
+        };
+      }
+      
+      return result;
+    } catch (e) {
+      print('Exception in validateImageWithGoogleVision: $e');
+      return {
+        'isValid': false,
+        'containsHuman': false,
+        'confidence': 0.0,
+        'message': 'Error validating image: $e'
+      };
+    }
+  }
+
   // Expose the local draft service for direct access
   LocalDraftService get localDraftService => _localDraftService;
   
@@ -16,48 +180,54 @@ class IRFService {
   CollectionReference get irfCollection => _firestore.collection('irf-test');
   
   // Get current user ID
-  String? get currentUserId => _auth.currentUser?.uid;
-
-  // Generate a formal document ID format: IRF-YYYYMMDD-XXXX (where XXXX is sequential)
+  String? get currentUserId => _auth.currentUser?.uid;  // Generate a formal document ID format: IRF-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
   Future<String> generateFormalDocumentId() async {
     final today = DateTime.now();
     final dateStr = DateFormat('yyyyMMdd').format(today);
-    
-    // Use a special document in the irf-test collection for counters
-    final String counterDocId = 'counter_$dateStr';
-    final counterDocRef = irfCollection.doc(counterDocId);
-    
+    final idPrefix = 'IRF-$dateStr-';
+
     try {
-      // Use transaction to safely increment counter
-      return _firestore.runTransaction<String>((transaction) async {
-        DocumentSnapshot counterDoc = await transaction.get(counterDocRef);
-        
-        int currentCount = 1;
-        if (counterDoc.exists) {
-          // Increment existing counter
-          currentCount = (counterDoc.data() as Map<String, dynamic>)['count'] + 1;
-          transaction.update(counterDocRef, {'count': currentCount});
-        } else {
-          // Create counter if it doesn't exist
-          transaction.set(counterDocRef, {
-            'count': currentCount, 
-            'date': dateStr,
-            'type': 'counter', // Mark this document as a counter to distinguish it from IRF documents
-            'updatedAt': FieldValue.serverTimestamp()
-          });
+      // Get all documents with today's date prefix
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('irf-test')
+          .where('documentId', isGreaterThanOrEqualTo: idPrefix)
+          .where('documentId', isLessThan: idPrefix + '\uf8ff')
+          .get();
+
+      // Debug info
+      print('Found ${querySnapshot.docs.length} documents for today (${dateStr})');
+      
+      // Find the highest sequential number
+      int highestNumber = 0;
+      
+      for (final doc in querySnapshot.docs) {
+        final String? docId = doc['documentId'] as String?;
+        if (docId != null && docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+          final String seqPart = docId.substring(idPrefix.length);
+          final int? seqNum = int.tryParse(seqPart);
+          
+          if (seqNum != null && seqNum > highestNumber) {
+            highestNumber = seqNum;
+            print('Found higher sequence: $highestNumber from $docId');
+          }
         }
-        
-        // Format sequential number with leading zeros
-        String sequentialNumber = currentCount.toString().padLeft(4, '0');
-        return 'IRF-$dateStr-$sequentialNumber';
-      });
+      }
+      
+      // Increment for next document
+      final int nextNumber = highestNumber + 1;
+      final String paddedNumber = nextNumber.toString().padLeft(4, '0');
+      final String newDocId = '$idPrefix$paddedNumber';
+      
+      print('Generated next document ID: $newDocId');
+      return newDocId;
     } catch (e) {
-      print('Error generating document ID: $e');
-      // Fallback to a timestamp-based ID if transaction fails
-      return 'IRF-$dateStr-${DateTime.now().millisecondsSinceEpoch % 10000}';
+      print('Error generating document ID: $e');      // Fallback ID using more reliable method - but ensure it's still sequential
+      final String paddedNumber = '0001'; // Start with 0001 if there's an error
+      final String fallbackId = '$idPrefix$paddedNumber';
+      print('Using fallback ID: $fallbackId');
+      return fallbackId;
     }
   }
-  
   // Submit new IRF with formal document ID
   Future<DocumentReference> submitIRF(IRFModel irfData) async {
     if (currentUserId == null) {
@@ -65,13 +235,14 @@ class IRFService {
     }
     
     try {
-      // Generate formal document ID
+      // Generate formal document ID with sequential numbering
       final String formalId = await generateFormalDocumentId();
+      print('Generated formal document ID for submission: $formalId');
       
       // Add user ID and timestamps
       final dataWithMetadata = {
         ...irfData.toMap(),
-        'documentId': formalId,
+        'documentId': formalId, // Store the ID inside the document too
         'userId': currentUserId,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -79,9 +250,10 @@ class IRFService {
         'type': 'report' // Mark this document as an IRF report
       };
       
-      // Use the formal ID as the document ID
+      // Use the formal ID as the document ID for the document itself
       final docRef = irfCollection.doc(formalId);
       await docRef.set(dataWithMetadata);
+      print('Successfully submitted IRF with ID: $formalId');
       return docRef;
     } catch (e) {
       print('Error submitting IRF: $e');

@@ -188,7 +188,6 @@ class AuthService {
         'privacyPolicyAcceptedAt': null,
         'isValidated': false,
         'idSubmitted': uploadedIDImage != null,
-        'idRejected': false,
         'selectedIDType': selectedIDType ?? '',
         'uploadedIDImageURL': idImageURL ?? '',
       });
@@ -229,7 +228,7 @@ class AuthService {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
           .collection('users-app')
-          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
+          .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
 
@@ -237,10 +236,36 @@ class AuthService {
         final userData = userQuery.docs.first.data() as Map<String, dynamic>;
         return userData['privacyPolicyAccepted'] == true;
       }
-      return false; // Default to not accepted if user document not found
+      return false;
     } catch (e) {
       print('Error getting privacy policy acceptance status: $e');
-      return false; // Default to not accepted on error
+      return false;
+    }
+  }
+  
+  // Method to update privacy policy acceptance status
+  Future<bool> updatePrivacyPolicyAcceptance(String uid, bool accepted) async {
+    try {
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('userId', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        await userQuery.docs.first.reference.update({
+          'privacyPolicyAccepted': accepted,
+          'privacyPolicyAcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
+        });
+        print('Updated privacy policy acceptance for user: $uid to $accepted');
+        return true;
+      } else {
+        print('User document not found for uid: $uid');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating privacy policy acceptance: $e');
+      return false;
     }
   }
 
@@ -355,7 +380,6 @@ class AuthService {
     required String uid,
     required bool submitted,
     bool? verified,
-    bool? rejected,
     String? idType,
     File? uploadedIDImage,
   }) async {
@@ -385,7 +409,6 @@ class AuthService {
         }
 
         if (verified != null) updateData['isValidated'] = verified;
-        if (rejected != null) updateData['idRejected'] = rejected;
         if (idType != null) updateData['idType'] = idType;
         
         if (submitted) {
@@ -419,4 +442,42 @@ class AuthService {
 
   // Handle Auth State Changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // Method to get compliance acceptance for a specific screen
+  Future<bool> getScreenComplianceAccepted(String uid, String screenKey) async {
+    try {
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('userId', isEqualTo: uid)
+          .limit(1)
+          .get();
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+        return userData[screenKey] == true;
+      }
+      return false;
+    } catch (e) {
+      print('Error getting compliance acceptance for $screenKey: $e');
+      return false;
+    }
+  }
+
+  // Method to update compliance acceptance for a specific screen
+  Future<void> updateScreenComplianceAccepted(String uid, String screenKey, bool accepted) async {
+    try {
+      QuerySnapshot userQuery = await _firestore
+          .collection('users-app')
+          .where('userId', isEqualTo: uid)
+          .limit(1)
+          .get();
+      if (userQuery.docs.isNotEmpty) {
+        await userQuery.docs.first.reference.update({
+          screenKey: accepted,
+          screenKey + 'At': accepted ? FieldValue.serverTimestamp() : null,
+        });
+      }
+    } catch (e) {
+      print('Error updating compliance acceptance for $screenKey: $e');
+    }
+  }
 }

@@ -7,6 +7,7 @@ import '/core/app_export.dart';
 import 'dart:typed_data';  // Add this for web support
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math'; // Import math library for distance calculations
 
 class TipService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -346,5 +347,78 @@ class TipService {
       print('Error getting reports: $e');
       throw e;
     }
+  }
+
+  // New method to find tips within a specified radius
+  Future<List<Map<String, dynamic>>> findNearbyTips(double latitude, double longitude, double radiusInMeters) async {
+    try {
+      // Get all tips from the database
+      final QuerySnapshot snapshot = await _firestore
+          .collection('reports-app')
+          .get();
+
+      // Filter tips by distance
+      List<Map<String, dynamic>> nearbyTips = [];
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Check if this tip has coordinates
+        if (data.containsKey('coordinates') && 
+            data['coordinates'] != null &&
+            data['coordinates']['lat'] != null &&
+            data['coordinates']['lng'] != null) {
+          
+          // Calculate distance between this tip and provided coordinates
+          final double tipLat = data['coordinates']['lat'];
+          final double tipLng = data['coordinates']['lng'];
+          
+          final double distance = _calculateDistance(
+            latitude, longitude, tipLat, tipLng);
+          
+          // If within radius, add to result list
+          if (distance <= radiusInMeters) {
+            data['id'] = doc.id;
+            data['distance'] = distance;
+            nearbyTips.add(data);
+          }
+        }
+      }
+      
+      // Sort by distance (closest first)
+      nearbyTips.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
+      
+      return nearbyTips;
+    } catch (e) {
+      print('Error finding nearby tips: $e');
+      return [];
+    }
+  }
+
+  // Helper method to calculate distance between two points using the Haversine formula
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371000; // Earth's radius in meters
+    
+    // Convert degrees to radians
+    final double lat1Rad = _degreesToRadians(lat1);
+    final double lon1Rad = _degreesToRadians(lon1);
+    final double lat2Rad = _degreesToRadians(lat2);
+    final double lon2Rad = _degreesToRadians(lon2);
+    
+    // Haversine formula
+    final double dLat = lat2Rad - lat1Rad;
+    final double dLon = lon2Rad - lon1Rad;
+    final double a = 
+        sin(dLat/2) * sin(dLat/2) +
+        cos(lat1Rad) * cos(lat2Rad) * 
+        sin(dLon/2) * sin(dLon/2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1-a));
+    
+    return earthRadius * c; // Distance in meters
+  }
+  
+  // Helper to convert degrees to radians
+  double _degreesToRadians(double degrees) {
+    return degrees * (pi / 180);
   }
 }

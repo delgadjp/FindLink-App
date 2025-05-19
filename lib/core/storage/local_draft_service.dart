@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/irf_model.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LocalDraftService {
   static const String _draftKey = 'irf_drafts';
@@ -13,37 +14,29 @@ class LocalDraftService {
   // Convert IRF model to a JSON-serializable map
   Map<String, dynamic> _irfModelToSerializableMap(IRFModel irfData) {
     final Map<String, dynamic> data = irfData.toMap();
-    
-    // Convert DateTime fields to strings
-    if (data['dateTimeReported'] != null) {
-      data['dateTimeReported'] = data['dateTimeReported'].toIso8601String();
+    // Convert Timestamp to ISO string for all DateTime fields
+    if (data['dateTimeReported'] != null && data['dateTimeReported'] is Timestamp) {
+      data['dateTimeReported'] = (data['dateTimeReported'] as Timestamp).toDate().toIso8601String();
     }
-    
-    if (data['dateTimeIncident'] != null) {
-      data['dateTimeIncident'] = data['dateTimeIncident'].toIso8601String();
+    if (data['dateTimeIncident'] != null && data['dateTimeIncident'] is Timestamp) {
+      data['dateTimeIncident'] = (data['dateTimeIncident'] as Timestamp).toDate().toIso8601String();
     }
-    
-    if (data['dateTimeIncidentD'] != null) {
-      data['dateTimeIncidentD'] = data['dateTimeIncidentD'].toIso8601String();
+    if (data['dateTimeIncidentD'] != null && data['dateTimeIncidentD'] is Timestamp) {
+      data['dateTimeIncidentD'] = (data['dateTimeIncidentD'] as Timestamp).toDate().toIso8601String();
     }
-    
-    // Handle nested DateTime objects in item A and item C
-    if (data['itemA'] != null && data['itemA'] is Map) {
-      final Map<String, dynamic> itemA = Map<String, dynamic>.from(data['itemA']);
-      if (itemA['dateOfBirth'] != null && itemA['dateOfBirth'] is DateTime) {
-        itemA['dateOfBirth'] = (itemA['dateOfBirth'] as DateTime).toIso8601String();
+    if (data['createdAt'] != null && data['createdAt'] is Timestamp) {
+      data['createdAt'] = (data['createdAt'] as Timestamp).toDate().toIso8601String();
+    }
+    if (data['updatedAt'] != null && data['updatedAt'] is Timestamp) {
+      data['updatedAt'] = (data['updatedAt'] as Timestamp).toDate().toIso8601String();
+    }
+    // Ensure all fields are present in the draft, even if null
+    final allFields = IRFModel().toMap().keys;
+    for (final key in allFields) {
+      if (!data.containsKey(key)) {
+        data[key] = null;
       }
-      data['itemA'] = itemA;
     }
-    
-    if (data['itemC'] != null && data['itemC'] is Map) {
-      final Map<String, dynamic> itemC = Map<String, dynamic>.from(data['itemC']);
-      if (itemC['dateOfBirth'] != null && itemC['dateOfBirth'] is DateTime) {
-        itemC['dateOfBirth'] = (itemC['dateOfBirth'] as DateTime).toIso8601String();
-      }
-      data['itemC'] = itemC;
-    }
-    
     return data;
   }
 
@@ -187,34 +180,91 @@ class LocalDraftService {
   
   // Convert local draft to IRF model
   IRFModel draftToModel(Map<String, dynamic> draft) {
+    // Ensure all fields are present in the draft map
+    final allFields = IRFModel().toMap().keys;
+    for (final key in allFields) {
+      if (!draft.containsKey(key)) {
+        draft[key] = null;
+      }
+    }
     return IRFModel(
       id: draft['id'],
       documentId: draft['documentId'],
       typeOfIncident: draft['typeOfIncident'],
       copyFor: draft['copyFor'],
-      dateTimeReported: draft['dateTimeReported'] != null 
-          ? DateTime.parse(draft['dateTimeReported']) 
-          : null,
-      dateTimeIncident: draft['dateTimeIncident'] != null 
-          ? DateTime.parse(draft['dateTimeIncident']) 
-          : null,
+      dateTimeReported: draft['dateTimeReported'] != null ? DateTime.tryParse(draft['dateTimeReported']) : null,
+      dateTimeIncident: draft['dateTimeIncident'] != null ? DateTime.tryParse(draft['dateTimeIncident']) : null,
       placeOfIncident: draft['placeOfIncident'],
-      itemA: draft['itemA'],
-      itemC: draft['itemC'],
+      // Item A
+      surnameA: draft['surnameA'],
+      firstNameA: draft['firstNameA'],
+      middleNameA: draft['middleNameA'],
+      qualifierA: draft['qualifierA'],
+      nicknameA: draft['nicknameA'],
+      citizenshipA: draft['citizenshipA'],
+      sexGenderA: draft['sexGenderA'],
+      civilStatusA: draft['civilStatusA'],
+      dateOfBirthA: draft['dateOfBirthA'],
+      ageA: draft['ageA'] is int ? draft['ageA'] : int.tryParse(draft['ageA']?.toString() ?? ''),
+      placeOfBirthA: draft['placeOfBirthA'],
+      homePhoneA: draft['homePhoneA'],
+      mobilePhoneA: draft['mobilePhoneA'],
+      currentAddressA: draft['currentAddressA'],
+      villageA: draft['villageA'],
+      regionA: draft['regionA'],
+      provinceA: draft['provinceA'],
+      townCityA: draft['townCityA'],
+      barangayA: draft['barangayA'],
+      otherAddressA: draft['otherAddressA'],
+      otherVillageA: draft['otherVillageA'],
+      otherRegionA: draft['otherRegionA'],
+      otherProvinceA: draft['otherProvinceA'],
+      otherTownCityA: draft['otherTownCityA'],
+      otherBarangayA: draft['otherBarangayA'],
+      highestEducationAttainmentA: draft['highestEducationAttainmentA'],
+      occupationA: draft['occupationA'],
+      idCardPresentedA: draft['idCardPresentedA'],
+      emailAddressA: draft['emailAddressA'],
+      // Item B
+      surnameB: draft['surnameB'],
+      firstNameB: draft['firstNameB'],
+      middleNameB: draft['middleNameB'],
+      qualifierB: draft['qualifierB'],
+      nicknameB: draft['nicknameB'],
+      citizenshipB: draft['citizenshipB'],
+      sexGenderB: draft['sexGenderB'],
+      civilStatusB: draft['civilStatusB'],
+      dateOfBirthB: draft['dateOfBirthB'],
+      ageB: draft['ageB'] is int ? draft['ageB'] : int.tryParse(draft['ageB']?.toString() ?? ''),
+      placeOfBirthB: draft['placeOfBirthB'],
+      homePhoneB: draft['homePhoneB'],
+      mobilePhoneB: draft['mobilePhoneB'],
+      currentAddressB: draft['currentAddressB'],
+      villageB: draft['villageB'],
+      regionB: draft['regionB'],
+      provinceB: draft['provinceB'],
+      townCityB: draft['townCityB'],
+      barangayB: draft['barangayB'],
+      otherAddressB: draft['otherAddressB'],
+      otherVillageB: draft['otherVillageB'],
+      otherRegionB: draft['otherRegionB'],
+      otherProvinceB: draft['otherProvinceB'],
+      otherTownCityB: draft['otherTownCityB'],
+      otherBarangayB: draft['otherBarangayB'],
+      highestEducationAttainmentB: draft['highestEducationAttainmentB'],
+      occupationB: draft['occupationB'],
+      workAddressB: draft['workAddressB'],
+      emailAddressB: draft['emailAddressB'],
+      // Narrative
       narrative: draft['narrative'],
       typeOfIncidentD: draft['typeOfIncidentD'],
-      dateTimeIncidentD: draft['dateTimeIncidentD'] != null 
-          ? DateTime.parse(draft['dateTimeIncidentD']) 
-          : null,
+      dateTimeIncidentD: draft['dateTimeIncidentD'] != null ? DateTime.tryParse(draft['dateTimeIncidentD']) : null,
       placeOfIncidentD: draft['placeOfIncidentD'],
+      // Metadata
       status: draft['status'],
       userId: draft['userId'],
-      createdAt: draft['createdAt'] != null 
-          ? DateTime.parse(draft['createdAt']) 
-          : null,
-      updatedAt: draft['updatedAt'] != null 
-          ? DateTime.parse(draft['updatedAt']) 
-          : null,
+      createdAt: draft['createdAt'] != null ? DateTime.tryParse(draft['createdAt']) : null,
+      updatedAt: draft['updatedAt'] != null ? DateTime.tryParse(draft['updatedAt']) : null,
     );
   }
 }

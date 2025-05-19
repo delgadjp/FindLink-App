@@ -68,20 +68,25 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
-    }
-
+    }    
+    
     // Rules for irf-test collection
     match /irf-test/{irfId} {
       allow read: if request.auth != null && (
         resource == null ||
         request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        resource.data.type == 'counter'
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
-      allow create: if request.auth != null;
+      
+      // Allow querying documents for sequential ID generation
+      allow list: if request.auth != null;
+      
+      allow create: if request.auth != null && (
+        // Ensure the userId field is set to the current user's UID for new documents
+        request.resource.data.userId == request.auth.uid
+      );
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.userId ||
-        resource.data.type == 'counter' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
       allow delete: if request.auth != null && (

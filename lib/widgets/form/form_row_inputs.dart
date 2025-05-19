@@ -33,6 +33,10 @@ class FormRowInputs extends StatelessWidget {
           return _buildEducationField(field);
         } else if (field['label'] == 'OCCUPATION') {
           return _buildOccupationField(field);
+        } else if (field['label'] == 'CITIZENSHIP') {
+          return _buildCitizenshipField(field);
+        } else if (field['label'] == 'CIVIL STATUS') {
+          return _buildCivilStatusField(field);
         }
 
         // Handle standard fields
@@ -222,7 +226,6 @@ class FormRowInputs extends StatelessWidget {
       ),
     );
   }
-
   Widget _buildEducationField(Map<String, dynamic> field) {
     final section = field['section'] as String;
     final educationKey = '${section}Education';
@@ -232,11 +235,22 @@ class FormRowInputs extends StatelessWidget {
       label: field['label'],
       isRequired: field['required'] ?? false,
       dropdownItems: educationOptions,
+      controller: field['controller'],
       value: formState[educationKey],
-      onChanged: (value) => onFieldChange(educationKey, value),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select education level';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        if (field['controller'] != null) {
+          field['controller'].text = value ?? '';
+        }
+        onFieldChange(educationKey, value);
+      },
     );
   }
-
   Widget _buildOccupationField(Map<String, dynamic> field) {
     final section = field['section'] as String;
     final occupationKey = '${section}Occupation';
@@ -246,8 +260,70 @@ class FormRowInputs extends StatelessWidget {
       label: field['label'],
       isRequired: field['required'] ?? false,
       dropdownItems: occupationOptions,
+      controller: field['controller'],
       value: formState[occupationKey],
-      onChanged: (value) => onFieldChange(occupationKey, value),
+      onChanged: (value) {
+        if (field['controller'] != null) {
+          field['controller'].text = value ?? '';
+        }
+        onFieldChange(occupationKey, value);
+      },
+    );
+  }
+  Widget _buildCitizenshipField(Map<String, dynamic> field) {
+    final section = field['section'] as String;
+    final citizenshipKey = '${section}Citizenship';
+    final citizenshipOptions = field['dropdownItems'] ?? [];
+
+    return CustomInputField(
+      label: field['label'],
+      isRequired: field['required'] ?? false,
+      dropdownItems: citizenshipOptions,
+      controller: field['controller'],
+      value: formState[citizenshipKey],
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select citizenship';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        if (field['controller'] != null) {
+          field['controller'].text = value ?? '';
+        }
+        onFieldChange(citizenshipKey, value);
+      },
+    );
+  }
+  Widget _buildCivilStatusField(Map<String, dynamic> field) {
+    final section = field['section'] as String?;
+    String? civilStatusKey;
+    if (section == 'reporting') {
+      civilStatusKey = 'reportingPersonCivilStatus';
+    } else if (section == 'victim') {
+      civilStatusKey = 'victimCivilStatus';
+    }
+    final civilStatusOptions = field['dropdownItems'] ?? [];
+    return CustomInputField(
+      label: field['label'],
+      isRequired: field['required'] ?? false,
+      dropdownItems: civilStatusOptions,
+      controller: field['controller'],
+      value: civilStatusKey != null ? formState[civilStatusKey] : null,
+      validator: (value) {
+        if ((field['required'] ?? false) && (value == null || value.isEmpty)) {
+          return 'Please select civil status';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        if (field['controller'] != null) {
+          field['controller'].text = value ?? '';
+        }
+        if (civilStatusKey != null) {
+          onFieldChange(civilStatusKey == 'reportingPersonCivilStatus' ? 'civilStatusReporting' : 'civilStatusVictim', value);
+        }
+      },
     );
   }
 }
