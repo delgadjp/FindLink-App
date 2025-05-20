@@ -171,7 +171,7 @@ class ModalUtils {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
         final QuerySnapshot userDoc = await _firestore
-            .collection('users-app')
+            .collection('users')
             .where('userId', isEqualTo: currentUser.uid)
             .limit(1)
             .get();
@@ -197,7 +197,7 @@ class ModalUtils {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
         final QuerySnapshot userDoc = await _firestore
-            .collection('users-app')
+            .collection('users')
             .where('userId', isEqualTo: currentUser.uid)
             .limit(1)
             .get();
@@ -221,7 +221,7 @@ class ModalUtils {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
         final QuerySnapshot userDoc = await _firestore
-            .collection('users-app')
+            .collection('users')
             .where('userId', isEqualTo: currentUser.uid)
             .limit(1)
             .get();
@@ -247,7 +247,7 @@ class ModalUtils {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
         final QuerySnapshot userDoc = await _firestore
-            .collection('users-app')
+            .collection('users')
             .where('userId', isEqualTo: currentUser.uid)
             .limit(1)
             .get();

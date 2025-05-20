@@ -151,7 +151,29 @@ class _LoginPageState extends State<LoginPage> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 30),
+                              SizedBox(height: 15),
+
+                              // Forgot Password Button
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
+                                    );
+                                  },
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(
+                                      color: Color(0xFF53C0FF),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ),
 
                               // Login Button - Improved design
                               SizedBox(

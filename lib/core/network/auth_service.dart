@@ -98,7 +98,7 @@ class AuthService {
     try {
       // Query Firestore for any documents with the user's UID
       final QuerySnapshot result = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -117,6 +117,18 @@ class AuthService {
     required File idImage,
   }) async {
     try {
+      // Ensure user is authenticated before attempting upload
+      if (_auth.currentUser == null) {
+        await Future.delayed(Duration(seconds: 1));
+        if (_auth.currentUser == null) {
+          print('Error: User not authenticated during ID upload');
+          throw FirebaseException(
+            plugin: 'firebase_storage',
+            message: 'User must be authenticated to upload ID images',
+          );
+        }
+      }
+      
       final String imagePath = 'user_ids_app/$uid/id_image.jpg';
       final Reference imageRef = _storage.ref().child(imagePath);
       
@@ -125,10 +137,26 @@ class AuthService {
         SettableMetadata(contentType: 'image/jpeg'),
       );
       
+      // Add error handling for the upload task
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        print('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+      }, onError: (e) {
+        print('Upload task error: $e');
+      });
+      
       final TaskSnapshot snapshot = await uploadTask;
       final String imageURL = await snapshot.ref.getDownloadURL();
       
+      print('Successfully uploaded ID image to: $imagePath');
       return imageURL;
+    } on FirebaseException catch (e) {
+      if (e.code == 'unauthorized') {
+        print('Error uploading ID image: Unauthorized access. Check Firebase Storage rules.');
+        // You might want to show a more user-friendly error to the user
+      } else {
+        print('Firebase error uploading ID image: ${e.code} - ${e.message}');
+      }
+      throw e;
     } catch (e) {
       print('Error uploading ID image: $e');
       throw e;
@@ -158,7 +186,7 @@ class AuthService {
 
       // Query Firestore for existing users with the same date and prefix to find the highest number
       final QuerySnapshot querySnapshot = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('documentId', isGreaterThanOrEqualTo: idPrefix)
           .where('documentId', isLessThan: idPrefix + '999')
           .get();
@@ -187,7 +215,7 @@ class AuthService {
       }
 
       // Store user data with the custom document ID
-      await _firestore.collection('users-app').doc(customDocId).set({
+      await _firestore.collection('users').doc(customDocId).set({
         'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
@@ -222,7 +250,7 @@ class AuthService {
     try {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -245,7 +273,7 @@ class AuthService {
     try {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -265,7 +293,7 @@ class AuthService {
   Future<bool> updatePrivacyPolicyAcceptance(String uid, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -404,7 +432,7 @@ class AuthService {
     try {
       // Find the user document
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -465,7 +493,7 @@ class AuthService {
   Future<bool> getScreenComplianceAccepted(String uid, String screenKey) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -484,7 +512,7 @@ class AuthService {
   Future<void> updateScreenComplianceAccepted(String uid, String screenKey, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
