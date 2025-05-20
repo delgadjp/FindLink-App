@@ -33,14 +33,15 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
 
   // Google Vision API key from TipService
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
-  
-  // Data extracted from ID via OCR
+    // Data extracted from ID via OCR
   Map<String, dynamic> extractedData = {
     'firstName': '',
     'middleName': '',
     'lastName': '',
     'dateOfBirth': null,
-    'expirationDate':  null, // Added field for expiration date
+    'expirationDate': null, // Added field for expiration date
+    'philIDNumber': '', // Added field for Philippine ID number
+    'address': '', // Added field for complete address
   };
 
   // Current user email from Firebase Auth or registration data
@@ -662,6 +663,83 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
         }
       }
     }
+      // Extract PhilID Number - typically in format like "8928-3948-0460-5732"
+    final philIDRegex = RegExp(r'(\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4})', caseSensitive: false);
+    final philIDMatch = philIDRegex.firstMatch(upperCaseText);
+    
+    if (philIDMatch != null) {
+      String idNumber = philIDMatch.group(1)?.trim() ?? '';
+      // Format to ensure consistent format with dashes
+      idNumber = idNumber.replaceAll(RegExp(r'\s'), '-'); // Replace spaces with dashes
+      if (!idNumber.contains('-')) {
+        // Add dashes if they don't exist
+        idNumber = idNumber.replaceAllMapped(
+          RegExp(r'(\d{4})(\d{4})(\d{4})(\d{4})'), 
+          (match) => '${match[1]}-${match[2]}-${match[3]}-${match[4]}'
+        );
+      }
+      extractedData['philIDNumber'] = idNumber;
+    }
+    
+    // Extract Address - improved logic to get the correct address line(s)
+    String extractedAddress = '';
+    final lines = upperCaseText.split('\n');
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i].contains('TIRAHAN') || lines[i].contains('ADDRESS')) {
+        // Try to get the next non-empty line(s) after the label
+        int j = i + 1;
+        while (j < lines.length && (lines[j].trim().isEmpty || lines[j].contains('REPUBLIC OF THE PHILIPPINES'))) {
+          j++;
+        }
+        if (j < lines.length) {
+          extractedAddress = lines[j].trim();
+          // Optionally, concatenate the next line if it looks like part of the address
+          if (j + 1 < lines.length &&
+              RegExp(r'PHILIPPINES|CITY|CAVITE|MANILA|PROVINCE|4103|[0-9]').hasMatch(lines[j + 1])) {
+            extractedAddress += ', ' + lines[j + 1].trim();
+          }
+        }
+        break;
+      }
+    }
+    // Fallback: look for a line that matches a typical PH address pattern
+    if (extractedAddress.isEmpty) {
+      for (final line in lines) {
+        if (RegExp(r'PH \d+').hasMatch(line) && line.contains('CITY')) {
+          extractedAddress = line.trim();
+          break;
+        }
+      }
+    }
+    // Remove any header text if present
+    if (extractedAddress.contains('REPUBLIC OF THE PHILIPPINES')) {
+      extractedAddress = '';
+    }
+    extractedData['address'] = _toTitleCase(extractedAddress);
+    
+    // If we didn't find the address with the label, look for typical address patterns
+    if (extractedData['address']?.isEmpty == true) {
+      final lines = upperCaseText.split('\n');
+      for (int i = 0; i < lines.length; i++) {
+        if (lines[i].contains('PH') && 
+            lines[i].contains('RESIDENCE') || 
+            lines[i].contains('CITY OF') || 
+            lines[i].contains('PROVINCE') ||
+            (lines[i].contains('B') && lines[i].contains('L') && lines[i].contains('PHILIPPINES'))) {
+          
+          extractedData['address'] = _toTitleCase(lines[i].trim());
+          // Check if the address continues on the next line
+          if (i+1 < lines.length && 
+              (lines[i+1].contains('CAVITE') || 
+               lines[i+1].contains('MANILA') || 
+               lines[i+1].contains('CITY') || 
+               lines[i+1].contains('PROVINCE'))) {
+            extractedData['address'] += ', ' + _toTitleCase(lines[i+1].trim());
+          }
+          break;
+        }
+      }
+    }
     
     print('Extracted data from Philippine Identification Card: $extractedData');
   }
@@ -1054,8 +1132,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                           ),
                           
                           Divider(color: Color(0xFF53C0FF), thickness: 1.5),
-                          SizedBox(height: 15),
-                            // Display ID information
+                          SizedBox(height: 15),                          // Display ID information
                           _buildReadOnlyField('First Name', extractedData['firstName']),
                           _buildReadOnlyField('Middle Name', extractedData['middleName']),
                           _buildReadOnlyField('Last Name', extractedData['lastName']),
@@ -1064,7 +1141,21 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                             extractedData['dateOfBirth'] != null 
                                 ? DateFormat('MM/dd/yyyy').format(extractedData['dateOfBirth']) 
                                 : null,
-                          ),                          // Email field
+                          ),
+                          // Philippine ID specific fields
+                          if (widget.idType == 'Philippine Identification Card') ...[
+                            _buildReadOnlyField('PhilID Number', extractedData['philIDNumber']),
+                            _buildReadOnlyField('Address', extractedData['address']),
+                          ],
+                          // Driver's License specific fields
+                          if (widget.idType == 'Driver\'s License' && extractedData['expirationDate'] != null)
+                            _buildReadOnlyField(
+                              'Expiration Date',
+                              extractedData['expirationDate'] != null
+                                ? DateFormat('MM/dd/yyyy').format(extractedData['expirationDate'])
+                                : null,
+                            ),
+                          // Email field
                           _buildReadOnlyField('Email', userEmail),
                           
                           SizedBox(height: 25),

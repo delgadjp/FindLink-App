@@ -81,9 +81,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       
       if (currentUser != null) {
-        // Query users-app collection by uid field
+        // Query users collection by uid field
         final QuerySnapshot userQuery = await FirebaseFirestore.instance
-            .collection('users-app')
+            .collection('users')
             .where('userId', isEqualTo: currentUser.uid) // Changed from 'uid' to 'userId'
             .limit(1)
             .get();
@@ -288,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (currentUser != null) {
         // First, find the user document by uid
         final QuerySnapshot userQuery = await FirebaseFirestore.instance
-            .collection('users-app')
+            .collection('users')
             .where('uid', isEqualTo: currentUser.uid)
             .limit(1)
             .get();
@@ -391,7 +391,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       // Find user document and update in Firestore
       final QuerySnapshot userQuery = await FirebaseFirestore.instance
-          .collection('users-app')
+          .collection('users')
           .where('uid', isEqualTo: currentUser.uid)
           .limit(1)
           .get();
