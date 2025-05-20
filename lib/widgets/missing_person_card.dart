@@ -1,17 +1,24 @@
 import '../core/app_export.dart';
 
-class MissingPersonCard extends StatelessWidget {
+class MissingPersonCard extends StatefulWidget {
   final MissingPerson person;
 
   const MissingPersonCard({required this.person});
 
+  @override
+  _MissingPersonCardState createState() => _MissingPersonCardState();
+}
+
+class _MissingPersonCardState extends State<MissingPersonCard> {
+  static const int _descMaxLength = 100; // Character limit for description
+  bool _isExpanded = false;
   Widget _buildStatusLabel() {
-    final status = person.status ?? 'UNRESOLVED';
+    final status = widget.person.status.isNotEmpty ? widget.person.status : 'UNRESOLVED';
     Color bgColor;
     Color textColor;
 
     switch (status) {
-      case 'Unresolved':
+      case 'Unresolved Case':
         bgColor = Colors.red.shade100;
         textColor = Colors.red.shade900;
         break;
@@ -45,9 +52,9 @@ class MissingPersonCard extends StatelessWidget {
     return Container(
       height: 200,
       width: double.infinity,
-      child: person.imageUrl.isNotEmpty
+      child: widget.person.imageUrl.isNotEmpty
           ? Image.network(
-              person.imageUrl,
+              widget.person.imageUrl,
               fit: BoxFit.cover,
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
@@ -83,6 +90,50 @@ class MissingPersonCard extends StatelessWidget {
     );
   }
 
+  Widget _buildDescription() {
+    final String description = widget.person.descriptions;
+    final bool isLongText = description.length > _descMaxLength;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isLongText && !_isExpanded
+              ? '${description.substring(0, _descMaxLength)}...'
+              : description,
+          style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        if (isLongText)
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            child: Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Row(
+                children: [
+                  Text(
+                    _isExpanded ? 'Show less' : 'Read more',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Icon(
+                    _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    size: 16,
+                    color: Colors.blue,
+                  )
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -103,7 +154,7 @@ class MissingPersonCard extends StatelessWidget {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
-                person.name,
+                widget.person.name,
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
               trailing: _buildStatusLabel(),
@@ -111,7 +162,7 @@ class MissingPersonCard extends StatelessWidget {
           ),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: _buildImage(), // Replace the existing Image.network with this
+            child: _buildImage(),
           ),
           Padding(
             padding: EdgeInsets.all(16),
@@ -119,7 +170,7 @@ class MissingPersonCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Last seen at ${person.placeLastSeen}',
+                  'Last seen at ${widget.person.placeLastSeen}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -127,17 +178,14 @@ class MissingPersonCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  person.descriptions,
-                  style: TextStyle(fontSize: 14, height: 1.4),
-                ),
+                _buildDescription(),
                 SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                     SizedBox(width: 8),
                     Text(
-                      'Missing since: ${person.datetimeLastSeen}',
+                      'Missing since: ${widget.person.datetimeLastSeen}',
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
                   ],
@@ -153,7 +201,7 @@ class MissingPersonCard extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => SubmitTipScreen(person: person),
+                              builder: (context) => SubmitTipScreen(person: widget.person),
                             ),
                           );
                         },
@@ -176,7 +224,7 @@ class MissingPersonCard extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => CaseDetailsScreen(person: person),
+                              builder: (context) => CaseDetailsScreen(person: widget.person),
                             ),
                           );
                         },

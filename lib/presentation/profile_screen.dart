@@ -644,7 +644,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         SizedBox(width: 8),
                         Text(
-                          "MY CASES",
+                          "CASE TRACKER",
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -756,7 +756,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                         SizedBox(height: 16),
                                         Text(
-                                          "Case #${caseData['caseNumber']}",
+                                          "Case ID:${caseData['caseNumber']}",
                                           style: TextStyle(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,

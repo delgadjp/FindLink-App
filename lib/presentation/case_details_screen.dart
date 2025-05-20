@@ -24,13 +24,18 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF0D47A1),
+                fontSize: 15,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: Colors.grey[800]),
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 15,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -63,6 +68,8 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                     child: Image.network(
                       widget.person.imageUrl,
                       fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 300,
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Center(
@@ -121,13 +128,64 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
     );
   }
 
+  Widget _buildStatusChip() {
+    final status = widget.person.status.isNotEmpty ? widget.person.status : 'UNRESOLVED';
+    Color bgColor;
+    Color textColor;
+
+    switch (status.toLowerCase()) {
+      case 'resolved':
+        bgColor = Colors.green.shade100;
+        textColor = Colors.green.shade900;
+        break;
+      case 'pending':
+        bgColor = Colors.orange.shade100;
+        textColor = Colors.orange.shade900;
+        break;
+      default:
+        bgColor = Colors.red.shade100;
+        textColor = Colors.red.shade900;
+    }
+
+    return Chip(
+      label: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+      ),
+      backgroundColor: bgColor,
+      padding: EdgeInsets.symmetric(horizontal: 8),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Case Details'),
-        backgroundColor: Color(0xFF0D47A1),
+        title: Text(
+          'Case Details',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: _buildStatusChip(),
+          ),
+        ],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0D47A1), Color(0xFF1976D2)],
+            ),
+          ),
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -135,50 +193,172 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [Color(0xFF0D47A1), Colors.blue.shade100],
-            stops: [0.0, 50],
+            stops: [0.0, 0.5],
           ),
         ),
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.only(top: AppBar().preferredSize.height + MediaQuery.of(context).padding.top + 16, left: 16, right: 16, bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Image Card (now at the top)
+              Hero(
+                tag: 'missing_person_image_${widget.person.caseId}',
+                child: Card(
+                  elevation: 8,
+                  shadowColor: Colors.black.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: _buildImage(),
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 16),
+                // Merged person name and info card
               Card(
-                elevation: 2,
-                color: Colors.blue.shade50,
+                elevation: 6,
+                shadowColor: Colors.black.withOpacity(0.2),
+                color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildInfoRow('Name', widget.person.name),
-                      _buildInfoRow('Case ID', widget.person.caseId),
+                      // Person name and case ID
+                      Text(
+                        widget.person.name,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0D47A1),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      
+                      SizedBox(height: 24),
+                      
+                      // Case information section
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Color(0xFF0D47A1)),
+                          SizedBox(width: 10),
+                          Text(
+                            'Case Information',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D47A1),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
+                      SizedBox(height: 8),
                       _buildInfoRow('Description', widget.person.descriptions),
                       _buildInfoRow('Address', widget.person.address),
                       _buildInfoRow('Last Seen At', widget.person.placeLastSeen),
                       _buildInfoRow('Last Seen Date', widget.person.datetimeLastSeen),
                       _buildInfoRow('Date Reported', widget.person.datetimeReported),
+                      
+                      SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Icon(Icons.contact_phone_outlined, color: Color(0xFF0D47A1)),
+                          SizedBox(width: 10),
+                          Text(
+                            'Contact Information',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D47A1),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
+                      SizedBox(height: 8),
                       _buildInfoRow('Complainant', widget.person.complainant),
                       _buildInfoRow('Relationship', widget.person.relationship),
                       _buildInfoRow('Contact', widget.person.contactNo),
-                      if (widget.person.additionalInfo.isNotEmpty)
-                        _buildInfoRow('Additional Info', widget.person.additionalInfo),
+                      
+                      if (widget.person.additionalInfo.isNotEmpty) ...[
+                        SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Icon(Icons.notes_outlined, color: Color(0xFF0D47A1)),
+                            SizedBox(width: 10),
+                            Text(
+                              'Additional Information',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D47A1),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
+                        SizedBox(height: 8),
+                        _buildInfoRow('Notes', widget.person.additionalInfo),
+                      ],
                     ],
                   ),
                 ),
               ),
-              SizedBox(height: 16),
-              Card(
-                elevation: 2,
-                color: Colors.blue.shade50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              
+              SizedBox(height: 24),
+              
+              // Action button with improved styling
+              Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.4),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: _buildImage(),
+                child: ElevatedButton.icon(
+                  icon: Icon(Icons.tips_and_updates, size: 24),
+                  label: Text(
+                    'Report a Sighting',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SubmitTipScreen(person: widget.person),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
               ),
+              
+              SizedBox(height: 20),
             ],
           ),
         ),

@@ -68,8 +68,8 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
-    }    
-    
+    }
+
     // Rules for irf-test collection
     match /irf-test/{irfId} {
       allow read: if request.auth != null && (
@@ -93,13 +93,16 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
-    }
-
+    }    
+    
     // Rules for incidents collection
     match /incidents/{incidentId} {
-      // Allow read access only to the owner, admin, or users with a specific role
+      // Allow read access for duplicate checking and normal access
       allow read: if request.auth != null && (
-        request.auth.uid == resource.data.userId || 
+        // Allow listing/querying for duplicate checks
+        (request.query.limit <= 1) ||
+        // Allow normal document access
+        resource.data.userId == request.auth.uid || 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'viewer'
       );

@@ -48,7 +48,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   // Variables for nearby tips feature
   bool _isCheckingNearbyTips = false;
   List<Map<String, dynamic>> _nearbyTips = [];
-  final double _nearbyTipsRadius = 500; // 500 meters radius
+  final double _nearbyTipsRadius = 100; 
   bool _hasNearbyTips = false;
   
   // Create a map to store keys for form fields
@@ -660,6 +660,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           address: _addressController.text,
           imageData: imageData, // Pass the image data to the service
           validateImage: false, // Disable second validation since we already validated
+          caseId: widget.person.caseId, // Pass the caseId for missing person name lookup
+          missingPersonName: widget.person.name, // Pass the name from the UI
         );
 
         // Update UI to show success

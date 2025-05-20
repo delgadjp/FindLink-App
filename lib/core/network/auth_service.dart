@@ -30,19 +30,27 @@ class AuthService {
 
       Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
     } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Login error: ${e.message}';
       if (e.code == 'user-not-found') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No user found for that email.')),
-        );
+        errorMessage = 'No account found for that email.';
       } else if (e.code == 'wrong-password') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wrong password provided.')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login error: $e')),
-        );
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is badly formatted.';
+      } else if (e.code == 'user-disabled') {
+        errorMessage = 'This account has been disabled. Please contact support.';
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = 'Too many login attempts. Please try again later.';
+      } else if (e.code == 'network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An unexpected error occurred: $e')),
+      );
     }
   }
 
@@ -90,8 +98,8 @@ class AuthService {
     try {
       // Query Firestore for any documents with the user's UID
       final QuerySnapshot result = await _firestore
-          .collection('users-app')
-          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
+          .collection('users') // changed from 'users-app' to 'users'
+          .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
 
@@ -142,22 +150,32 @@ class AuthService {
     File? uploadedIDImage,
   }) async {
     try {
-      // Create a formatted custom ID: USER_YYYYMMDD_XXXXX
+      // Create a formatted custom ID: USER_YYYYMMDD_XXX (sequential 3-digit number)
       final now = DateTime.now();
       final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+      String emailPrefix = email.split('@')[0].substring(0, email.split('@')[0].length > 3 ? 3 : email.split('@')[0].length).toUpperCase();
+      final idPrefix = "USER_${datePart}_${emailPrefix}_";
 
-      // Create a unique part based on user info and timestamp
-      String uniquePart;
-      if (email.isNotEmpty) {
-        // Use first 3 chars of email + timestamp segment for uniqueness
-        String emailPrefix = email.split('@')[0].substring(0, email.split('@')[0].length > 3 ? 3 : email.split('@')[0].length).toUpperCase();
-        uniquePart = "${emailPrefix}${now.millisecondsSinceEpoch.toString().substring(7)}";
-      } else {
-        // Fallback if no email
-        uniquePart = now.millisecondsSinceEpoch.toString().substring(5);
+      // Query Firestore for existing users with the same date and prefix to find the highest number
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('users')
+          .where('documentId', isGreaterThanOrEqualTo: idPrefix)
+          .where('documentId', isLessThan: idPrefix + '999')
+          .get();
+      int highestNumber = 0;
+      for (final doc in querySnapshot.docs) {
+        final String docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+          final String seqPart = docId.substring(idPrefix.length);
+          final int? seqNum = int.tryParse(seqPart);
+          if (seqNum != null && seqNum > highestNumber) {
+            highestNumber = seqNum;
+          }
+        }
       }
-
-      final customDocId = "USER_${datePart}_$uniquePart";
+      final int nextNumber = highestNumber + 1;
+      final String paddedNumber = nextNumber.toString().padLeft(3, '0');
+      final customDocId = "${idPrefix}${paddedNumber}";
       
       // Upload ID image if provided
       String? idImageURL;
@@ -169,7 +187,7 @@ class AuthService {
       }
 
       // Store user data with the custom document ID
-      await _firestore.collection('users-app').doc(customDocId).set({
+      await _firestore.collection('users').doc(customDocId).set({ // changed from 'users-app' to 'users'
         'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
@@ -204,8 +222,8 @@ class AuthService {
     try {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
-          .where('userId', isEqualTo: uid) // Changed from 'uid' to 'userId'
+          .collection('users') // changed from 'users-app' to 'users'
+          .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
 
@@ -227,7 +245,7 @@ class AuthService {
     try {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users') // changed from 'users-app' to 'users'
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -247,7 +265,7 @@ class AuthService {
   Future<bool> updatePrivacyPolicyAcceptance(String uid, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users') // changed from 'users-app' to 'users'
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -386,7 +404,7 @@ class AuthService {
     try {
       // Find the user document
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users') // changed from 'users-app' to 'users'
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -447,7 +465,7 @@ class AuthService {
   Future<bool> getScreenComplianceAccepted(String uid, String screenKey) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users') // changed from 'users-app' to 'users'
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -466,7 +484,7 @@ class AuthService {
   Future<void> updateScreenComplianceAccepted(String uid, String screenKey, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users-app')
+          .collection('users') // changed from 'users-app' to 'users'
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();

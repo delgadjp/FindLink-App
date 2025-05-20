@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../models/irf_model.dart';
 import 'package:intl/intl.dart';
-import '../storage/local_draft_service.dart';  // Import the new local draft service
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
@@ -14,18 +13,17 @@ class IRFService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final LocalDraftService _localDraftService = LocalDraftService();
   
   // Google Vision API key - use the same one as in TipService
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
 
   // Add helper method to upload image to Firebase Storage
-  Future<String?> _uploadImage(dynamic imageData, String irfId) async {
+  Future<String?> uploadImage(dynamic imageData, String irfId) async {
     try {
       // Create reference to the file path in storage
       final Reference storageRef = _storage
           .ref()
-          .child('irf-attachments')
+          .child('irf-app-images')
           .child('$irfId.jpg');
       
       late UploadTask uploadTask;
@@ -172,12 +170,8 @@ class IRFService {
       };
     }
   }
-
-  // Expose the local draft service for direct access
-  LocalDraftService get localDraftService => _localDraftService;
-  
-  // Collection reference - Uses only irf-test collection
-  CollectionReference get irfCollection => _firestore.collection('irf-test');
+  // Collection reference - Uses only incidents collection now
+  CollectionReference get irfCollection => _firestore.collection('incidents');
   
   // Get current user ID
   String? get currentUserId => _auth.currentUser?.uid;  // Generate a formal document ID format: IRF-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
@@ -187,37 +181,31 @@ class IRFService {
     final idPrefix = 'IRF-$dateStr-';
 
     try {
-      // Get all documents with today's date prefix
+      // Get all documents with today's date prefix by document ID
       final QuerySnapshot querySnapshot = await _firestore
           .collection('irf-test')
-          .where('documentId', isGreaterThanOrEqualTo: idPrefix)
-          .where('documentId', isLessThan: idPrefix + '\uf8ff')
           .get();
 
       // Debug info
       print('Found ${querySnapshot.docs.length} documents for today (${dateStr})');
       
-      // Find the highest sequential number
+      // Find the highest sequential number by checking doc.id
       int highestNumber = 0;
-      
       for (final doc in querySnapshot.docs) {
-        final String? docId = doc['documentId'] as String?;
-        if (docId != null && docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+        final String docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
           final String seqPart = docId.substring(idPrefix.length);
           final int? seqNum = int.tryParse(seqPart);
-          
           if (seqNum != null && seqNum > highestNumber) {
             highestNumber = seqNum;
             print('Found higher sequence: $highestNumber from $docId');
           }
         }
       }
-      
       // Increment for next document
       final int nextNumber = highestNumber + 1;
       final String paddedNumber = nextNumber.toString().padLeft(4, '0');
       final String newDocId = '$idPrefix$paddedNumber';
-      
       print('Generated next document ID: $newDocId');
       return newDocId;
     } catch (e) {
@@ -239,20 +227,24 @@ class IRFService {
       final String formalId = await generateFormalDocumentId();
       print('Generated formal document ID for submission: $formalId');
       
-      // Add user ID and timestamps
-      final dataWithMetadata = {
-        ...irfData.toMap(),
-        'documentId': formalId, // Store the ID inside the document too
-        'userId': currentUserId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'status': 'submitted', // pending, submitted, approved, rejected
-        'type': 'report' // Mark this document as an IRF report
-      };
+      // Prepare the data map
+      final dataMap = irfData.toMap();
+      // Move createdAt and incidentId inside incidentDetails
+      dataMap['incidentDetails'] ??= {};
+      dataMap['incidentDetails']['createdAt'] = FieldValue.serverTimestamp();
+      dataMap['incidentDetails']['incidentId'] = formalId;
+      // Remove root createdAt and incidentId if present
+      dataMap.remove('createdAt');
+      dataMap.remove('incidentId');
+      // Add other root-level fields
+      dataMap['userId'] = currentUserId;
+      dataMap['updatedAt'] = FieldValue.serverTimestamp();
+      dataMap['status'] = 'Reported';
+      // dataMap['type'] = 'report'; // Removed as per request
       
       // Use the formal ID as the document ID for the document itself
       final docRef = irfCollection.doc(formalId);
-      await docRef.set(dataWithMetadata);
+      await docRef.set(dataMap);
       print('Successfully submitted IRF with ID: $formalId');
       return docRef;
     } catch (e) {
@@ -260,53 +252,24 @@ class IRFService {
       rethrow; // Rethrow to handle in UI
     }
   }
-  
-  // Save IRF draft locally using LocalDraftService
-  Future<String> saveIRFDraft(IRFModel irfData) async {
+    // Update existing IRF
+  Future<void> updateIRF(String irfId, IRFModel irfData) async {
     if (currentUserId == null) {
       throw Exception('User not authenticated');
     }
-    
-    try {
-      // Save draft locally instead of to Firebase
-      final String draftId = await _localDraftService.saveDraft(irfData);
-      return draftId;
-    } catch (e) {
-      print('Error saving local draft: $e');
-      rethrow; // Rethrow to handle in UI
-    }
+    // Prepare the data map
+    final dataMap = irfData.toMap();
+    dataMap['incidentDetails'] ??= {};
+    dataMap['incidentDetails']['incidentId'] = irfId;
+    dataMap['updatedAt'] = FieldValue.serverTimestamp();
+    dataMap['status'] = 'Reported';
+    dataMap.remove('incidentId');
+    // dataMap['type'] = 'report'; // Removed as per request
+    return await irfCollection.doc(irfId).update(dataMap);
   }
   
-  // Update existing IRF
-  Future<void> updateIRF(String irfId, IRFModel irfData, {bool isDraft = false}) async {
-    if (currentUserId == null) {
-      throw Exception('User not authenticated');
-    }
-    
-    // If it's a draft, update locally instead of in Firebase
-    if (isDraft) {
-      await _localDraftService.updateDraft(irfId, irfData);
-      return;
-    }
-    
-    // Otherwise update in Firebase
-    final dataWithMetadata = {
-      ...irfData.toMap(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'status': 'submitted'
-    };
-    
-    return await irfCollection.doc(irfId).update(dataWithMetadata);
-  }
-  
-  // Get IRF by ID - check local drafts first, then Firebase
+  // Get IRF by ID from Firebase
   Future<dynamic> getIRF(String irfId) async {
-    // Check if it's a local draft
-    if (irfId.startsWith('LOCAL_DRAFT_')) {
-      return await _localDraftService.getDraft(irfId);
-    }
-    
-    // Otherwise get from Firebase
     return await irfCollection.doc(irfId).get();
   }
   
@@ -323,31 +286,30 @@ class IRFService {
         .snapshots();
   }
   
-  // Get user's IRF drafts from local storage
-  Future<List<IRFModel>> getUserDrafts() async {
-    if (currentUserId == null) {
-      throw Exception('User not authenticated');
-    }
-    
-    // Get drafts from local storage
-    List<Map<String, dynamic>> localDrafts = await _localDraftService.getLocalDrafts();
-    
-    // Convert to IRF models
-    return localDrafts.map((draft) => _localDraftService.draftToModel(draft)).toList();
-  }
-  
-  // Delete IRF - check if it's a local draft first
+  // Delete IRF
   Future<void> deleteIRF(String irfId) async {
-    // If it's a local draft, delete locally
-    if (irfId.startsWith('LOCAL_DRAFT_')) {
-      bool success = await _localDraftService.deleteDraft(irfId);
-      if (!success) {
-        throw Exception('Failed to delete local draft');
-      }
-      return;
-    }
-    
-    // Otherwise delete from Firebase
     return await irfCollection.doc(irfId).delete();
+  }
+
+  // Get user's selected ID type
+  Future<String?> getUserSelectedIDType() async {
+    try {
+      if (currentUserId == null) return null;
+      
+      final userQuery = await _firestore
+          .collection('users-app')
+          .where('userId', isEqualTo: currentUserId)
+          .limit(1)
+          .get();
+          
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data();
+        return userData['selectedIDType'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user ID type: $e');
+      return null;
+    }
   }
 }

@@ -27,7 +27,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
   // ID types available for selection
   final List<String> idTypes = [
     'Driver\'s License',
-    'National ID',
+    'Philippine Identification Card',
   ];
   
   String selectedIdType = 'Driver\'s License'; // Default value

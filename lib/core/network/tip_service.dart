@@ -17,16 +17,36 @@ class TipService {
   // Google Vision API key
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
 
-  // Helper method to generate custom document ID for reports
-  String _generateCustomReportId() {
-    final now = DateTime.now();
-    final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
-    
-    // Create a unique suffix based on timestamp
-    final uniqueSuffix = now.millisecondsSinceEpoch.toString().substring(7);
-    
-    // Format: REPORT_YYYYMMDD_XXXXX
-    return "REPORT_${datePart}_$uniqueSuffix";
+  // Generate a formal document ID format: REPORT-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
+  Future<String> generateFormalReportId() async {
+    final today = DateTime.now();
+    final dateStr = "${today.year.toString().padLeft(4, '0')}${today.month.toString().padLeft(2, '0')}${today.day.toString().padLeft(2, '0')}";
+    final idPrefix = 'REPORTS_$dateStr-';
+    try {
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('reports')
+          .get();
+      int highestNumber = 0;
+      for (final doc in querySnapshot.docs) {
+        final String docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+          final String seqPart = docId.substring(idPrefix.length);
+          final int? seqNum = int.tryParse(seqPart);
+          if (seqNum != null && seqNum > highestNumber) {
+            highestNumber = seqNum;
+          }
+        }
+      }
+      final int nextNumber = highestNumber + 1;
+      final String paddedNumber = nextNumber.toString().padLeft(3, '0');
+      final String newDocId = '$idPrefix$paddedNumber';
+      return newDocId;
+    } catch (e) {
+      print('Error generating report document ID: $e');
+      final String paddedNumber = '001';
+      final String fallbackId = '$idPrefix$paddedNumber';
+      return fallbackId;
+    }
   }
 
   // Helper method to upload image to Firebase Storage
@@ -249,6 +269,8 @@ class TipService {
     required String address,
     dynamic imageData, 
     bool validateImage = true, 
+    required String caseId, // Add caseId to fetch missing person name
+    required String missingPersonName, // Add missingPersonName as a required parameter
   }) async {
     try {
       // Validate image if provided and validation is enabled
@@ -260,7 +282,7 @@ class TipService {
         
         // If validation failed completely, continue without the image
         if (!imageValidation['isValid']) {
-          print('Image validation failed: ${imageValidation['message']}');
+          print('Image validation failed: [${imageValidation['message']}');
           shouldUploadImage = false;
         }
         // If validation succeeded but no human detected, don't upload the image
@@ -270,28 +292,46 @@ class TipService {
         }
       }
     
-      // Generate custom document ID for the report
-      final String reportId = _generateCustomReportId();
+      // Generate formal reportId
+      final String reportId = await generateFormalReportId();
       
-      // Create the data map with all fields except the image
+      // Fetch missing person name by caseId
+      String name = missingPersonName;
+      try {
+        final doc = await FirebaseFirestore.instance.collection('missingPersons').where('case_id', isEqualTo: caseId).get();
+        if (doc.docs.isNotEmpty) {
+          name = doc.docs.first.data()['name'] ?? missingPersonName;
+        }
+      } catch (e) {
+        print('Error fetching missing person name: $e');
+      }
+
+      // Format coordinates as string
+      String coordinates =
+        "[${lat.toStringAsFixed(14)}\u00b0 N, ${lng.toStringAsFixed(14)}\u00b0 E]";
+
+      // Format dateTimeLastSeen and timestamp
+      final DateTime now = DateTime.now();
+      final Timestamp createdAtTimestamp = Timestamp.now();
+      final Timestamp dateTimeLastSeenTimestamp = Timestamp.fromDate(DateTime.parse(dateLastSeen + 'T' + timeLastSeen));
+
+      // Prepare the data map
       final Map<String, dynamic> reportData = {
-        'ageRange': ageRange,
-        'heightRange': heightRange,
+        'age': ageRange,
         'clothing': clothing,
-        'coordinates': {
-          'lat': lat,
-          'lng': lng
-        },
-        'address': address,
-        'dateLastSeen': dateLastSeen,
+        'coordinates': coordinates,
+        'createdAt': createdAtTimestamp,
+        'dateTimeLastSeen': dateTimeLastSeenTimestamp,
         'description': description,
         'features': features,
         'gender': gender,
         'hairColor': hairColor,
-        'timeLastSeen': timeLastSeen,
-        'timestamp': FieldValue.serverTimestamp(),
+        'height': heightRange,
+        'imageUrl': null, // Will be set after upload
+        'name': name,
+        'timestamp': createdAtTimestamp,
         'uid': userId,
-        'documentId': reportId,
+        'reportId': reportId,
       };
       
       // Add image validation results if image was provided and validated
@@ -312,14 +352,14 @@ class TipService {
         }
       }
       
-      // Create the report document in Firestore with custom document ID
-      await _firestore.collection('reports-app').doc(reportId).set(reportData)
+      // Create the report document in Firestore with custom reportId
+      await _firestore.collection('reports').doc(reportId).set(reportData)
         .catchError((e) {
-          print("Firestore write error: ${e.toString()}");
+          print("Firestore write error: \u001b[${e.toString()}");
           throw e;
         });
 
-      print('Report successfully added with custom ID: $reportId');
+      print('Report successfully added with custom reportId: $reportId');
     } catch (e) {
       print('Error submitting report: $e');
       if (e is FirebaseException) {
@@ -330,10 +370,36 @@ class TipService {
     }
   }
 
+  // Helper to format DateTime as 'May 13, 2025 at 10:28:00 PM UTC+8'
+  String _formatDateTime(DateTime dt) {
+    final String month = _monthName(dt.month);
+    final String day = dt.day.toString();
+    final String year = dt.year.toString();
+    final int hour12 = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final String time =
+      "${hour12.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+    final String timezone = 'UTC${_timezoneOffset(dt)}';
+    return "$month $day, $year at $time $timezone";
+  }
+  String _monthName(int month) {
+    const months = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month];
+  }
+  String _timezoneOffset(DateTime dt) {
+    final offset = dt.timeZoneOffset;
+    final hours = offset.inHours;
+    final minutes = offset.inMinutes.remainder(60);
+    final sign = hours >= 0 ? '+' : '-';
+    return '$sign${hours.abs()}${minutes != 0 ? ':${minutes.abs().toString().padLeft(2, '0')}' : ''}';
+  }
+
   Future<List<Map<String, dynamic>>> getAllReports() async {
     try {
       final QuerySnapshot snapshot = await _firestore
-          .collection('reports-app')
+          .collection('reports')
           .orderBy('timestamp', descending: true)
           .get();
           
@@ -354,7 +420,7 @@ class TipService {
     try {
       // Get all tips from the database
       final QuerySnapshot snapshot = await _firestore
-          .collection('reports-app')
+          .collection('reports')
           .get();
 
       // Filter tips by distance

@@ -204,7 +204,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   final TextEditingController _villageSitioVictimController = TextEditingController();
   final TextEditingController _educationVictimController = TextEditingController();
   final TextEditingController _occupationVictimController = TextEditingController();
-  final TextEditingController _workAddressVictimController = TextEditingController();
+  final TextEditingController _idCardVictimController = TextEditingController();
   final TextEditingController _emailVictimController = TextEditingController();
   
   // ITEM D - Narrative controllers
@@ -299,7 +299,6 @@ class FillUpForm extends State<FillUpFormScreen> {
     checkScreenCompliance();
     _prefillUserDetails(); // Prefill user details in Item A
   }
-
   // Prefill user details in Item A (Reporting Person)
   Future<void> _prefillUserDetails() async {
     final currentUser = _auth.currentUser;
@@ -307,6 +306,10 @@ class FillUpForm extends State<FillUpFormScreen> {
     try {
       // Only prefill if the form is empty
       if (_surnameReportingController.text.isNotEmpty || _firstNameReportingController.text.isNotEmpty) return;
+      
+      // Get selected ID type from IRFService
+      String? selectedIDType = await _irfService.getUserSelectedIDType();
+      
       final userQuery = await FirebaseFirestore.instance
           .collection('users-app')
           .where('userId', isEqualTo: currentUser.uid)
@@ -316,11 +319,11 @@ class FillUpForm extends State<FillUpFormScreen> {
         final userData = userQuery.docs.first.data() as Map<String, dynamic>;
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
-          _firstNameReportingController.text = userData['firstName'] ?? '';
-          _middleNameReportingController.text = userData['middleName'] ?? '';
+          _firstNameReportingController.text = userData['firstName'] ?? '';          _middleNameReportingController.text = userData['middleName'] ?? '';
           _emailReportingController.text = userData['email'] ?? '';
           _sexGenderReportingController.text = userData['gender'] ?? '';
           _ageReportingController.text = userData['age'] != null ? userData['age'].toString() : '';
+          _idCardPresentedController.text = selectedIDType ?? '';
           if (userData['dateOfBirth'] != null) {
             DateTime dob;
             if (userData['dateOfBirth'] is Timestamp) {
@@ -631,10 +634,9 @@ class FillUpForm extends State<FillUpFormScreen> {
     _homePhoneVictimController.dispose();
     _mobilePhoneVictimController.dispose();
     _currentAddressVictimController.dispose();
-    _villageSitioVictimController.dispose();
-    _educationVictimController.dispose();
+    _villageSitioVictimController.dispose();    _educationVictimController.dispose();
     _occupationVictimController.dispose();
-    _workAddressVictimController.dispose();
+    _idCardVictimController.dispose();
     _emailVictimController.dispose();
     
     // ITEM D - Narrative controllers
@@ -798,11 +800,10 @@ class FillUpForm extends State<FillUpFormScreen> {
       'otherVillageB': hasOtherAddressVictim ? victimOtherBarangay : null,
       'otherRegionB': hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
       'otherProvinceB': hasOtherAddressVictim ? victimOtherProvince?.name : null,
-      'otherTownCityB': hasOtherAddressVictim ? victimOtherMunicipality?.name : null,
-      'otherBarangayB': hasOtherAddressVictim ? victimOtherBarangay : null,
+      'otherTownCityB': hasOtherAddressVictim ? victimOtherMunicipality?.name : null,      'otherBarangayB': hasOtherAddressVictim ? victimOtherBarangay : null,
       'highestEducationAttainmentB': _educationVictimController.text,
       'occupationB': _occupationVictimController.text,
-      'workAddressB': _workAddressVictimController.text,
+      'idCardB': _idCardVictimController.text,
       'emailAddressB': _emailVictimController.text,
       // Narrative
       'narrative': _narrativeController.text,
@@ -816,82 +817,80 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Convert form data to IRFModel
   IRFModel createIRFModel() {
     // Parse date of birth strings to DateTime objects if present
-    String? dobA = _dateOfBirthReportingController.text.isNotEmpty ? _dateOfBirthReportingController.text : null;
-    String? dobB = _dateOfBirthVictimController.text.isNotEmpty ? _dateOfBirthVictimController.text : null;
     int? ageA = _ageReportingController.text.isNotEmpty ? int.tryParse(_ageReportingController.text) : null;
-    int? ageB = _ageVictimController.text.isNotEmpty ? int.tryParse(_ageVictimController.text) : null;
+    int? ageC = _ageVictimController.text.isNotEmpty ? int.tryParse(_ageVictimController.text) : null;
     return IRFModel(
-      // General Information
-      typeOfIncident: _typeOfIncidentController.text,
-      copyFor: _copyForController.text,
-      dateTimeReported: dateTimeReported,
-      dateTimeIncident: dateTimeIncident,
+      // Incident Details
+      createdAt: dateTimeReported,
+      dateTimeOfIncident: dateTimeIncident,
+      imageUrl: null, // Set if you have image upload logic
+      incidentId: null, // Set if you have incidentId logic
+      narrative: _narrativeController.text,
       placeOfIncident: _placeOfIncidentController.text,
-      // Reporting Person (Item A)
-      surnameA: _surnameReportingController.text,
-      firstNameA: _firstNameReportingController.text,
-      middleNameA: _middleNameReportingController.text,
-      qualifierA: _qualifierReportingController.text,
-      nicknameA: _nicknameReportingController.text,
-      citizenshipA: _citizenshipReportingController.text,
-      sexGenderA: _sexGenderReportingController.text,
-      civilStatusA: _civilStatusReportingController.text,
-      dateOfBirthA: dobA,
+      reportedAt: dateTimeReported,
+      typeOfIncident: _typeOfIncidentController.text,
+      // Item A
       ageA: ageA,
-      placeOfBirthA: _placeOfBirthReportingController.text,
-      homePhoneA: _homePhoneReportingController.text,
-      mobilePhoneA: _mobilePhoneReportingController.text,
-      currentAddressA: _currentAddressReportingController.text,
-      villageA: _villageSitioReportingController.text,
-      regionA: reportingPersonRegion?.regionName,
-      provinceA: reportingPersonProvince?.name,
-      townCityA: reportingPersonMunicipality?.name,
       barangayA: reportingPersonBarangay,
+      citizenshipA: _citizenshipReportingController.text,
+      civilStatusA: _civilStatusReportingController.text,
+      currentAddressA: _currentAddressReportingController.text,
+      dateOfBirthA: _dateOfBirthReportingController.text,
+      educationA: _educationReportingController.text,
+      emailA: _emailReportingController.text,
+      familyNameA: _surnameReportingController.text,
+      firstNameA: _firstNameReportingController.text,
+      homePhoneA: _homePhoneReportingController.text,
+      idCardA: _idCardPresentedController.text,
+      middleNameA: _middleNameReportingController.text,
+      mobilePhoneA: _mobilePhoneReportingController.text,
+      nicknameA: _nicknameReportingController.text,
+      occupationA: _occupationReportingController.text,
       otherAddressA: hasOtherAddressReporting ? 'Yes' : null,
       otherVillageA: hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
       otherRegionA: hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
       otherProvinceA: hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
       otherTownCityA: hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
       otherBarangayA: hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
-      highestEducationAttainmentA: _educationReportingController.text,
-      occupationA: _occupationReportingController.text,
-      idCardPresentedA: _idCardPresentedController.text,
-      emailAddressA: _emailReportingController.text,
-      // Missing Person (Item B)
-      surnameB: _surnameVictimController.text,
-      firstNameB: _firstNameVictimController.text,
-      middleNameB: _middleNameVictimController.text,
-      qualifierB: _qualifierVictimController.text,
-      nicknameB: _nicknameVictimController.text,
-      citizenshipB: _citizenshipVictimController.text,
-      sexGenderB: _sexGenderVictimController.text,
-      civilStatusB: _civilStatusVictimController.text,
-      dateOfBirthB: dobB,
-      ageB: ageB,
-      placeOfBirthB: _placeOfBirthVictimController.text,
-      homePhoneB: _homePhoneVictimController.text,
-      mobilePhoneB: _mobilePhoneVictimController.text,
-      currentAddressB: _currentAddressVictimController.text,
-      villageB: _villageSitioVictimController.text,
-      regionB: victimRegion?.regionName,
-      provinceB: victimProvince?.name,
-      townCityB: victimMunicipality?.name,
-      barangayB: victimBarangay,
-      otherAddressB: hasOtherAddressVictim ? 'Yes' : null,
-      otherVillageB: hasOtherAddressVictim ? victimOtherBarangay : null,
-      otherRegionB: hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
-      otherProvinceB: hasOtherAddressVictim ? victimOtherProvince?.name : null,
-      otherTownCityB: hasOtherAddressVictim ? victimOtherMunicipality?.name : null,
-      otherBarangayB: hasOtherAddressVictim ? victimOtherBarangay : null,
-      highestEducationAttainmentB: _educationVictimController.text,
-      occupationB: _occupationVictimController.text,
-      workAddressB: _workAddressVictimController.text,
-      emailAddressB: _emailVictimController.text,
-      // Narrative
-      narrative: _narrativeController.text,
-      typeOfIncidentD: _typeOfIncidentDController.text,
-      dateTimeIncidentD: dateTimeIncident,
-      placeOfIncidentD: _placeOfIncidentDController.text,
+      placeOfBirthA: _placeOfBirthReportingController.text,
+      provinceA: reportingPersonProvince?.name,
+      qualifierA: _qualifierReportingController.text,
+      sexGenderA: _sexGenderReportingController.text,
+      townA: reportingPersonMunicipality?.name,
+      villageSitioA: _villageSitioReportingController.text,
+      // Item C
+      ageC: ageC,
+      barangayC: victimBarangay,
+      citizenshipC: _citizenshipVictimController.text,
+      civilStatusC: _civilStatusVictimController.text,
+      currentAddressC: _currentAddressVictimController.text,
+      dateOfBirthC: _dateOfBirthVictimController.text,
+      educationC: _educationVictimController.text,
+      emailC: _emailVictimController.text,
+      familyNameC: _surnameVictimController.text,
+      firstNameC: _firstNameVictimController.text,
+      homePhoneC: _homePhoneVictimController.text,
+      idCardC: _idCardVictimController.text,
+      middleNameC: _middleNameVictimController.text,
+      mobilePhoneC: _mobilePhoneVictimController.text,
+      nicknameC: _nicknameVictimController.text,
+      occupationC: _occupationVictimController.text,
+      otherAddressC: hasOtherAddressVictim ? 'Yes' : null,
+      otherVillageC: hasOtherAddressVictim ? victimOtherBarangay : null,
+      otherRegionC: hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
+      otherProvinceC: hasOtherAddressVictim ? victimOtherProvince?.name : null,
+      otherTownCityC: hasOtherAddressVictim ? victimOtherMunicipality?.name : null,
+      otherBarangayC: hasOtherAddressVictim ? victimOtherBarangay : null,
+      placeOfBirthC: _placeOfBirthVictimController.text,
+      provinceC: victimProvince?.name,
+      qualifierC: _qualifierVictimController.text,
+      sexGenderC: _sexGenderVictimController.text,
+      townC: victimMunicipality?.name,
+      villageSitioC: _villageSitioVictimController.text,
+      // Root fields
+      pdfUrl: null, // Set if you have PDF upload logic
+      status: null, // Set by service
+      userId: null, // Set by service
     );
   }
     // Submit form to Firebase
@@ -917,6 +916,28 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return;
     }
+
+    // Image is required
+    if ((!kIsWeb && _imageFile == null) || (kIsWeb && _webImage == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please upload an image. It is required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check for duplicate missing person
+    if (await _checkDuplicateMissingPerson()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('A form for this missing person already exists.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     
     setState(() {
       isSubmitting = true;
@@ -931,12 +952,24 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
+      // Upload image and get URL
+      String? imageUrl;
+      if (kIsWeb && _webImage != null) {
+        imageUrl = await _irfService.uploadImage(_webImage, DateTime.now().millisecondsSinceEpoch.toString());
+      } else if (_imageFile != null) {
+        imageUrl = await _irfService.uploadImage(_imageFile, DateTime.now().millisecondsSinceEpoch.toString());
+      }
+      if (imageUrl == null) {
+        throw Exception('Image upload failed.');
+      }
+      irfData.imageUrl = imageUrl;
+      
       // Submit to Firebase
       DocumentReference<Object?> docRef = await _irfService.submitIRF(irfData);
       
       // Get the document to retrieve the formal ID
       DocumentSnapshot doc = await docRef.get();
-      String formalId = (doc.data() as Map<String, dynamic>)['documentId'] ?? docRef.id;
+      String formalId = (doc.data() as Map<String, dynamic>)['incidentDetails']?['incidentId'] ?? docRef.id;
       
       // Show success message with formal ID
       ScaffoldMessenger.of(context).showSnackBar(
@@ -967,417 +1000,32 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
   
-  // Save draft locally
-  Future<void> saveDraft() async {
-    setState(() {
-      isSavingDraft = true;
-    });
-
-    try {
-      // Check if user is authenticated first
-      if (FirebaseAuth.instance.currentUser == null) {
-        throw Exception('User not authenticated. Please log in again.');
-      }
-      
-      // Create IRF model from form data
-      IRFModel irfData = createIRFModel();
-      
-      // Save draft locally
-      String draftId = await _irfService.saveIRFDraft(irfData);
-      
-      // Show success message with local draft ID
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Draft saved locally! Reference #: ${draftId.split('_').last}'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      print('Draft saving error: $e');
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving draft: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      // Reset loading state
-      if (mounted) {
-        setState(() {
-          isSavingDraft = false;
-        });
-      }
+  // Check for duplicate missing person
+  Future<bool> _checkDuplicateMissingPerson() async {
+    final surname = _surnameVictimController.text.trim().toLowerCase();
+    final firstName = _firstNameVictimController.text.trim().toLowerCase();
+    final middleName = _middleNameVictimController.text.trim().toLowerCase();
+    final dob = _dateOfBirthVictimController.text.trim();
+    if (surname.isEmpty || firstName.isEmpty || middleName.isEmpty || dob.isEmpty) {
+      return false;
     }
+    final query = await FirebaseFirestore.instance
+        .collection('incidents')
+        .where('itemC.familyName', isEqualTo: surname)
+        .where('itemC.firstName', isEqualTo: firstName)
+        .where('itemC.middleName', isEqualTo: middleName)
+        .where('itemC.dateOfBirth', isEqualTo: dob)
+        .limit(1)
+        .get();
+    return query.docs.isNotEmpty;
   }
 
-  // Add this method to load a draft
-  Future<void> loadDraft(String draftId) async {
-    try {
-      // Show loading indicator
-      setState(() {
-        isSavingDraft = true; // Reuse this state for loading
-      });
-      
-      // Fetch the draft from local storage
-      var draftData = await _irfService.getIRF(draftId);
-      
-      if (draftData == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Draft not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      
-      // Convert data to IRFModel if it's from local storage
-      IRFModel draft;
-      if (draftData is Map<String, dynamic>) {
-        // Convert Map to IRFModel
-        draft = _irfService.localDraftService.draftToModel(draftData);
-      } else {
-        // This would happen if it's a Firebase document
-        draft = IRFModel.fromDocument(draftData);
-      }
-      
-      // Populate form fields with draft data
-      _populateFormFields(draft);
-      
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Draft loaded successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('Error loading draft: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading draft: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        isSavingDraft = false;
-      });
-    }
-  }
-  
-  // Add this method to populate form fields from an IRFModel
-  void _populateFormFields(IRFModel draft) {
-    // General information
-    _typeOfIncidentController.text = draft.typeOfIncident ?? "Missing Person";
-    _copyForController.text = draft.copyFor ?? "";
-    if (draft.dateTimeReported != null) {
-      dateTimeReported = draft.dateTimeReported;
-      _dateTimeReportedController.text = _formatDateTime(draft.dateTimeReported!);
-    }
-    if (draft.dateTimeIncident != null) {
-      dateTimeIncident = draft.dateTimeIncident;
-      _dateTimeIncidentController.text = _formatDateTime(draft.dateTimeIncident!);
-      _dateTimeIncidentDController.text = _formatDateTime(draft.dateTimeIncident!);
-    }
-    _placeOfIncidentController.text = draft.placeOfIncident ?? "";
-    // ITEM A - Reporting Person
-    _surnameReportingController.text = draft.surnameA ?? "";
-    _firstNameReportingController.text = draft.firstNameA ?? "";
-    _middleNameReportingController.text = draft.middleNameA ?? "";
-    _qualifierReportingController.text = draft.qualifierA ?? "";
-    _nicknameReportingController.text = draft.nicknameA ?? "";
-    _citizenshipReportingController.text = draft.citizenshipA ?? "";
-    _sexGenderReportingController.text = draft.sexGenderA ?? "";
-    _civilStatusReportingController.text = draft.civilStatusA ?? "";
-    _dateOfBirthReportingController.text = draft.dateOfBirthA ?? "";
-    _ageReportingController.text = draft.ageA?.toString() ?? "";
-    _placeOfBirthReportingController.text = draft.placeOfBirthA ?? "";
-    _homePhoneReportingController.text = draft.homePhoneA ?? "";
-    _mobilePhoneReportingController.text = draft.mobilePhoneA ?? "";
-    _currentAddressReportingController.text = draft.currentAddressA ?? "";
-    _villageSitioReportingController.text = draft.villageA ?? "";
-    _educationReportingController.text = draft.highestEducationAttainmentA ?? "";
-    _occupationReportingController.text = draft.occupationA ?? "";
-    _idCardPresentedController.text = draft.idCardPresentedA ?? "";
-    _emailReportingController.text = draft.emailAddressA ?? "";
-    // Handle other address checkbox
-    hasOtherAddressReporting = draft.otherRegionA != null || draft.otherProvinceA != null || draft.otherTownCityA != null || draft.otherBarangayA != null;
-    // ITEM B - Victim
-    _surnameVictimController.text = draft.surnameB ?? "";
-    _firstNameVictimController.text = draft.firstNameB ?? "";
-    _middleNameVictimController.text = draft.middleNameB ?? "";
-    _qualifierVictimController.text = draft.qualifierB ?? "";
-    _nicknameVictimController.text = draft.nicknameB ?? "";
-    _citizenshipVictimController.text = draft.citizenshipB ?? "";
-    _sexGenderVictimController.text = draft.sexGenderB ?? "";
-    _civilStatusVictimController.text = draft.civilStatusB ?? "";
-    _dateOfBirthVictimController.text = draft.dateOfBirthB ?? "";
-    _ageVictimController.text = draft.ageB?.toString() ?? "";
-    _placeOfBirthVictimController.text = draft.placeOfBirthB ?? "";
-    _homePhoneVictimController.text = draft.homePhoneB ?? "";
-    _mobilePhoneVictimController.text = draft.mobilePhoneB ?? "";
-    _currentAddressVictimController.text = draft.currentAddressB ?? "";
-    _villageSitioVictimController.text = draft.villageB ?? "";
-    _educationVictimController.text = draft.highestEducationAttainmentB ?? "";
-    _occupationVictimController.text = draft.occupationB ?? "";
-    _workAddressVictimController.text = draft.workAddressB ?? "";
-    _emailVictimController.text = draft.emailAddressB ?? "";
-    // Handle other address checkbox
-    hasOtherAddressVictim = draft.otherRegionB != null || draft.otherProvinceB != null || draft.otherTownCityB != null || draft.otherBarangayB != null;
-    // Narrative
-    _typeOfIncidentDController.text = draft.typeOfIncidentD ?? "Missing Person";
-    if (draft.dateTimeIncidentD != null) {
-      _dateTimeIncidentDController.text = _formatDateTime(draft.dateTimeIncidentD!);
-    }
-    _placeOfIncidentDController.text = draft.placeOfIncidentD ?? "";
-    _narrativeController.text = draft.narrative ?? "";
-    // Update the form state to reflect loaded data
-    setState(() {
-      updateFormState();
-    });
-  }
-  
-  // Show dialog to select a draft to load
-  Future<void> _showLoadDraftDialog() async {
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    
-    try {
-      // Get all drafts
-      List<IRFModel> drafts = await _irfService.getUserDrafts();
-      
-      // Hide loading indicator
-      Navigator.pop(context);
-      
-      if (drafts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No drafts found'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-        return;
-      }
-      
-      // Show draft selection dialog
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('Select a Draft to Load'),
-            content: Container(
-              width: double.maxFinite,
-              height: 300,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: drafts.length,
-                itemBuilder: (context, index) {
-                  IRFModel draft = drafts[index];
-                  String createdDate = draft.createdAt != null 
-                      ? DateFormat('MM/dd/yyyy hh:mm a').format(draft.createdAt!)
-                      : 'Unknown date';
-                  
-                  String victimName = '';
-                  if ((draft.firstNameB != null && draft.firstNameB!.isNotEmpty) || (draft.surnameB != null && draft.surnameB!.isNotEmpty)) {
-                    victimName = ' {draft.firstNameB ?? ''}  {draft.surnameB ?? ''}'.trim();
-                  }
-                  
-                  return ListTile(
-                    title: Text(victimName.isNotEmpty ? victimName : 'Draft #${index + 1}'),
-                    subtitle: Text('Created: $createdDate'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      loadDraft(draft.documentId!);
-                    },
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text('Cancel'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      // Hide loading indicator if still showing
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading drafts: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  
   @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF0D47A1),
         actions: [
-          // Load Draft button in AppBar
-          TextButton.icon(
-            onPressed: isSavingDraft ? null : _showLoadDraftDialog,
-            icon: Icon(Icons.file_open, color: Colors.white),
-            label: Text('Load Draft', 
-              style: TextStyle(color: Colors.white, fontSize: 14)
-            ),
-          ),
-          // Save Draft button in AppBar
-          TextButton.icon(
-            onPressed: isSavingDraft ? null : saveDraft,
-            icon: isSavingDraft 
-              ? SizedBox(
-                  height: 20, 
-                  width: 20, 
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  )
-                )
-              : Icon(Icons.save_outlined, color: Colors.white),
-            label: Text('Save Draft', 
-              style: TextStyle(color: Colors.white, fontSize: 14)
-            ),
-          ),
-          // Discard button in AppBar
-          TextButton.icon(
-            onPressed: () {
-              // Show confirmation dialog
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Discard Changes?'),
-                  content: Text('Are you sure you want to discard all changes?'),
-                  actions: [
-                    TextButton(
-                      child: Text('Cancel'),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    TextButton(
-                      child: Text('Discard', style: TextStyle(color: Colors.red)),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // Reset all form fields and state
-                        setState(() {
-                          // General information controllers
-                          _typeOfIncidentController.text = "Missing Person";
-                          _copyForController.clear();
-                          dateTimeReported = DateTime.now();
-                          _dateTimeReportedController.text = _formatDateTime(dateTimeReported!);
-                          dateTimeIncident = null;
-                          _dateTimeIncidentController.clear();
-                          _placeOfIncidentController.clear();
-
-                          // Reporting Person
-                          _surnameReportingController.clear();
-                          _firstNameReportingController.clear();
-                          _middleNameReportingController.clear();
-                          _qualifierReportingController.clear();
-                          _nicknameReportingController.clear();
-                          _citizenshipReportingController.clear();
-                          _sexGenderReportingController.clear();
-                          _civilStatusReportingController.clear();
-                          _dateOfBirthReportingController.clear();
-                          _ageReportingController.clear();
-                          _placeOfBirthReportingController.clear();
-                          _homePhoneReportingController.clear();
-                          _mobilePhoneReportingController.clear();
-                          _currentAddressReportingController.clear();
-                          _villageSitioReportingController.clear();
-                          _educationReportingController.clear();
-                          _occupationReportingController.clear();
-                          _idCardPresentedController.clear();
-                          _emailReportingController.clear();
-                          reportingPersonRegion = null;
-                          reportingPersonProvince = null;
-                          reportingPersonMunicipality = null;
-                          reportingPersonBarangay = null;
-                          reportingPersonOtherRegion = null;
-                          reportingPersonOtherProvince = null;
-                          reportingPersonOtherMunicipality = null;
-                          reportingPersonOtherBarangay = null;
-                          hasOtherAddressReporting = false;
-                          reportingPersonEducation = null;
-                          reportingPersonOccupation = null;
-                          reportingPersonAge = null;
-
-                          // Victim
-                          _surnameVictimController.clear();
-                          _firstNameVictimController.clear();
-                          _middleNameVictimController.clear();
-                          _qualifierVictimController.clear();
-                          _nicknameVictimController.clear();
-                          _citizenshipVictimController.clear();
-                          _sexGenderVictimController.clear();
-                          _civilStatusVictimController.clear();
-                          _dateOfBirthVictimController.clear();
-                          _ageVictimController.clear();
-                          _placeOfBirthVictimController.clear();
-                          _homePhoneVictimController.clear();
-                          _mobilePhoneVictimController.clear();
-                          _currentAddressVictimController.clear();
-                          _villageSitioVictimController.clear();
-                          _educationVictimController.clear();
-                          _occupationVictimController.clear();
-                          _workAddressVictimController.clear();
-                          _emailVictimController.clear();
-                          victimRegion = null;
-                          victimProvince = null;
-                          victimMunicipality = null;
-                          victimBarangay = null;
-                          victimOtherRegion = null;
-                          victimOtherProvince = null;
-                          victimOtherMunicipality = null;
-                          victimOtherBarangay = null;
-                          hasOtherAddressVictim = false;
-                          victimEducation = null;
-                          victimOccupation = null;
-                          victimAge = null;
-
-                          // Narrative
-                          _typeOfIncidentDController.text = "Missing Person";
-                          _dateTimeIncidentDController.clear();
-                          _placeOfIncidentDController.clear();
-                          _narrativeController.clear();
-
-                          // Update form state
-                          updateFormState();
-                        });
-                        // Optionally show a message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Form discarded.'),
-                            backgroundColor: Colors.grey,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-            icon: Icon(Icons.close, color: Colors.white),
-            label: Text('Discard', 
-              style: TextStyle(color: Colors.white, fontSize: 14)
-            ),
-          ),
-          SizedBox(width: 8), // Add some padding at the end
+          // ...existing code...
         ],
       ),
       drawer: AppDrawer(),
@@ -2283,13 +1931,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
+                          FormRowInputs(
                           fields: [
                             {
-                              'label': 'WORK ADDRESS',
+                              'label': 'ID CARD PRESENTED',
                               'required': true,
-                              'controller': _workAddressVictimController,
+                              'controller': _idCardVictimController,
                               'keyboardType': TextInputType.text,
                             },
                             {
