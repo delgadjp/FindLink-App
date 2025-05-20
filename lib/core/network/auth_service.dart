@@ -98,7 +98,7 @@ class AuthService {
     try {
       // Query Firestore for any documents with the user's UID
       final QuerySnapshot result = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -158,7 +158,7 @@ class AuthService {
 
       // Query Firestore for existing users with the same date and prefix to find the highest number
       final QuerySnapshot querySnapshot = await _firestore
-          .collection('users')
+          .collection('users-app')
           .where('documentId', isGreaterThanOrEqualTo: idPrefix)
           .where('documentId', isLessThan: idPrefix + '999')
           .get();
@@ -187,7 +187,7 @@ class AuthService {
       }
 
       // Store user data with the custom document ID
-      await _firestore.collection('users').doc(customDocId).set({ // changed from 'users-app' to 'users'
+      await _firestore.collection('users-app').doc(customDocId).set({
         'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
@@ -222,7 +222,7 @@ class AuthService {
     try {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -245,7 +245,7 @@ class AuthService {
     try {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -265,7 +265,7 @@ class AuthService {
   Future<bool> updatePrivacyPolicyAcceptance(String uid, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -404,7 +404,7 @@ class AuthService {
     try {
       // Find the user document
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -465,7 +465,7 @@ class AuthService {
   Future<bool> getScreenComplianceAccepted(String uid, String screenKey) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -484,7 +484,7 @@ class AuthService {
   Future<void> updateScreenComplianceAccepted(String uid, String screenKey, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users-app')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
