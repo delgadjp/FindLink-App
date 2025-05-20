@@ -1,28 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
-    // Default rule to deny all access
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Rules for users collection
-    match /users/{userId} {
-      // Allow read access only to the authenticated user or an admin
+ match /databases/{database}/documents {
+    match /users/{docId} {
+      // Allow read if the authenticated user owns the document or is an admin
       allow read: if request.auth != null && (
-        request.auth.uid == userId || 
+        resource.data.userId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
 
-      // Allow create access only if the userId matches the authenticated user's UID
+      // Allow list (query) for authenticated users (needed for sequential ID generation)
+      allow list: if request.auth != null;
+
+      // Allow create if the userId in the new document matches the authenticated user's UID
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
 
-      // Allow update and delete access only to the authenticated user or an admin
+      // Allow update/delete if the authenticated user owns the document or is an admin
       allow update, delete: if request.auth != null && (
-        request.auth.uid == userId || 
+        resource.data.userId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
+        );
+      }
 
     // Rules for users-app collection - Updated to use userId instead of uid
     match /users-app/{userId} {
@@ -93,8 +90,8 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
-    }    
-    
+    }
+
     // Rules for incidents collection
     match /incidents/{incidentId} {
       // Allow read access for duplicate checking and normal access
