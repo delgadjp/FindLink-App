@@ -145,16 +145,16 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                                   upperCaseText.contains('LICENCE')) ||
                                  upperCaseText.contains('TRANSPORTATION') ||
                                  upperCaseText.contains('DRIVING');
-                                 final bool isNationalID = upperCaseText.contains('PAMBANSANG') || 
-                             upperCaseText.contains('PHILSYS') ||
-                             upperCaseText.contains('PHILIPPINE IDENTIFICATION') ||
-                             upperCaseText.contains('PAGKAKAKILANLAN');
+    final bool isPhilID = upperCaseText.contains('PAMBANSANG') || 
+                         upperCaseText.contains('PHILSYS') ||
+                         upperCaseText.contains('PHILIPPINE IDENTIFICATION') ||
+                         upperCaseText.contains('PAGKAKAKILANLAN');
     
     String detectedIDType = 'Unknown';
     if (isDriversLicense) {
       detectedIDType = 'Driver\'s License';
-    } else if (isNationalID) {
-      detectedIDType = 'National ID';
+    } else if (isPhilID) {
+      detectedIDType = 'Philippine Identification Card';
     }
     
     // Check if detected ID type matches selected ID type
@@ -164,10 +164,10 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
           _isCorrectIDType = false;
           _mismatchReason = "You selected Driver's License but uploaded a different ID type. Please upload the correct ID.";
         });
-      } else if ((widget.idType == 'National ID' || widget.idType == 'PhilSys ID') && !isNationalID) {
+      } else if (widget.idType == 'Philippine Identification Card' && !isPhilID) {
         setState(() {
           _isCorrectIDType = false;
-          _mismatchReason = "You selected National ID but uploaded a different ID type. Please upload the correct ID.";
+          _mismatchReason = "You selected Philippine Identification Card but uploaded a different ID type. Please upload the correct ID.";
         });
       }
     }
@@ -471,7 +471,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
     // Convert text to uppercase for consistent matching
     final upperCaseText = text.toUpperCase();
     
-    print('--- PROCESSING NATIONAL ID TEXT ---');
+    print('--- PROCESSING PHILIPPINE IDENTIFICATION CARD TEXT ---');
     print(upperCaseText);
     print('----------------------------------');
     
@@ -663,7 +663,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       }
     }
     
-    print('Extracted data from National ID: $extractedData');
+    print('Extracted data from Philippine Identification Card: $extractedData');
   }
   
   // Helper function to convert text to proper case
@@ -1064,15 +1064,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                             extractedData['dateOfBirth'] != null 
                                 ? DateFormat('MM/dd/yyyy').format(extractedData['dateOfBirth']) 
                                 : null,
-                          ),
-                          // Show expiration date for driver's license
-                          if (widget.idType == 'Driver\'s License' && extractedData['expirationDate'] != null)
-                            _buildReadOnlyField(
-                              'Expiration Date',
-                              DateFormat('MM/dd/yyyy').format(extractedData['expirationDate']),
-                            ),
-                          
-                          // Email field
+                          ),                          // Email field
                           _buildReadOnlyField('Email', userEmail),
                           
                           SizedBox(height: 25),

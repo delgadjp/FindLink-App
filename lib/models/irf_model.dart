@@ -2,185 +2,226 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class IRFModel {
   String? id;
-  String? documentId; // Added formal document ID field
-  
-  // General Information
-  String? typeOfIncident;
-  String? copyFor;
-  DateTime? dateTimeReported;
-  DateTime? dateTimeIncident;
-  String? placeOfIncident;
-  
-  // ITEM A - Reporting Person Information
-  Map<String, dynamic>? itemA;
-  
-  // ITEM C - Victim Information
-  Map<String, dynamic>? itemC;
-  
-  // ITEM D - Narrative
-  String? narrative;
-  String? typeOfIncidentD; // Sometimes repeated in item D
-  DateTime? dateTimeIncidentD; // Sometimes repeated in item D
-  String? placeOfIncidentD; // Sometimes repeated in item D
-  
-  // Status and metadata
-  String? status; // draft, submitted, approved, rejected
+  String? pdfUrl;
+  String? status;
   String? userId;
+  // Incident Details
   DateTime? createdAt;
-  DateTime? updatedAt;
-  
+  DateTime? dateTimeOfIncident;
+  String? imageUrl;
+  String? incidentId;
+  String? narrative;
+  String? placeOfIncident;
+  DateTime? reportedAt;
+  String? typeOfIncident;
+  // Item A (Reporting Person)
+  int? ageA;
+  String? barangayA;
+  String? citizenshipA;
+  String? civilStatusA;
+  String? currentAddressA;
+  String? dateOfBirthA;
+  String? educationA;
+  String? emailA;
+  String? familyNameA;
+  String? firstNameA;
+  String? homePhoneA;
+  String? idCardA;
+  String? middleNameA;
+  String? mobilePhoneA;
+  String? nicknameA;
+  String? occupationA;
+  String? otherAddressA;
+  String? otherVillageA;
+  String? otherRegionA;
+  String? otherProvinceA;
+  String? otherTownCityA;
+  String? otherBarangayA;
+  String? placeOfBirthA;
+  String? provinceA;
+  String? qualifierA;
+  String? sexGenderA;
+  String? townA;
+  String? villageSitioA;
+  // Item C (Victim)
+  int? ageC;
+  String? barangayC;
+  String? citizenshipC;
+  String? civilStatusC;
+  String? currentAddressC;
+  String? dateOfBirthC;
+  String? educationC;
+  String? emailC;
+  String? familyNameC;
+  String? firstNameC;
+  String? homePhoneC;
+  String? idCardC;
+  String? middleNameC;
+  String? mobilePhoneC;
+  String? nicknameC;
+  String? occupationC;
+  String? otherAddressC;
+  String? otherVillageC;
+  String? otherRegionC;
+  String? otherProvinceC;
+  String? otherTownCityC;
+  String? otherBarangayC;
+  String? placeOfBirthC;
+  String? provinceC;
+  String? qualifierC;
+  String? sexGenderC;
+  String? townC;
+  String? villageSitioC;
+
   IRFModel({
     this.id,
-    this.documentId,
-    this.typeOfIncident,
-    this.copyFor,
-    this.dateTimeReported,
-    this.dateTimeIncident,
-    this.placeOfIncident,
-    this.itemA,
-    this.itemC,
-    this.narrative,
-    this.typeOfIncidentD,
-    this.dateTimeIncidentD,
-    this.placeOfIncidentD,
+    this.pdfUrl,
     this.status,
     this.userId,
+    // Incident Details
     this.createdAt,
-    this.updatedAt,
+    this.dateTimeOfIncident,
+    this.imageUrl,
+    this.incidentId,
+    this.narrative,
+    this.placeOfIncident,
+    this.reportedAt,
+    this.typeOfIncident,
+    // Item A
+    this.ageA,
+    this.barangayA,
+    this.citizenshipA,
+    this.civilStatusA,
+    this.currentAddressA,
+    this.dateOfBirthA,
+    this.educationA,
+    this.emailA,
+    this.familyNameA,
+    this.firstNameA,
+    this.homePhoneA,
+    this.idCardA,
+    this.middleNameA,
+    this.mobilePhoneA,
+    this.nicknameA,
+    this.occupationA,
+    this.otherAddressA,
+    this.otherVillageA,
+    this.otherRegionA,
+    this.otherProvinceA,
+    this.otherTownCityA,
+    this.otherBarangayA,
+    this.placeOfBirthA,
+    this.provinceA,
+    this.qualifierA,
+    this.sexGenderA,
+    this.townA,
+    this.villageSitioA,
+    // Item C
+    this.ageC,
+    this.barangayC,
+    this.citizenshipC,
+    this.civilStatusC,
+    this.currentAddressC,
+    this.dateOfBirthC,
+    this.educationC,
+    this.emailC,
+    this.familyNameC,
+    this.firstNameC,
+    this.homePhoneC,
+    this.idCardC,
+    this.middleNameC,
+    this.mobilePhoneC,
+    this.nicknameC,
+    this.occupationC,
+    this.otherAddressC,
+    this.otherVillageC,
+    this.otherRegionC,
+    this.otherProvinceC,
+    this.otherTownCityC,
+    this.otherBarangayC,
+    this.placeOfBirthC,
+    this.provinceC,
+    this.qualifierC,
+    this.sexGenderC,
+    this.townC,
+    this.villageSitioC,
   });
 
-  factory IRFModel.fromJson(Map<String, dynamic> json) {
-    return IRFModel(
-      id: json['id'],
-      documentId: json['documentId'], // Added to parse from JSON
-      typeOfIncident: json['typeOfIncident'],
-      copyFor: json['copyFor'],
-      dateTimeReported: (json['dateTimeReported'] as Timestamp?)?.toDate(),
-      dateTimeIncident: (json['dateTimeIncident'] as Timestamp?)?.toDate(),
-      placeOfIncident: json['placeOfIncident'],
-      itemA: json['itemA'],
-      itemC: json['itemC'],
-      narrative: json['narrative'],
-      typeOfIncidentD: json['typeOfIncidentD'],
-      dateTimeIncidentD: (json['dateTimeIncidentD'] as Timestamp?)?.toDate(),
-      placeOfIncidentD: json['placeOfIncidentD'],
-      status: json['status'],
-      userId: json['userId'],
-      createdAt: (json['createdAt'] as Timestamp?)?.toDate(),
-      updatedAt: (json['updatedAt'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  factory IRFModel.fromDocument(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return IRFModel.fromJson({
-      'id': doc.id,
-      ...data,
-    });
-  }
-
   Map<String, dynamic> toMap() {
-    final Map<String, dynamic> data = {
-      'documentId': documentId, // Include the formal document ID
-      'typeOfIncident': typeOfIncident,
-      'copyFor': copyFor,
-      'dateTimeReported': dateTimeReported,
-      'dateTimeIncident': dateTimeIncident,
-      'placeOfIncident': placeOfIncident,
-      'itemA': itemA,
-      'itemC': itemC,
-      'narrative': narrative,
-      'typeOfIncidentD': typeOfIncidentD,
-      'dateTimeIncidentD': dateTimeIncidentD,
-      'placeOfIncidentD': placeOfIncidentD,
+    return {
+      'incidentDetails': {
+        'createdAt': createdAt,
+        'dateTimeOfIncident': dateTimeOfIncident,
+        'imageUrl': imageUrl,
+        'incidentId': incidentId,
+        'narrative': narrative,
+        'placeOfIncident': placeOfIncident,
+        'reportedAt': reportedAt,
+        'typeOfIncident': typeOfIncident,
+      },
+      'itemA': {
+        'age': ageA,
+        'barangay': barangayA,
+        'citizenship': citizenshipA,
+        'civilStatus': civilStatusA,
+        'currentAddress': currentAddressA,
+        'dateOfBirth': dateOfBirthA,
+        'education': educationA,
+        'email': emailA,
+        'familyName': familyNameA,
+        'firstName': firstNameA,
+        'homePhone': homePhoneA,
+        'idCard': idCardA,
+        'middleName': middleNameA,
+        'mobilePhone': mobilePhoneA,
+        'nickname': nicknameA,
+        'occupation': occupationA,
+        'otherAddress': otherAddressA,
+        'otherVillage': otherVillageA,
+        'otherRegion': otherRegionA,
+        'otherProvince': otherProvinceA,
+        'otherTownCity': otherTownCityA,
+        'otherBarangay': otherBarangayA,
+        'placeOfBirth': placeOfBirthA,
+        'province': provinceA,
+        'qualifier': qualifierA,
+        'sexGender': sexGenderA,
+        'town': townA,
+        'villageSitio': villageSitioA,
+      },
+      'itemC': {
+        'age': ageC,
+        'barangay': barangayC,
+        'citizenship': citizenshipC,
+        'civilStatus': civilStatusC,
+        'currentAddress': currentAddressC,
+        'dateOfBirth': dateOfBirthC,
+        'education': educationC,
+        'email': emailC,
+        'familyName': familyNameC,
+        'firstName': firstNameC,
+        'homePhone': homePhoneC,
+        'idCard': idCardC,
+        'middleName': middleNameC,
+        'mobilePhone': mobilePhoneC,
+        'nickname': nicknameC,
+        'occupation': occupationC,
+        'otherAddress': otherAddressC,
+        'otherVillage': otherVillageC,
+        'otherRegion': otherRegionC,
+        'otherProvince': otherProvinceC,
+        'otherTownCity': otherTownCityC,
+        'otherBarangay': otherBarangayC,
+        'placeOfBirth': placeOfBirthC,
+        'province': provinceC,
+        'qualifier': qualifierC,
+        'sexGender': sexGenderC,
+        'town': townC,
+        'villageSitio': villageSitioC,
+      },
+      'pdfUrl': pdfUrl,
       'status': status,
-    };
-    
-    // Remove null values
-    data.removeWhere((key, value) => value == null);
-    
-    return data;
-  }
-  
-  // Helper method to create person details map with the required fields
-  static Map<String, dynamic> createPersonDetails({
-    String? surname = '',
-    String? firstName = '',
-    String? middleName = '',
-    String? qualifier = '',
-    String? nickname = '',
-    String? citizenship = '',
-    String? sexGender = '',
-    String? civilStatus = '',
-    DateTime? dateOfBirth,
-    int? age,
-    String? placeOfBirth = '',
-    String? homePhone = '',
-    String? mobilePhone = '',
-    String? currentAddress = '',
-    String? villageSitio = '',
-    String? region = '',
-    String? province = '',
-    String? townCity = '',
-    String? barangay = '',
-    String? otherAddress = '',
-    String? otherVillageSitio = '',
-    String? otherRegion = '',
-    String? otherProvince = '',
-    String? otherTownCity = '',
-    String? otherBarangay = '',
-    String? highestEducationAttainment = '',
-    String? occupation = '',
-    String? workAddress = '',
-    String? idCardPresented = '',
-    String? emailAddress = '',
-  }) {
-    final Map<String, dynamic> person = {
-      'surname': surname,
-      'firstName': firstName,
-      'middleName': middleName,
-      'qualifier': qualifier,
-      'nickname': nickname,
-      'citizenship': citizenship,
-      'sexGender': sexGender,
-      'civilStatus': civilStatus,
-      'dateOfBirth': dateOfBirth,
-      'age': age,
-      'placeOfBirth': placeOfBirth,
-      'homePhone': homePhone,
-      'mobilePhone': mobilePhone,
-      'currentAddress': currentAddress,
-      'villageSitio': villageSitio,
-      'region': region,
-      'province': province,
-      'townCity': townCity,
-      'barangay': barangay,
-      'education': highestEducationAttainment,
-      'occupation': occupation,
-      'emailAddress': emailAddress,
-    };
-    
-    // Add conditional fields
-    if (otherAddress != null && otherAddress.isNotEmpty) {
-      person['otherAddress'] = otherAddress;
-      person['otherVillageSitio'] = otherVillageSitio;
-      person['otherRegion'] = otherRegion;
-      person['otherProvince'] = otherProvince;
-      person['otherTownCity'] = otherTownCity;
-      person['otherBarangay'] = otherBarangay;
-    }
-    
-    if (workAddress != null && workAddress.isNotEmpty) {
-      person['workAddress'] = workAddress;
-    }
-    
-    if (idCardPresented != null && idCardPresented.isNotEmpty) {
-      person['idCardPresented'] = idCardPresented;
-    }
-    
-    // Remove null or empty values
-    person.removeWhere((key, value) => value == null || (value is String && value.isEmpty));
-    
-    return person;
+      'userId': userId,
+    }..removeWhere((k, v) => v == null);
   }
 }

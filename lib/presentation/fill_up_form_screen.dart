@@ -5,13 +5,28 @@ import '../core/network/irf_service.dart';
 import '../models/irf_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import 'dart:ui'; // Added import for ImageFilter
-import 'utils/modal_utils.dart'; // Import the new modal utils
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
   @override
   FillUpForm createState() => FillUpForm();
+}
+
+// Add ValidationStatus enum for image validation
+enum ValidationStatus {
+  none,
+  processing,
+  error,
+  warning,
+  noHuman,
+  humanDetected,
+  success
 }
 
 class FillUpForm extends State<FillUpFormScreen> {
@@ -20,7 +35,119 @@ class FillUpForm extends State<FillUpFormScreen> {
   bool isSubmitting = false;
   bool isSavingDraft = false;
   bool hasAcceptedPrivacyPolicy = false;
-  bool isCheckingPrivacyStatus = true; // Flag to track if we're checking privacy status
+  bool isCheckingPrivacyStatus = true;
+  
+  // Image handling variables
+  File? _imageFile;
+  Uint8List? _webImage;
+  final picker = ImagePicker();
+  ValidationStatus _validationStatus = ValidationStatus.none;
+  String _validationMessage = '';
+  String _validationConfidence = '0.0';
+  bool _isProcessingImage = false;
+  
+  // Add a ScrollController for the form
+  final ScrollController _scrollController = ScrollController();
+  // Map to hold GlobalKeys for required fields
+  final Map<String, GlobalKey> _requiredFieldKeys = {};
+
+  // Helper to register a key for a required field
+  GlobalKey _getOrCreateKey(String label) {
+    if (!_requiredFieldKeys.containsKey(label)) {
+      _requiredFieldKeys[label] = GlobalKey();
+    }
+    return _requiredFieldKeys[label]!;
+  }
+
+  // Show image source selection dialog
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.camera_alt),
+            title: Text('Take Photo'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.camera);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.photo_library),
+            title: Text('Choose from Gallery'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.gallery);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Image picking and validation
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      setState(() => _isProcessingImage = true);
+      
+      final pickedFile = await picker.pickImage(source: source);
+      if (pickedFile != null) {
+        dynamic imageData;
+        if (kIsWeb) {
+          final bytes = await pickedFile.readAsBytes();
+          imageData = bytes;
+          setState(() => _webImage = bytes);
+        } else {
+          final file = File(pickedFile.path);
+          imageData = file;
+          setState(() => _imageFile = file);
+        }
+        
+        // Validate image using service
+        try {
+          final validationResult = await _irfService.validateImageWithGoogleVision(imageData);
+          
+          setState(() {
+            if (!validationResult['isValid']) {
+              _validationMessage = 'Error validating image: ${validationResult['message']}';
+              _validationStatus = ValidationStatus.error;
+            } else if (!validationResult['containsHuman']) {
+              _imageFile = null;
+              _webImage = null;
+              _validationMessage = 'No person detected in the image. Image has been removed.';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.noHuman;
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Image removed - no person detected'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            } else {
+              _validationMessage = 'Person detected in image!';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.humanDetected;
+            }
+          });
+        } catch (e) {
+          setState(() {
+            _validationMessage = 'Image validation error: ${e.toString()}';
+            _validationStatus = ValidationStatus.warning;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error accessing image: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isProcessingImage = false);
+    }
+  }
   
   // Reference to Firestore
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -77,7 +204,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   final TextEditingController _villageSitioVictimController = TextEditingController();
   final TextEditingController _educationVictimController = TextEditingController();
   final TextEditingController _occupationVictimController = TextEditingController();
-  final TextEditingController _workAddressVictimController = TextEditingController();
+  final TextEditingController _idCardVictimController = TextEditingController();
   final TextEditingController _emailVictimController = TextEditingController();
   
   // ITEM D - Narrative controllers
@@ -95,6 +222,9 @@ class FillUpForm extends State<FillUpFormScreen> {
   final List<String> citizenshipOptions = CitizenshipOptions.options;
   final List<String> genderOptions = [dropdownPlaceholder, 'Male', 'Female', 'Prefer Not to Say'];
   final List<String> civilStatusOptions = [dropdownPlaceholder, 'Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
+  
+  // Add qualifier options
+  final List<String> qualifierOptions = [dropdownPlaceholder, 'Jr.', 'Sr.', 'I', 'II', 'III', 'IV', 'V', 'None'];
   
   // Add education and occupation options
   final List<String> educationOptions = EducationOptions.options;
@@ -160,75 +290,134 @@ class FillUpForm extends State<FillUpFormScreen> {
     // Initialize with current date and time
     dateTimeReported = DateTime.now();
     _dateTimeReportedController.text = _formatDateTime(dateTimeReported!);
-    
-    // Preset type of incident to "Missing Person" and make it read-only
     _typeOfIncidentController.text = "Missing Person";
     _typeOfIncidentDController.text = "Missing Person";
-    
-    // Also initialize the date time incident D controller with the same value if incident date exists
     if (dateTimeIncident != null) {
       _dateTimeIncidentDController.text = _formatDateTime(dateTimeIncident!);
     }
-    
-    // Initialize formState
     updateFormState();
-
-    // Check if user has already accepted the privacy policy
-    checkPrivacyPolicyAcceptance();
+    checkScreenCompliance();
+    _prefillUserDetails(); // Prefill user details in Item A
   }
-  
-  // Method to check privacy policy acceptance
-  Future<void> checkPrivacyPolicyAcceptance() async {
+  // Prefill user details in Item A (Reporting Person)
+  Future<void> _prefillUserDetails() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+    try {
+      // Only prefill if the form is empty
+      if (_surnameReportingController.text.isNotEmpty || _firstNameReportingController.text.isNotEmpty) return;
+      
+      // Get selected ID type from IRFService
+      String? selectedIDType = await _irfService.getUserSelectedIDType();
+      
+      final userQuery = await FirebaseFirestore.instance
+          .collection('users-app')
+          .where('userId', isEqualTo: currentUser.uid)
+          .limit(1)
+          .get();
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+        setState(() {
+          _surnameReportingController.text = userData['lastName'] ?? '';
+          _firstNameReportingController.text = userData['firstName'] ?? '';          _middleNameReportingController.text = userData['middleName'] ?? '';
+          _emailReportingController.text = userData['email'] ?? '';
+          _sexGenderReportingController.text = userData['gender'] ?? '';
+          _ageReportingController.text = userData['age'] != null ? userData['age'].toString() : '';
+          _idCardPresentedController.text = selectedIDType ?? '';
+          if (userData['dateOfBirth'] != null) {
+            DateTime dob;
+            if (userData['dateOfBirth'] is Timestamp) {
+              dob = (userData['dateOfBirth'] as Timestamp).toDate();
+            } else if (userData['dateOfBirth'] is String) {
+              dob = DateTime.tryParse(userData['dateOfBirth']) ?? DateTime.now();
+            } else {
+              dob = DateTime.now();
+            }
+            _dateOfBirthReportingController.text = "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+          }
+          _mobilePhoneReportingController.text = userData['phoneNumber'] ?? '';
+          _citizenshipReportingController.text = userData['citizenship'] ?? '';
+          _civilStatusReportingController.text = userData['civilStatus'] ?? '';
+          _educationReportingController.text = userData['education'] ?? '';
+          _occupationReportingController.text = userData['occupation'] ?? '';
+          // Optionally prefill address fields if available
+          _currentAddressReportingController.text = userData['currentAddress'] ?? '';
+          _placeOfBirthReportingController.text = userData['placeOfBirth'] ?? '';
+        });
+        updateFormState();
+      }
+    } catch (e) {
+      print('Error pre-filling user details: $e');
+    }
+  }
+
+  // Check compliance for fill up form screen
+  Future<void> checkScreenCompliance() async {
     setState(() {
       isCheckingPrivacyStatus = true;
     });
-    
     try {
-      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance(
-        screenType: ModalUtils.SCREEN_FILL_UP_FORM
-      );
-      
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          hasAcceptedPrivacyPolicy = false;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          showCompliance();
+        });
+        return;
+      }
+      final authService = AuthService();
+      bool accepted = await authService.getScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_FILL_UP_FORM_COMPLIANCE);
       setState(() {
         hasAcceptedPrivacyPolicy = accepted;
       });
-      
       if (!accepted) {
-        // Show legal disclaimer followed by privacy policy
         WidgetsBinding.instance.addPostFrameCallback((_) {
           showCompliance();
         });
       }
     } catch (e) {
-      print('Error checking privacy policy acceptance: $e');
+      print('Error checking compliance acceptance: $e');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showCompliance();
+      });
     } finally {
       setState(() {
         isCheckingPrivacyStatus = false;
       });
     }
   }
-  
-  // Method to show both modals in sequence
+
+  // Show both modals in sequence for fill up form
   void showCompliance() {
+    final currentUser = _auth.currentUser;
+    if (hasAcceptedPrivacyPolicy) return;
     ModalUtils.showLegalDisclaimerModal(
       context,
-      onAccept: () {
-        // Show privacy policy after legal disclaimer is accepted
+      onAccept: () async {
         ModalUtils.showPrivacyPolicyModal(
           context,
-          screenType: ModalUtils.SCREEN_FILL_UP_FORM,
-          onAcceptanceUpdate: (accepted) {
+          onAcceptanceUpdate: (accepted) async {
             setState(() {
               hasAcceptedPrivacyPolicy = accepted;
             });
-            
-            // If user disagrees, navigate back
+            if (accepted && currentUser != null) {
+              try {
+                await AuthService().updateScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_FILL_UP_FORM_COMPLIANCE, true);
+                print('Fill up form compliance accepted in database');
+              } catch (e) {
+                print('Error updating fill up form compliance: $e');
+              }
+            } else if (!accepted && currentUser != null) {
+              await AuthService().updateScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_FILL_UP_FORM_COMPLIANCE, false);
+            }
             if (!accepted) {
-              Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+              Navigator.of(context).pop();
             }
           },
           onCancel: () {
-            // Navigate back if user cancels
-            Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+            Navigator.of(context).pop();
           },
         );
       },
@@ -268,6 +457,8 @@ class FillUpForm extends State<FillUpFormScreen> {
       'suspectOccupation': suspectOccupation,
       'victimEducation': victimEducation,
       'victimOccupation': victimOccupation,
+      'reportingPersonCivilStatus': _civilStatusReportingController.text,
+      'victimCivilStatus': _civilStatusVictimController.text,
     };
   }
   
@@ -352,9 +543,6 @@ class FillUpForm extends State<FillUpFormScreen> {
           victimOtherBarangay = value;
           break;
           
-        // Handle similarly for other address sections if they exist
-        // ...existing code...
-        
         // Handle dropdown values
         case 'citizenshipReporting':
           _citizenshipReportingController.text = value;
@@ -364,6 +552,9 @@ class FillUpForm extends State<FillUpFormScreen> {
           break;
         case 'civilStatusReporting':
           _civilStatusReportingController.text = value;
+          break;
+        case 'civilStatusVictim':
+          _civilStatusVictimController.text = value;
           break;
         case 'educationReporting':
           _educationReportingController.text = value;
@@ -385,6 +576,12 @@ class FillUpForm extends State<FillUpFormScreen> {
           break;
         case 'occupationVictim':
           _occupationVictimController.text = value;
+          break;
+        case 'qualifierReporting':
+          _qualifierReportingController.text = value;
+          break;
+        case 'qualifierVictim':
+          _qualifierVictimController.text = value;
           break;
       }
       updateFormState();
@@ -437,10 +634,9 @@ class FillUpForm extends State<FillUpFormScreen> {
     _homePhoneVictimController.dispose();
     _mobilePhoneVictimController.dispose();
     _currentAddressVictimController.dispose();
-    _villageSitioVictimController.dispose();
-    _educationVictimController.dispose();
+    _villageSitioVictimController.dispose();    _educationVictimController.dispose();
     _occupationVictimController.dispose();
-    _workAddressVictimController.dispose();
+    _idCardVictimController.dispose();
     _emailVictimController.dispose();
     
     // ITEM D - Narrative controllers
@@ -528,7 +724,20 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
 
-  // Helper method to collect all form data
+  // Helper method to collect all form data  // Validate form data before collection
+  bool validateEducationFields() {
+    if (_educationReportingController.text.isEmpty || _educationVictimController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select education level for both reporting person and missing person'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   Map<String, dynamic> collectFormData() {
     Map<String, dynamic> formData = {
       // General information
@@ -537,200 +746,193 @@ class FillUpForm extends State<FillUpFormScreen> {
       'dateTimeReported': dateTimeReported,
       'dateTimeIncident': dateTimeIncident,
       'placeOfIncident': _placeOfIncidentController.text,
-      
-      // ITEM A - Reporting Person
-      'itemA': {
-        'surname': _surnameReportingController.text,
-        'firstName': _firstNameReportingController.text,
-        'middleName': _middleNameReportingController.text,
-        'qualifier': _qualifierReportingController.text,
-        'nickname': _nicknameReportingController.text,
-        'citizenship': _citizenshipReportingController.text,
-        'sexGender': _sexGenderReportingController.text,
-        'civilStatus': _civilStatusReportingController.text,
-        'dateOfBirth': _dateOfBirthReportingController.text,
-        'age': _ageReportingController.text,
-        'placeOfBirth': _placeOfBirthReportingController.text,
-        'homePhone': _homePhoneReportingController.text,
-        'mobilePhone': _mobilePhoneReportingController.text,
-        'currentAddress': _currentAddressReportingController.text,
-        'villageSitio': _villageSitioReportingController.text,
-        'region': reportingPersonRegion?.regionName,
-        'province': reportingPersonProvince?.name,
-        'townCity': reportingPersonMunicipality?.name,
-        'barangay': reportingPersonBarangay,
-        'education': _educationReportingController.text,
-        'occupation': _occupationReportingController.text,
-        'idCardPresented': _idCardPresentedController.text,
-        'emailAddress': _emailReportingController.text,
-      },
-      
-      // ITEM C - Victim
-      'itemC': {
-        'surname': _surnameVictimController.text,
-        'firstName': _firstNameVictimController.text,
-        'middleName': _middleNameVictimController.text,
-        'qualifier': _qualifierVictimController.text,
-        'nickname': _nicknameVictimController.text,
-        'citizenship': _citizenshipVictimController.text,
-        'sexGender': _sexGenderVictimController.text,
-        'civilStatus': _civilStatusVictimController.text,
-        'dateOfBirth': _dateOfBirthVictimController.text,
-        'age': _ageVictimController.text,
-        'placeOfBirth': _placeOfBirthVictimController.text,
-        'homePhone': _homePhoneVictimController.text,
-        'mobilePhone': _mobilePhoneVictimController.text,
-        'currentAddress': _currentAddressVictimController.text,
-        'villageSitio': _villageSitioVictimController.text,
-        'region': victimRegion?.regionName,
-        'province': victimProvince?.name,
-        'townCity': victimMunicipality?.name,
-        'barangay': victimBarangay,
-        'education': _educationVictimController.text,
-        'occupation': _occupationVictimController.text,
-        'workAddress': _workAddressVictimController.text,
-        'emailAddress': _emailVictimController.text,
-      },
-      
-      // ITEM D - Narrative
-      'typeOfIncidentD': _typeOfIncidentDController.text,
-      'dateTimeIncidentD': _dateOfBirthVictimController.text,
-      'placeOfIncidentD': _placeOfIncidentDController.text,
+      // Item A - Reporting Person
+      'surnameA': _surnameReportingController.text,
+      'firstNameA': _firstNameReportingController.text,
+      'middleNameA': _middleNameReportingController.text,
+      'qualifierA': _qualifierReportingController.text,
+      'nicknameA': _nicknameReportingController.text,
+      'citizenshipA': _citizenshipReportingController.text,
+      'sexGenderA': _sexGenderReportingController.text,
+      'civilStatusA': _civilStatusReportingController.text,
+      'dateOfBirthA': _dateOfBirthReportingController.text,
+      'ageA': _ageReportingController.text,
+      'placeOfBirthA': _placeOfBirthReportingController.text,
+      'homePhoneA': _homePhoneReportingController.text,
+      'mobilePhoneA': _mobilePhoneReportingController.text,
+      'currentAddressA': _currentAddressReportingController.text,
+      'villageA': _villageSitioReportingController.text,
+      'regionA': reportingPersonRegion?.regionName,
+      'provinceA': reportingPersonProvince?.name,
+      'townCityA': reportingPersonMunicipality?.name,
+      'barangayA': reportingPersonBarangay,
+      'otherAddressA': hasOtherAddressReporting ? 'Yes' : null,
+      'otherVillageA': hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      'otherRegionA': hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
+      'otherProvinceA': hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
+      'otherTownCityA': hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
+      'otherBarangayA': hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      'highestEducationAttainmentA': _educationReportingController.text,
+      'occupationA': _occupationReportingController.text,
+      'idCardPresentedA': _idCardPresentedController.text,
+      'emailAddressA': _emailReportingController.text,
+      // Item B - Missing Person (Victim)
+      'surnameB': _surnameVictimController.text,
+      'firstNameB': _firstNameVictimController.text,
+      'middleNameB': _middleNameVictimController.text,
+      'qualifierB': _qualifierVictimController.text,
+      'nicknameB': _nicknameVictimController.text,
+      'citizenshipB': _citizenshipVictimController.text,
+      'sexGenderB': _sexGenderVictimController.text,
+      'civilStatusB': _civilStatusVictimController.text,
+      'dateOfBirthB': _dateOfBirthVictimController.text,
+      'ageB': _ageVictimController.text,
+      'placeOfBirthB': _placeOfBirthVictimController.text,
+      'homePhoneB': _homePhoneVictimController.text,
+      'mobilePhoneB': _mobilePhoneVictimController.text,
+      'currentAddressB': _currentAddressVictimController.text,
+      'villageB': _villageSitioVictimController.text,
+      'regionB': victimRegion?.regionName,
+      'provinceB': victimProvince?.name,
+      'townCityB': victimMunicipality?.name,
+      'barangayB': victimBarangay,
+      'otherAddressB': hasOtherAddressVictim ? 'Yes' : null,
+      'otherVillageB': hasOtherAddressVictim ? victimOtherBarangay : null,
+      'otherRegionB': hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
+      'otherProvinceB': hasOtherAddressVictim ? victimOtherProvince?.name : null,
+      'otherTownCityB': hasOtherAddressVictim ? victimOtherMunicipality?.name : null,      'otherBarangayB': hasOtherAddressVictim ? victimOtherBarangay : null,
+      'highestEducationAttainmentB': _educationVictimController.text,
+      'occupationB': _occupationVictimController.text,
+      'idCardB': _idCardVictimController.text,
+      'emailAddressB': _emailVictimController.text,
+      // Narrative
       'narrative': _narrativeController.text,
+      'typeOfIncidentD': _typeOfIncidentDController.text,
+      'dateTimeIncidentD': dateTimeIncident,
+      'placeOfIncidentD': _placeOfIncidentDController.text,
     };
-    
-    // Add other address for reporting person if available
-    if (hasOtherAddressReporting) {
-      formData['itemA']['hasOtherAddress'] = true;
-      formData['itemA']['otherRegion'] = reportingPersonOtherRegion?.regionName;
-      formData['itemA']['otherProvince'] = reportingPersonOtherProvince?.name;
-      formData['itemA']['otherTownCity'] = reportingPersonOtherMunicipality?.name;
-      formData['itemA']['otherBarangay'] = reportingPersonOtherBarangay;
-    }
-    
-    // Add other address for victim if available
-    if (hasOtherAddressVictim) {
-      formData['itemC']['hasOtherAddress'] = true;
-      formData['itemC']['otherRegion'] = victimOtherRegion?.regionName;
-      formData['itemC']['otherProvince'] = victimOtherProvince?.name;
-      formData['itemC']['otherTownCity'] = victimOtherMunicipality?.name;
-      formData['itemC']['otherBarangay'] = victimOtherBarangay;
-    }
-    
     return formData;
   }
 
   // Convert form data to IRFModel
   IRFModel createIRFModel() {
     // Parse date of birth strings to DateTime objects if present
-    DateTime? reportingDob;
-    if (_dateOfBirthReportingController.text.isNotEmpty) {
-      try {
-        reportingDob = DateFormat('dd/MM/yyyy').parse(_dateOfBirthReportingController.text);
-      } catch (e) {
-        print('Error parsing reporting person date of birth: $e');
-      }
-    }
-    
-    DateTime? victimDob;
-    if (_dateOfBirthVictimController.text.isNotEmpty) {
-      try {
-        victimDob = DateFormat('dd/MM/yyyy').parse(_dateOfBirthVictimController.text);
-      } catch (e) {
-        print('Error parsing victim date of birth: $e');
-      }
-    }
-    
-    int? reportingAge = _ageReportingController.text.isNotEmpty ? 
-      int.tryParse(_ageReportingController.text) : null;
-    
-    int? victimAge = _ageVictimController.text.isNotEmpty ?
-      int.tryParse(_ageVictimController.text) : null;
-    
+    int? ageA = _ageReportingController.text.isNotEmpty ? int.tryParse(_ageReportingController.text) : null;
+    int? ageC = _ageVictimController.text.isNotEmpty ? int.tryParse(_ageVictimController.text) : null;
     return IRFModel(
-      typeOfIncident: _typeOfIncidentController.text,
-      copyFor: _copyForController.text,
-      dateTimeReported: dateTimeReported,
-      dateTimeIncident: dateTimeIncident,
-      placeOfIncident: _placeOfIncidentController.text,
-      
-      // ITEM A - Reporting Person
-      itemA: IRFModel.createPersonDetails(
-        surname: _surnameReportingController.text,
-        firstName: _firstNameReportingController.text,
-        middleName: _middleNameReportingController.text,
-        qualifier: _qualifierReportingController.text,
-        nickname: _nicknameReportingController.text,
-        citizenship: _citizenshipReportingController.text,
-        sexGender: _sexGenderReportingController.text,
-        civilStatus: _civilStatusReportingController.text,
-        dateOfBirth: reportingDob,
-        age: reportingAge,
-        placeOfBirth: _placeOfBirthReportingController.text,
-        homePhone: _homePhoneReportingController.text,
-        mobilePhone: _mobilePhoneReportingController.text,
-        currentAddress: _currentAddressReportingController.text,
-        villageSitio: _villageSitioReportingController.text,
-        region: reportingPersonRegion?.regionName,
-        province: reportingPersonProvince?.name,
-        townCity: reportingPersonMunicipality?.name,
-        barangay: reportingPersonBarangay,
-        highestEducationAttainment: _educationReportingController.text,
-        occupation: _occupationReportingController.text,
-        idCardPresented: _idCardPresentedController.text,
-        emailAddress: _emailReportingController.text,
-        otherRegion: hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
-        otherProvince: hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
-        otherTownCity: hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
-        otherBarangay: hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
-      ),
-      
-      // ITEM C - Victim
-      itemC: IRFModel.createPersonDetails(
-        surname: _surnameVictimController.text,
-        firstName: _firstNameVictimController.text,
-        middleName: _middleNameVictimController.text,
-        qualifier: _qualifierVictimController.text,
-        nickname: _nicknameVictimController.text,
-        citizenship: _citizenshipVictimController.text,
-        sexGender: _sexGenderVictimController.text,
-        civilStatus: _civilStatusVictimController.text,
-        dateOfBirth: victimDob,
-        age: victimAge,
-        placeOfBirth: _placeOfBirthVictimController.text,
-        homePhone: _homePhoneVictimController.text,
-        mobilePhone: _mobilePhoneVictimController.text,
-        currentAddress: _currentAddressVictimController.text,
-        villageSitio: _villageSitioVictimController.text,
-        region: victimRegion?.regionName,
-        province: victimProvince?.name,
-        townCity: victimMunicipality?.name,
-        barangay: victimBarangay,
-        highestEducationAttainment: _educationVictimController.text,
-        occupation: _occupationVictimController.text,
-        workAddress: _workAddressVictimController.text,
-        emailAddress: _emailVictimController.text,
-        otherRegion: hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
-        otherProvince: hasOtherAddressVictim ? victimOtherProvince?.name : null,
-        otherTownCity: hasOtherAddressVictim ? victimOtherMunicipality?.name : null,
-        otherBarangay: hasOtherAddressVictim ? victimOtherBarangay : null,
-      ),
-      
-      // ITEM D - Narrative
+      // Incident Details
+      createdAt: dateTimeReported,
+      dateTimeOfIncident: dateTimeIncident,
+      imageUrl: null, // Set if you have image upload logic
+      incidentId: null, // Set if you have incidentId logic
       narrative: _narrativeController.text,
-      typeOfIncidentD: _typeOfIncidentDController.text,
-      dateTimeIncidentD: dateTimeIncident, // Using the same DateTime from the main form
-      placeOfIncidentD: _placeOfIncidentDController.text,
+      placeOfIncident: _placeOfIncidentController.text,
+      reportedAt: dateTimeReported,
+      typeOfIncident: _typeOfIncidentController.text,
+      // Item A
+      ageA: ageA,
+      barangayA: reportingPersonBarangay,
+      citizenshipA: _citizenshipReportingController.text,
+      civilStatusA: _civilStatusReportingController.text,
+      currentAddressA: _currentAddressReportingController.text,
+      dateOfBirthA: _dateOfBirthReportingController.text,
+      educationA: _educationReportingController.text,
+      emailA: _emailReportingController.text,
+      familyNameA: _surnameReportingController.text,
+      firstNameA: _firstNameReportingController.text,
+      homePhoneA: _homePhoneReportingController.text,
+      idCardA: _idCardPresentedController.text,
+      middleNameA: _middleNameReportingController.text,
+      mobilePhoneA: _mobilePhoneReportingController.text,
+      nicknameA: _nicknameReportingController.text,
+      occupationA: _occupationReportingController.text,
+      otherAddressA: hasOtherAddressReporting ? 'Yes' : null,
+      otherVillageA: hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      otherRegionA: hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
+      otherProvinceA: hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
+      otherTownCityA: hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
+      otherBarangayA: hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      placeOfBirthA: _placeOfBirthReportingController.text,
+      provinceA: reportingPersonProvince?.name,
+      qualifierA: _qualifierReportingController.text,
+      sexGenderA: _sexGenderReportingController.text,
+      townA: reportingPersonMunicipality?.name,
+      villageSitioA: _villageSitioReportingController.text,
+      // Item C
+      ageC: ageC,
+      barangayC: victimBarangay,
+      citizenshipC: _citizenshipVictimController.text,
+      civilStatusC: _civilStatusVictimController.text,
+      currentAddressC: _currentAddressVictimController.text,
+      dateOfBirthC: _dateOfBirthVictimController.text,
+      educationC: _educationVictimController.text,
+      emailC: _emailVictimController.text,
+      familyNameC: _surnameVictimController.text,
+      firstNameC: _firstNameVictimController.text,
+      homePhoneC: _homePhoneVictimController.text,
+      idCardC: _idCardVictimController.text,
+      middleNameC: _middleNameVictimController.text,
+      mobilePhoneC: _mobilePhoneVictimController.text,
+      nicknameC: _nicknameVictimController.text,
+      occupationC: _occupationVictimController.text,
+      otherAddressC: hasOtherAddressVictim ? 'Yes' : null,
+      otherVillageC: hasOtherAddressVictim ? victimOtherBarangay : null,
+      otherRegionC: hasOtherAddressVictim ? victimOtherRegion?.regionName : null,
+      otherProvinceC: hasOtherAddressVictim ? victimOtherProvince?.name : null,
+      otherTownCityC: hasOtherAddressVictim ? victimOtherMunicipality?.name : null,
+      otherBarangayC: hasOtherAddressVictim ? victimOtherBarangay : null,
+      placeOfBirthC: _placeOfBirthVictimController.text,
+      provinceC: victimProvince?.name,
+      qualifierC: _qualifierVictimController.text,
+      sexGenderC: _sexGenderVictimController.text,
+      townC: victimMunicipality?.name,
+      villageSitioC: _villageSitioVictimController.text,
+      // Root fields
+      pdfUrl: null, // Set if you have PDF upload logic
+      status: null, // Set by service
+      userId: null, // Set by service
     );
   }
-  
-  // Submit form to Firebase
+    // Submit form to Firebase
   Future<void> submitForm() async {
     if (!_formKey.currentState!.validate()) {
       // Show validation error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please fill all required fields correctly'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Additional validation for education fields
+    if (_educationReportingController.text.isEmpty || _educationVictimController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select education level for both reporting person and missing person'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Image is required
+    if ((!kIsWeb && _imageFile == null) || (kIsWeb && _webImage == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please upload an image. It is required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check for duplicate missing person
+    if (await _checkDuplicateMissingPerson()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('A form for this missing person already exists.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -750,12 +952,24 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
+      // Upload image and get URL
+      String? imageUrl;
+      if (kIsWeb && _webImage != null) {
+        imageUrl = await _irfService.uploadImage(_webImage, DateTime.now().millisecondsSinceEpoch.toString());
+      } else if (_imageFile != null) {
+        imageUrl = await _irfService.uploadImage(_imageFile, DateTime.now().millisecondsSinceEpoch.toString());
+      }
+      if (imageUrl == null) {
+        throw Exception('Image upload failed.');
+      }
+      irfData.imageUrl = imageUrl;
+      
       // Submit to Firebase
       DocumentReference<Object?> docRef = await _irfService.submitIRF(irfData);
       
       // Get the document to retrieve the formal ID
       DocumentSnapshot doc = await docRef.get();
-      String formalId = (doc.data() as Map<String, dynamic>)['documentId'] ?? docRef.id;
+      String formalId = (doc.data() as Map<String, dynamic>)['incidentDetails']?['incidentId'] ?? docRef.id;
       
       // Show success message with formal ID
       ScaffoldMessenger.of(context).showSnackBar(
@@ -786,398 +1000,39 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
   
-  // Save draft locally
-  Future<void> saveDraft() async {
-    setState(() {
-      isSavingDraft = true;
-    });
-
-    try {
-      // Check if user is authenticated first
-      if (FirebaseAuth.instance.currentUser == null) {
-        throw Exception('User not authenticated. Please log in again.');
-      }
-      
-      // Create IRF model from form data
-      IRFModel irfData = createIRFModel();
-      
-      // Save draft locally
-      String draftId = await _irfService.saveIRFDraft(irfData);
-      
-      // Show success message with local draft ID
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Draft saved locally! Reference #: ${draftId.split('_').last}'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      print('Draft saving error: $e');
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving draft: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      // Reset loading state
-      if (mounted) {
-        setState(() {
-          isSavingDraft = false;
-        });
-      }
+  // Check for duplicate missing person
+  Future<bool> _checkDuplicateMissingPerson() async {
+    final surname = _surnameVictimController.text.trim().toLowerCase();
+    final firstName = _firstNameVictimController.text.trim().toLowerCase();
+    final middleName = _middleNameVictimController.text.trim().toLowerCase();
+    final dob = _dateOfBirthVictimController.text.trim();
+    if (surname.isEmpty || firstName.isEmpty || middleName.isEmpty || dob.isEmpty) {
+      return false;
     }
+    final query = await FirebaseFirestore.instance
+        .collection('incidents')
+        .where('itemC.familyName', isEqualTo: surname)
+        .where('itemC.firstName', isEqualTo: firstName)
+        .where('itemC.middleName', isEqualTo: middleName)
+        .where('itemC.dateOfBirth', isEqualTo: dob)
+        .limit(1)
+        .get();
+    return query.docs.isNotEmpty;
   }
 
-  // Add this method to load a draft
-  Future<void> loadDraft(String draftId) async {
-    try {
-      // Show loading indicator
-      setState(() {
-        isSavingDraft = true; // Reuse this state for loading
-      });
-      
-      // Fetch the draft from local storage
-      var draftData = await _irfService.getIRF(draftId);
-      
-      if (draftData == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Draft not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      
-      // Convert data to IRFModel if it's from local storage
-      IRFModel draft;
-      if (draftData is Map<String, dynamic>) {
-        // Convert Map to IRFModel
-        draft = _irfService.localDraftService.draftToModel(draftData);
-      } else {
-        // This would happen if it's a Firebase document
-        draft = IRFModel.fromDocument(draftData);
-      }
-      
-      // Populate form fields with draft data
-      _populateFormFields(draft);
-      
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Draft loaded successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('Error loading draft: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading draft: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        isSavingDraft = false;
-      });
-    }
-  }
-  
-  // Add this method to populate form fields from an IRFModel
-  void _populateFormFields(IRFModel draft) {
-    // General information
-    _typeOfIncidentController.text = draft.typeOfIncident ?? "Missing Person";
-    _copyForController.text = draft.copyFor ?? "";
-    
-    if (draft.dateTimeReported != null) {
-      dateTimeReported = draft.dateTimeReported;
-      _dateTimeReportedController.text = _formatDateTime(draft.dateTimeReported!);
-    }
-    
-    if (draft.dateTimeIncident != null) {
-      dateTimeIncident = draft.dateTimeIncident;
-      _dateTimeIncidentController.text = _formatDateTime(draft.dateTimeIncident!);
-      _dateTimeIncidentDController.text = _formatDateTime(draft.dateTimeIncident!);
-    }
-    
-    _placeOfIncidentController.text = draft.placeOfIncident ?? "";
-    
-    // ITEM A - Reporting Person
-    if (draft.itemA != null) {
-      Map<String, dynamic> itemA = draft.itemA!;
-      
-      _surnameReportingController.text = itemA['surname'] ?? "";
-      _firstNameReportingController.text = itemA['firstName'] ?? "";
-      _middleNameReportingController.text = itemA['middleName'] ?? "";
-      _qualifierReportingController.text = itemA['qualifier'] ?? "";
-      _nicknameReportingController.text = itemA['nickname'] ?? "";
-      _citizenshipReportingController.text = itemA['citizenship'] ?? "";
-      _sexGenderReportingController.text = itemA['sexGender'] ?? "";
-      _civilStatusReportingController.text = itemA['civilStatus'] ?? "";
-      
-      // Handle date of birth
-      if (itemA['dateOfBirth'] != null) {
-        if (itemA['dateOfBirth'] is DateTime) {
-          DateTime dob = itemA['dateOfBirth'];
-          _dateOfBirthReportingController.text = 
-              "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
-        } else if (itemA['dateOfBirth'] is String) {
-          try {
-            DateTime dob = DateTime.parse(itemA['dateOfBirth']);
-            _dateOfBirthReportingController.text = 
-                "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
-          } catch (e) {
-            print('Error parsing date: $e');
-            _dateOfBirthReportingController.text = itemA['dateOfBirth'];
-          }
-        }
-      }
-      
-      _ageReportingController.text = itemA['age']?.toString() ?? "";
-      _placeOfBirthReportingController.text = itemA['placeOfBirth'] ?? "";
-      _homePhoneReportingController.text = itemA['homePhone'] ?? "";
-      _mobilePhoneReportingController.text = itemA['mobilePhone'] ?? "";
-      _currentAddressReportingController.text = itemA['currentAddress'] ?? "";
-      _villageSitioReportingController.text = itemA['villageSitio'] ?? "";
-      _educationReportingController.text = itemA['education'] ?? "";
-      _occupationReportingController.text = itemA['occupation'] ?? "";
-      _idCardPresentedController.text = itemA['idCardPresented'] ?? "";
-      _emailReportingController.text = itemA['emailAddress'] ?? "";
-      
-      // Handle other address checkbox
-      hasOtherAddressReporting = itemA['otherRegion'] != null || 
-                               itemA['otherProvince'] != null ||
-                               itemA['otherTownCity'] != null ||
-                               itemA['otherBarangay'] != null;
-      
-      // We'll add address loading in a separate update to the form state
-    }
-    
-    // ITEM C - Victim
-    if (draft.itemC != null) {
-      Map<String, dynamic> itemC = draft.itemC!;
-      
-      _surnameVictimController.text = itemC['surname'] ?? "";
-      _firstNameVictimController.text = itemC['firstName'] ?? "";
-      _middleNameVictimController.text = itemC['middleName'] ?? "";
-      _qualifierVictimController.text = itemC['qualifier'] ?? "";
-      _nicknameVictimController.text = itemC['nickname'] ?? "";
-      _citizenshipVictimController.text = itemC['citizenship'] ?? "";
-      _sexGenderVictimController.text = itemC['sexGender'] ?? "";
-      _civilStatusVictimController.text = itemC['civilStatus'] ?? "";
-      
-      // Handle date of birth
-      if (itemC['dateOfBirth'] != null) {
-        if (itemC['dateOfBirth'] is DateTime) {
-          DateTime dob = itemC['dateOfBirth'];
-          _dateOfBirthVictimController.text = 
-              "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
-        } else if (itemC['dateOfBirth'] is String) {
-          try {
-            DateTime dob = DateTime.parse(itemC['dateOfBirth']);
-            _dateOfBirthVictimController.text = 
-                "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
-          } catch (e) {
-            print('Error parsing date: $e');
-            _dateOfBirthVictimController.text = itemC['dateOfBirth'];
-          }
-        }
-      }
-      
-      _ageVictimController.text = itemC['age']?.toString() ?? "";
-      _placeOfBirthVictimController.text = itemC['placeOfBirth'] ?? "";
-      _homePhoneVictimController.text = itemC['homePhone'] ?? "";
-      _mobilePhoneVictimController.text = itemC['mobilePhone'] ?? "";
-      _currentAddressVictimController.text = itemC['currentAddress'] ?? "";
-      _villageSitioVictimController.text = itemC['villageSitio'] ?? "";
-      _educationVictimController.text = itemC['education'] ?? "";
-      _occupationVictimController.text = itemC['occupation'] ?? "";
-      _workAddressVictimController.text = itemC['workAddress'] ?? "";
-      _emailVictimController.text = itemC['emailAddress'] ?? "";
-      
-      // Handle other address checkbox
-      hasOtherAddressVictim = itemC['otherRegion'] != null || 
-                            itemC['otherProvince'] != null ||
-                            itemC['otherTownCity'] != null ||
-                            itemC['otherBarangay'] != null;
-    }
-    
-    // ITEM D - Narrative
-    _typeOfIncidentDController.text = draft.typeOfIncidentD ?? "Missing Person";
-    if (draft.dateTimeIncidentD != null) {
-      _dateTimeIncidentDController.text = _formatDateTime(draft.dateTimeIncidentD!);
-    }
-    _placeOfIncidentDController.text = draft.placeOfIncidentD ?? "";
-    _narrativeController.text = draft.narrative ?? "";
-    
-    // Update the form state to reflect loaded data
-    setState(() {
-      // Form state will be updated based on the populated fields
-      updateFormState();
-    });
-  }
-  
-  // Show dialog to select a draft to load
-  Future<void> _showLoadDraftDialog() async {
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator()),
-    );
-    
-    try {
-      // Get all drafts
-      List<IRFModel> drafts = await _irfService.getUserDrafts();
-      
-      // Hide loading indicator
-      Navigator.pop(context);
-      
-      if (drafts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No drafts found'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-        return;
-      }
-      
-      // Show draft selection dialog
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('Select a Draft to Load'),
-            content: Container(
-              width: double.maxFinite,
-              height: 300,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: drafts.length,
-                itemBuilder: (context, index) {
-                  IRFModel draft = drafts[index];
-                  String createdDate = draft.createdAt != null 
-                      ? DateFormat('MM/dd/yyyy hh:mm a').format(draft.createdAt!)
-                      : 'Unknown date';
-                  
-                  String victimName = '';
-                  if (draft.itemC != null) {
-                    String surname = draft.itemC!['surname'] ?? '';
-                    String firstName = draft.itemC!['firstName'] ?? '';
-                    if (surname.isNotEmpty || firstName.isNotEmpty) {
-                      victimName = '$firstName $surname';
-                    }
-                  }
-                  
-                  return ListTile(
-                    title: Text(victimName.isNotEmpty ? victimName : 'Draft #${index + 1}'),
-                    subtitle: Text('Created: $createdDate'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      loadDraft(draft.documentId!);
-                    },
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text('Cancel'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      // Hide loading indicator if still showing
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading drafts: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  
-  @override
-  Widget build(BuildContext context) {
+  @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF0D47A1),
         actions: [
-          // Load Draft button in AppBar
-          TextButton.icon(
-            onPressed: isSavingDraft ? null : _showLoadDraftDialog,
-            icon: Icon(Icons.file_open, color: Colors.white),
-            label: Text('Load Draft', 
-              style: TextStyle(color: Colors.white, fontSize: 14)
-            ),
-          ),
-          // Save Draft button in AppBar
-          TextButton.icon(
-            onPressed: isSavingDraft ? null : saveDraft,
-            icon: isSavingDraft 
-              ? SizedBox(
-                  height: 20, 
-                  width: 20, 
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  )
-                )
-              : Icon(Icons.save_outlined, color: Colors.white),
-            label: Text('Save Draft', 
-              style: TextStyle(color: Colors.white, fontSize: 14)
-            ),
-          ),
-          // Discard button in AppBar
-          TextButton.icon(
-            onPressed: () {
-              // Show confirmation dialog
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Discard Changes?'),
-                  content: Text('Are you sure you want to discard all changes?'),
-                  actions: [
-                    TextButton(
-                      child: Text('Cancel'),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    TextButton(
-                      child: Text('Discard', style: TextStyle(color: Colors.red)),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // Add discard logic here
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-            icon: Icon(Icons.close, color: Colors.white),
-            label: Text('Discard', 
-              style: TextStyle(color: Colors.white, fontSize: 14)
-            ),
-          ),
-          SizedBox(width: 8), // Add some padding at the end
+          // ...existing code...
         ],
       ),
       drawer: AppDrawer(),
       body: isCheckingPrivacyStatus 
         ? Center(child: CircularProgressIndicator()) // Show loading while checking privacy status
         : SingleChildScrollView(
+          controller: _scrollController,
           padding: EdgeInsets.all(16),
           child: Center(
             child: Container(
@@ -1223,64 +1078,71 @@ class FillUpForm extends State<FillUpFormScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [          
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'TYPE OF INCIDENT',
-                              'required': true,
-                              'keyboardType': TextInputType.text,
-                              'controller': _typeOfIncidentController,
-                              'readOnly': true, // Make it read-only
-                              'backgroundColor': Color(0xFFF0F0F0), // Light gray background to indicate fixed field
-                            },
-                            {
-                              'label': 'COPY FOR',
-                              'required': false,
-                              'controller': _copyForController,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                        // --- Wrap each required field in a KeyedSubtree for scrolling ---
+                        KeyedSubtree(
+                          key: _getOrCreateKey('TYPE OF INCIDENT'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'TYPE OF INCIDENT',
+                                'required': true,
+                                'keyboardType': TextInputType.text,
+                                'controller': _typeOfIncidentController,
+                                'readOnly': true, // Make it read-only
+                                'backgroundColor': Color(0xFFF0F0F0), // Light gray background to indicate fixed field
+                              },
+                              {
+                                'label': 'COPY FOR',
+                                'required': true,
+                                'controller': _copyForController,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
                          
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'DATE AND TIME REPORTED',
-                              'required': true,
-                              'controller': _dateTimeReportedController,
-                              'readOnly': true,
-                            },
-                            {
-                              'label': 'DATE AND TIME OF INCIDENT',
-                              'required': true,
-                              'controller': _dateTimeIncidentController,
-                              'readOnly': true,
-                              'onTap': () {
-                                _pickDateTime(
-                                  _dateTimeIncidentController,
-                                  dateTimeIncident,
-                                  (DateTime selectedDateTime) {
-                                    setState(() {
-                                      dateTimeIncident = selectedDateTime;
-                                      // Sync with Item D dateTime
-                                      _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
-                                    });
-                                  },
-                                );
+                        KeyedSubtree(
+                          key: _getOrCreateKey('DATE AND TIME REPORTED'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'DATE AND TIME REPORTED',
+                                'required': true,
+                                'controller': _dateTimeReportedController,
+                                'readOnly': true,
                               },
-                            },
-                            {
-                              'label': 'PLACE OF INCIDENT',
-                              'required': true,
-                              'controller': _placeOfIncidentController,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                              {
+                                'label': 'DATE AND TIME OF INCIDENT',
+                                'required': true,
+                                'controller': _dateTimeIncidentController,
+                                'readOnly': true,
+                                'onTap': () {
+                                  _pickDateTime(
+                                    _dateTimeIncidentController,
+                                    dateTimeIncident,
+                                    (DateTime selectedDateTime) {
+                                      setState(() {
+                                        dateTimeIncident = selectedDateTime;
+                                        // Sync with Item D dateTime
+                                        _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
+                                      });
+                                    },
+                                  );
+                                },
+                              },
+                              {
+                                'label': 'PLACE OF INCIDENT',
+                                'required': true,
+                                'controller': _placeOfIncidentController,
+                                'keyboardType': TextInputType.text,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
@@ -1293,137 +1155,157 @@ class FillUpForm extends State<FillUpFormScreen> {
 
                         SizedBox(height: 10),
 
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'SURNAME',
-                              'required': true,
-                              'controller': _surnameReportingController,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'FIRST NAME',
-                              'required': true,
-                              'controller': _firstNameReportingController,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'MIDDLE NAME',
-                              'required': false,
-                              'controller': _middleNameReportingController,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'QUALIFIER',
-                              'required': false,
-                              'controller': _qualifierReportingController,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'NICKNAME',
-                              'required': false,
-                              'controller': _nicknameReportingController,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'CITIZENSHIP',
-                              'required': true,
-                              'controller': _citizenshipReportingController,
-                              'dropdownItems': citizenshipOptions,
-                            },
-                            {
-                              'label': 'SEX/GENDER',
-                              'required': true,
-                              'controller': _sexGenderReportingController,
-                              'dropdownItems': genderOptions,
-                            },
-                            {
-                              'label': 'CIVIL STATUS',
-                              'required': true,
-                              'controller': _civilStatusReportingController,
-                              'dropdownItems': civilStatusOptions,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
-                        ),
-                        
-                        SizedBox(height: 10),
-                        
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'DATE OF BIRTH',
-                              'required': true,
-                              'controller': _dateOfBirthReportingController,
-                              'readOnly': true,
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthReportingController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    reportingPersonAge = calculateAge(pickedDate);
-                                    _ageReportingController.text = reportingPersonAge.toString();
-                                  });
-                                }
+                        KeyedSubtree(
+                          key: _getOrCreateKey('SURNAME'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'SURNAME',
+                                'required': true,
+                                'controller': _surnameReportingController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                               },
-                            },
-                            {
-                              'label': 'AGE',
-                              'required': true,
-                              'controller': _ageReportingController,
-                              'readOnly': true,
-                            },
-                            {
-                              'label': 'PLACE OF BIRTH',
-                              'required': true,
-                              'controller': _placeOfBirthReportingController,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                              {
+                                'label': 'FIRST NAME',
+                                'required': true,
+                                'controller': _firstNameReportingController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                              {
+                                'label': 'MIDDLE NAME',
+                                'required': true,
+                                'controller': _middleNameReportingController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
+                        ),
+                        
+                        SizedBox(height: 10),
+                        
+                        KeyedSubtree(
+                          key: _getOrCreateKey('QUALIFIER'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'QUALIFIER',
+                                'required': true,
+                                'controller': _qualifierReportingController,
+                                'dropdownItems': qualifierOptions,
+                                'typeField': 'dropdown',
+                                'onChanged': (value) => onFieldChange('qualifierReporting', value),
+                              },
+                              {
+                                'label': 'NICKNAME',
+                                'required': true,
+                                'controller': _nicknameReportingController,
+                                'keyboardType': TextInputType.text,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
+                        ),
+                        
+                        SizedBox(height: 10),
+                        
+                        KeyedSubtree(
+                          key: _getOrCreateKey('CITIZENSHIP'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'CITIZENSHIP',
+                                'required': true,
+                                'controller': _citizenshipReportingController,
+                                'dropdownItems': citizenshipOptions,
+                                'section': 'reporting',
+                              },
+                              {
+                                'label': 'SEX/GENDER',
+                                'required': true,
+                                'controller': _sexGenderReportingController,
+                                'dropdownItems': genderOptions,
+                              },
+                              {
+                                'label': 'CIVIL STATUS',
+                                'required': true,
+                                'controller': _civilStatusReportingController,
+                                'dropdownItems': civilStatusOptions,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
+                        ),
+                        
+                        SizedBox(height: 10),
+                        
+                        KeyedSubtree(
+                          key: _getOrCreateKey('DATE OF BIRTH'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'DATE OF BIRTH',
+                                'required': true,
+                                'controller': _dateOfBirthReportingController,
+                                'readOnly': true,
+                                'onTap': () async {
+                                  DateTime? pickedDate = await showDatePicker(
+                                    context: context,
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime(1950),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (pickedDate != null) {
+                                    setState(() {
+                                      _dateOfBirthReportingController.text = 
+                                          "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                          "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                          "${pickedDate.year}";
+                                      reportingPersonAge = calculateAge(pickedDate);
+                                      _ageReportingController.text = reportingPersonAge.toString();
+                                    });
+                                  }
+                                },
+                              },
+                              {
+                                'label': 'AGE',
+                                'required': true,
+                                'controller': _ageReportingController,
+                                'readOnly': true,
+                              },
+                              {
+                                'label': 'PLACE OF BIRTH',
+                                'required': true,
+                                'controller': _placeOfBirthReportingController,
+                                'keyboardType': TextInputType.text,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
                         
                         FormRowInputs(
-                          fields: [
-                            {
+                          fields: [                            {
                               'label': 'HOME PHONE',
-                              'required': false,
+                              'required': true,
                               'controller': _homePhoneReportingController,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
+                              'keyboardType': TextInputType.text,
+                              'hintText': 'Enter phone number or N/A',
+                              'validator': (value) {
+                                if (value == null || value.isEmpty) return 'Required';
+                                if (value.toLowerCase() == 'n/a' || value.toLowerCase() == 'none') return null;
+                                if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Enter valid number or N/A';
+                                return null;
+                              },
                             },
                             {
                               'label': 'MOBILE PHONE',
@@ -1541,7 +1423,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             formState: formState,
                             onFieldChange: onFieldChange,
                           ),
-                            
+                             
                           SizedBox(height: 10),
                           
                           FormRowInputs(
@@ -1606,21 +1488,27 @@ class FillUpForm extends State<FillUpFormScreen> {
 
                         SizedBox(height: 10),
                         
-                        FormRowInputs(
+              FormRowInputs(
                           fields: [
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
-                              'required': false,
+                              'required': true,
                               'controller': _educationReportingController,
                               'dropdownItems': educationOptions,
                               'section': 'reporting',
                             },
                             {
                               'label': 'OCCUPATION',
-                              'required': false,
+                              'required': true,
                               'controller': _occupationReportingController,
                               'dropdownItems': occupationOptions,
                               'section': 'reporting',
+                              'onChanged': (value) {
+                                setState(() {
+                                  _occupationReportingController.text = value ?? '';
+                                  reportingPersonOccupation = value;
+                                });
+                              },
                             },
                           ],
                           formState: formState,
@@ -1633,7 +1521,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           fields: [
                             {
                               'label': 'ID CARD PRESENTED',
-                              'required': false,
+                              'required': true,
                               'controller': _idCardPresentedController,
                               'keyboardType': TextInputType.text,
                             },
@@ -1657,70 +1545,91 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
 
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'SURNAME',
-                              'required': true,
-                              'controller': _surnameVictimController,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'FIRST NAME',
-                              'required': true,
-                              'controller': _firstNameVictimController,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                            {
-                              'label': 'MIDDLE NAME',
-                              'required': false,
-                              'controller': _middleNameVictimController,
-                              'keyboardType': TextInputType.name,
-                              'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                        KeyedSubtree(
+                          key: _getOrCreateKey('SURNAME VICTIM'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'SURNAME',
+                                'required': true,
+                                'controller': _surnameVictimController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                              {
+                                'label': 'FIRST NAME',
+                                'required': true,
+                                'controller': _firstNameVictimController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                              {
+                                'label': 'MIDDLE NAME',
+                                'required': true,
+                                'controller': _middleNameVictimController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
                         
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'QUALIFIER',
-                              'required': false,
-                              'controller': _qualifierVictimController,
-                              'keyboardType': TextInputType.text,
-                            },
-                            {
-                              'label': 'NICKNAME',
-                              'required': false,
-                              'controller': _nicknameVictimController,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                        KeyedSubtree(
+                          key: _getOrCreateKey('QUALIFIER VICTIM'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'QUALIFIER',
+                                'required': true,
+                                'controller': _qualifierVictimController,
+                                'dropdownItems': qualifierOptions,
+                                'typeField': 'dropdown',
+                                'onChanged': (value) {
+                                  setState(() {
+                                    _qualifierVictimController.text = value ?? '';
+                                  });
+                                },
+                              },
+                              {
+                                'label': 'NICKNAME',
+                                'required': true,
+                                'controller': _nicknameVictimController,
+                                'keyboardType': TextInputType.text,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
                         
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'CITIZENSHIP',
-                              'required': true,
-                              'controller': _citizenshipVictimController,
-                              'dropdownItems': citizenshipOptions,
+                        KeyedSubtree(
+                          key: _getOrCreateKey('CITIZENSHIP VICTIM'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'CITIZENSHIP',
+                                'required': true,
+                                'controller': _citizenshipVictimController,
+                                'dropdownItems': citizenshipOptions,
+                                'section': 'victim',
                             },
                             {
                               'label': 'SEX/GENDER',
                               'required': true,
                               'controller': _sexGenderVictimController,
                               'dropdownItems': genderOptions,
+                              'typeField': 'dropdown',
+                              'onChanged': (value) {
+                                setState(() {
+                                  _sexGenderVictimController.text = value ?? '';
+                                });
+                              },
                             },
                             {
                               'label': 'CIVIL STATUS',
@@ -1728,76 +1637,104 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'controller': _civilStatusVictimController,
                               'dropdownItems': civilStatusOptions,
                             },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
                         
-                        FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'DATE OF BIRTH',
-                              'required': true,
-                              'controller': _dateOfBirthVictimController,
-                              'readOnly': true,
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthVictimController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    victimAge = calculateAge(pickedDate);
-                                    _ageVictimController.text = victimAge.toString();
-                                  });
-                                }
+                        KeyedSubtree(
+                          key: _getOrCreateKey('DATE OF BIRTH VICTIM'),
+                          child: FormRowInputs(
+                            fields: [
+                              {
+                                'label': 'DATE OF BIRTH',
+                                'required': true,
+                                'controller': _dateOfBirthVictimController,
+                                'readOnly': true,
+                                'onTap': () async {
+                                  DateTime? pickedDate = await showDatePicker(
+                                    context: context,
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime(1950),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (pickedDate != null) {
+                                    setState(() {
+                                      _dateOfBirthVictimController.text = 
+                                          "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                          "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                          "${pickedDate.year}";
+                                      victimAge = calculateAge(pickedDate);
+                                      _ageVictimController.text = victimAge.toString();
+                                    });
+                                  }
+                                },
                               },
-                            },
-                            {
-                              'label': 'AGE',
-                              'required': true,
-                              'controller': _ageVictimController,
-                              'readOnly': true,
-                            },
-                            {
-                              'label': 'PLACE OF BIRTH',
-                              'required': true,
-                              'controller': _placeOfBirthVictimController,
-                              'keyboardType': TextInputType.text,
-                            },
-                          ],
-                          formState: formState,
-                          onFieldChange: onFieldChange,
+                              {
+                                'label': 'AGE',
+                                'required': true,
+                                'controller': _ageVictimController,
+                                'readOnly': true,
+                              },
+                              {
+                                'label': 'PLACE OF BIRTH',
+                                'required': true,
+                                'controller': _placeOfBirthVictimController,
+                                'keyboardType': TextInputType.text,
+                              },
+                            ],
+                            formState: formState,
+                            onFieldChange: onFieldChange,
+                          ),
                         ),
                         
                         SizedBox(height: 10),
 
                         FormRowInputs(
-                          fields: [
-                            {
+                          fields: [                            {
                               'label': 'HOME PHONE',
-                              'required': false,
+                              'required': true,
                               'controller': _homePhoneVictimController,
-                              'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
-                            },
-                            {
+                              'keyboardType': TextInputType.text,
+                              'hintText': 'Enter phone number or N/A',
+                              'validator': (value) {
+                                if (value == null || value.isEmpty) return 'Required';
+                                if (value.toLowerCase() == 'n/a' || value.toLowerCase() == 'none') return null;
+                                if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Enter valid number or N/A';
+                                return null;
+                              },
+                            },                            {
                               'label': 'MOBILE PHONE',
                               'required': true,
                               'controller': _mobilePhoneVictimController,
                               'keyboardType': TextInputType.phone,
-                              'inputFormatters': [FilteringTextInputFormatter.digitsOnly],
+                              'hintText': 'e.g. 09123456789 or +639123456789',
                               'validator': (value) {
                                 if (value == null || value.isEmpty) return 'Required';
-                                if (value.length < 10) return 'Invalid phone number';
+                                
+                                // Remove any whitespace
+                                value = value.trim();
+                                
+                                // Check for Philippine format with country code (+63)
+                                if (value.startsWith('+63')) {
+                                  if (value.length != 13) return 'Invalid number format';
+                                  if (!RegExp(r'^\+63[9][0-9]{9}$').hasMatch(value)) {
+                                    return 'Invalid PH mobile number';
+                                  }
+                                }
+                                // Check for local format (09)
+                                else if (value.startsWith('0')) {
+                                  if (value.length != 11) return 'Invalid number format';
+                                  if (!RegExp(r'^09[0-9]{9}$').hasMatch(value)) {
+                                    return 'Invalid PH mobile number';
+                                  }
+                                } 
+                                else {
+                                  return 'Must start with 09 or +63';
+                                }
                                 return null;
                               },
                             },
@@ -1905,7 +1842,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                             formState: formState,
                             onFieldChange: onFieldChange,
                           ),
-                            
+                             
                           SizedBox(height: 10),
                           
                           FormRowInputs(
@@ -1966,23 +1903,27 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                           
                           SizedBox(height: 10),
-                        ],
-
-                        FormRowInputs(
+                        ],                        FormRowInputs(
                           fields: [
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
-                              'required': false,
+                              'required': true,
                               'controller': _educationVictimController,
                               'dropdownItems': educationOptions,
                               'section': 'victim',
                             },
                             {
                               'label': 'OCCUPATION',
-                              'required': false,
+                              'required': true,
                               'controller': _occupationVictimController,
                               'dropdownItems': occupationOptions,
                               'section': 'victim',
+                              'onChanged': (value) {
+                                setState(() {
+                                  _occupationVictimController.text = value ?? '';
+                                  victimOccupation = value;
+                                });
+                              },
                             },
                           ],
                           formState: formState,
@@ -1990,13 +1931,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-                        
-                        FormRowInputs(
+                          FormRowInputs(
                           fields: [
                             {
-                              'label': 'WORK ADDRESS',
-                              'required': false,
-                              'controller': _workAddressVictimController,
+                              'label': 'ID CARD PRESENTED',
+                              'required': true,
+                              'controller': _idCardVictimController,
                               'keyboardType': TextInputType.text,
                             },
                             {
@@ -2034,6 +1974,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'required': true,
                               'controller': _dateTimeIncidentDController,
                               'readOnly': true,
+
                               'onTap': () {
                                 _pickDateTime(
                                   _dateTimeIncidentDController,
@@ -2061,41 +2002,126 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
                         
+                        // Narrative section with image picker box (like submit tip)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                            "ENTER IN DETAIL THE NARRATIVE OF INCIDENT OR EVENT, ANSWERING THE WHO, WHAT, WHEN, WHERE, WHY AND HOW OF REPORTING",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                              color: Colors.black,
-                            ),
-                            ),
-                            SizedBox(height: 4),
-                            TextFormField(
-                              controller: _narrativeController,
-                              maxLines: 10,
-                              style: TextStyle(fontSize: 15, color: Colors.black),
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.black),
-                                ),
-                                contentPadding: EdgeInsets.all(8),
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '* ',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      "ENTER IN DETAIL THE NARRATIVE OF INCIDENT OR EVENT, ANSWERING THE WHO, WHAT, WHEN, WHERE, WHY AND HOW OF REPORTING",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Narrative is required';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
+                              SizedBox(height: 4),
+                              TextFormField(
+                                controller: _narrativeController,
+                                maxLines: 10,
+                                style: TextStyle(fontSize: 15, color: Colors.black),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.black),
+                                  ),
+                                  contentPadding: EdgeInsets.all(8),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Narrative is required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 16),
+                              Center(
+                                child: (kIsWeb ? _webImage != null : _imageFile != null)
+                                    ? Column(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: kIsWeb
+                                                ? Image.memory(
+                                                    _webImage!,
+                                                    height: 200,
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : Image.file(
+                                                    _imageFile!,
+                                                    height: 200,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              TextButton.icon(
+                                                onPressed: _showImageSourceOptions,
+                                                icon: Icon(Icons.edit, color: Color(0xFF0D47A1)),
+                                                label: Text('Change Image', style: TextStyle(color: Color(0xFF0D47A1))),
+                                              ),
+                                              SizedBox(width: 16),
+                                              TextButton.icon(
+                                                onPressed: () => setState(() {
+                                                  _imageFile = null;
+                                                  _webImage = null;
+                                                }),
+                                                icon: Icon(Icons.delete, color: Colors.red),
+                                                label: Text('Remove', style: TextStyle(color: Colors.red)),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    : InkWell(
+                                        onTap: _showImageSourceOptions,
+                                        child: Container(
+                                          width: double.infinity,
+                                          height: 150,
+                                          decoration: BoxDecoration(
+                                            border: Border.all(color: Colors.grey.shade300, width: 2),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.add_a_photo, size: 48, color: Color(0xFF0D47A1)),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Add Photo',
+                                                style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.bold),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'Take a photo or select from gallery',
+                                                style: TextStyle(color: Colors.black54, fontSize: 12),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ],
                           ),
                         ),
                         
@@ -2110,7 +2136,171 @@ class FillUpForm extends State<FillUpFormScreen> {
         ),
       bottomNavigationBar: SubmitButton(
         formKey: _formKey,
-        onSubmit: submitForm,
+        onSubmit: () async {
+          // Custom validation and auto-scroll logic
+          bool valid = _formKey.currentState!.validate();
+          if (!valid) {
+            // Find the first required field that is empty
+            for (final entry in _requiredFieldKeys.entries) {
+              final label = entry.key;
+              final key = entry.value;
+              // Check if the controller for this label is empty
+              TextEditingController? controller;
+              switch (label) {
+                case 'TYPE OF INCIDENT':
+                  controller = _typeOfIncidentController;
+                  break;
+                case 'COPY FOR':
+                  controller = _copyForController;
+                  break;
+                case 'SURNAME':
+                  controller = _surnameReportingController;
+                  break;
+                case 'FIRST NAME':
+                  controller = _firstNameReportingController;
+                  break;
+                case 'MIDDLE NAME':
+                  controller = _middleNameReportingController;
+                  break;
+                case 'QUALIFIER':
+                  controller = _qualifierReportingController;
+                  break;
+                case 'NICKNAME':
+                  controller = _nicknameReportingController;
+                  break;
+                case 'CITIZENSHIP':
+                  controller = _citizenshipReportingController;
+                  break;
+                case 'SEX/GENDER':
+                  controller = _sexGenderReportingController;
+                  break;
+                case 'CIVIL STATUS':
+                  controller = _civilStatusReportingController;
+                  break;
+                case 'DATE OF BIRTH':
+                  controller = _dateOfBirthReportingController;
+                  break;
+                case 'AGE':
+                  controller = _ageReportingController;
+                  break;
+                case 'PLACE OF BIRTH':
+                  controller = _placeOfBirthReportingController;
+                  break;
+                case 'HOME PHONE':
+                  controller = _homePhoneReportingController;
+                  break;
+                case 'MOBILE PHONE':
+                  controller = _mobilePhoneReportingController;
+                  break;
+                case 'CURRENT ADDRESS (HOUSE NUMBER/STREET)':
+                  controller = _currentAddressReportingController;
+                  break;
+                case 'VILLAGE/SITIO':
+                  controller = _villageSitioReportingController;
+                  break;
+                case 'REGION':
+                  controller = null; // Special case, handled by Region selector
+                  break;
+                case 'PROVINCE':
+                  controller = null; // Special case, handled by Province selector
+                  break;
+                case 'TOWN/CITY':
+                  controller = null; // Special case, handled by Municipality selector
+                  break;
+                case 'BARANGAY':
+                  controller = null; // Special case, handled by Barangay selector
+                  break;
+                // Add all other required fields for victim and narrative sections
+                case 'SURNAME VICTIM':
+                  controller = _surnameVictimController;
+                  break;
+                case 'FIRST NAME VICTIM':
+                  controller = _firstNameVictimController;
+                  break;
+                case 'MIDDLE NAME VICTIM':
+                  controller = _middleNameVictimController;
+                  break;
+                case 'QUALIFIER VICTIM':
+                  controller = _qualifierVictimController;
+                  break;
+                case 'NICKNAME VICTIM':
+                  controller = _nicknameVictimController;
+                  break;
+                case 'CITIZENSHIP VICTIM':
+                  controller = _citizenshipVictimController;
+                  break;
+                case 'SEX/GENDER VICTIM':
+                  controller = _sexGenderVictimController;
+                  break;
+                case 'CIVIL STATUS VICTIM':
+                  controller = _civilStatusVictimController;
+                  break;
+                case 'DATE OF BIRTH VICTIM':
+                  controller = _dateOfBirthVictimController;
+                  break;
+                case 'AGE VICTIM':
+                  controller = _ageVictimController;
+                  break;
+                case 'PLACE OF BIRTH VICTIM':
+                  controller = _placeOfBirthVictimController;
+                  break;
+                case 'HOME PHONE VICTIM':
+                  controller = _homePhoneVictimController;
+                  break;
+                case 'MOBILE PHONE VICTIM':
+                  controller = _mobilePhoneVictimController;
+                  break;
+                case 'CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM':
+                  controller = _currentAddressVictimController;
+                  break;
+                case 'VILLAGE/SITIO VICTIM':
+                  controller = _villageSitioVictimController;
+                  break;
+                case 'REGION VICTIM':
+                  controller = null; // Special case, handled by Region selector
+                  break;
+                case 'PROVINCE VICTIM':
+                  controller = null; // Special case, handled by Province selector
+                  break;
+                case 'TOWN/CITY VICTIM':
+                  controller = null; // Special case, handled by Municipality selector
+                  break;
+                case 'BARANGAY VICTIM':
+                  controller = null; // Special case, handled by Barangay selector
+                  break;
+                case 'TYPE OF INCIDENT D':
+                  controller = _typeOfIncidentDController;
+                  break;
+                case 'DATE/TIME OF INCIDENT':
+                  controller = _dateTimeIncidentDController;
+                  break;
+                case 'PLACE OF INCIDENT D':
+                  controller = _placeOfIncidentDController;
+                  break;
+                case 'NARRATIVE OF INCIDENT':
+                  controller = _narrativeController;
+                  break;
+              }
+              if (controller != null && (controller.text.isEmpty)) {
+                // Scroll to the widget
+                final context = key.currentContext;
+                if (context != null) {
+                  Scrollable.ensureVisible(context, duration: Duration(milliseconds: 500), curve: Curves.easeInOut, alignment: 0.10);
+                }
+                break;
+              }
+            }
+            // Show validation error
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Please fill all required fields.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+          await submitForm();
+        },
         isSubmitting: isSubmitting,
       ),
     );

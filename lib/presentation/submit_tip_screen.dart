@@ -10,7 +10,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:geocoding/geocoding.dart'; // Add this import for geocoding
-import 'utils/modal_utils.dart'; // Import the new modal utils
 import 'package:http/http.dart' as http; // Add HTTP package for API calls
 
 class SubmitTipScreen extends StatefulWidget {
@@ -46,13 +45,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   String _validationMessage = '';
   String _validationConfidence = '0.0';
   
+  // Variables for nearby tips feature
+  bool _isCheckingNearbyTips = false;
+  List<Map<String, dynamic>> _nearbyTips = [];
+  final double _nearbyTipsRadius = 100; 
+  bool _hasNearbyTips = false;
+  
   // Create a map to store keys for form fields
   final Map<String, GlobalKey<FormFieldState>> _fieldKeys = {
     'dateLastSeen': GlobalKey<FormFieldState>(),
     'timeLastSeen': GlobalKey<FormFieldState>(),
     'gender': GlobalKey<FormFieldState>(),
-    'ageRange': GlobalKey<FormFieldState>(), // Add key for age range
-    'heightRange': GlobalKey<FormFieldState>(), // Add key for height range
+    'ageRange': GlobalKey<FormFieldState>(),
+    'heightRange': GlobalKey<FormFieldState>(),
     'clothing': GlobalKey<FormFieldState>(),
     'features': GlobalKey<FormFieldState>(),
     'hairColor': GlobalKey<FormFieldState>(),
@@ -137,66 +142,81 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   Set<Marker> markers = {};
   LatLng? selectedLocation;
 
+  static const String SCREEN_SUBMIT_TIP_COMPLIANCE = 'submitTipComplianceAccepted';
+
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
-    
-    // Check if user has already accepted the privacy policy
-    checkPrivacyPolicyAcceptance();
+    checkScreenCompliance();
   }
-  
-  // Method to check privacy policy acceptance
-  Future<void> checkPrivacyPolicyAcceptance() async {
+
+  // Check compliance for submit tip screen
+  Future<void> checkScreenCompliance() async {
     setState(() {
       isCheckingPrivacyStatus = true;
     });
-    
     try {
-      bool accepted = await ModalUtils.checkPrivacyPolicyAcceptance(
-        screenType: ModalUtils.SCREEN_SUBMIT_TIP
-      );
-      
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          hasAcceptedPrivacyPolicy = false;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          showCompliance();
+        });
+        return;
+      }
+      final authService = AuthService();
+      bool accepted = await authService.getScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE);
       setState(() {
         hasAcceptedPrivacyPolicy = accepted;
       });
-      
       if (!accepted) {
-        // Show legal disclaimer followed by privacy policy
         WidgetsBinding.instance.addPostFrameCallback((_) {
           showCompliance();
         });
       }
     } catch (e) {
-      print('Error checking privacy policy acceptance: $e');
+      print('Error checking compliance acceptance: $e');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showCompliance();
+      });
     } finally {
       setState(() {
         isCheckingPrivacyStatus = false;
       });
     }
   }
-  
-  // Method to show both modals in sequence
+
+  // Show both modals in sequence for submit tip
   void showCompliance() {
+    final currentUser = _auth.currentUser;
+    if (hasAcceptedPrivacyPolicy) return;
     ModalUtils.showLegalDisclaimerModal(
       context,
-      onAccept: () {
-        // Show privacy policy after legal disclaimer is accepted
+      onAccept: () async {
         ModalUtils.showPrivacyPolicyModal(
           context,
-          screenType: ModalUtils.SCREEN_SUBMIT_TIP,
-          onAcceptanceUpdate: (accepted) {
+          onAcceptanceUpdate: (accepted) async {
             setState(() {
               hasAcceptedPrivacyPolicy = accepted;
             });
-            
-            // If user disagrees, navigate back
+            if (accepted && currentUser != null) {
+              try {
+                await AuthService().updateScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE, true);
+                print('Submit tip compliance accepted in database');
+              } catch (e) {
+                print('Error updating submit tip compliance: $e');
+              }
+            } else if (!accepted && currentUser != null) {
+              await AuthService().updateScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE, false);
+            }
             if (!accepted) {
               Navigator.of(context).pop();
             }
           },
           onCancel: () {
-            // Navigate back if user cancels
             Navigator.of(context).pop();
           },
         );
@@ -246,10 +266,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 ),
               ),
             );
-          }
-
-          // Get address when location is updated
+          }          // Get address when location is updated
           _getAddressFromCoordinates();
+          
+          // Check for nearby tips with the current location
+          _checkForNearbyTips();
         });
       } else {
         // Show error message if permission is denied
@@ -270,7 +291,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       });
     }
   }
-
   void _updateMarkerAndControllers() {
     if (selectedLocation != null) {
       markers.clear();
@@ -286,6 +306,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               _latitudeController.text = newPosition.latitude.toString();
               _getAddressFromCoordinates(); // Get address when marker is dragged
             });
+            // Check for nearby tips when marker is dragged
+            _checkForNearbyTips();
           },
         ),
       );
@@ -579,6 +601,18 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       return;
     }
 
+    // Check if there are nearby tips before proceeding
+    if (_hasNearbyTips && _nearbyTips.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot submit tip: There is already a tip within ${_nearbyTipsRadius.toInt()} meters of this location.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     if (_formKey.currentState?.validate() ?? false) {
       try {
         // Update UI to show loading state
@@ -626,6 +660,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           address: _addressController.text,
           imageData: imageData, // Pass the image data to the service
           validateImage: false, // Disable second validation since we already validated
+          caseId: widget.person.caseId, // Pass the caseId for missing person name lookup
+          missingPersonName: widget.person.name, // Pass the name from the UI
         );
 
         // Update UI to show success
@@ -822,13 +858,14 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     },
                     markers: markers,
                     myLocationButtonEnabled: true,
-                    myLocationEnabled: true,
-                    onTap: (LatLng position) {
+                    myLocationEnabled: true,                    onTap: (LatLng position) {
                       setState(() {
                         selectedLocation = position;
                         _updateMarkerAndControllers();
                         _getAddressFromCoordinates(); // Get address when map is tapped
                       });
+                      // Check for nearby tips when a new location is tapped
+                      _checkForNearbyTips();
                     },
                   ),
           ),
@@ -1012,24 +1049,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _submitTip,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      child: Text(
-                        "SUBMIT TIP",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(100, 0, 39, 76),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      backgroundColor: Color(0xFF0D47A1),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 15),
                     ),
-                  ),
+                    child: Text(
+                      "Submit Tip",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),                  SizedBox(height: 32),
                 ],
               ),
             ),
@@ -1066,11 +1095,10 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       ),
     );
   }
-
   Widget _buildCard({required Widget child}) {
     return Card(
       elevation: 4,
-      color: const Color.fromARGB(255, 218, 218, 218), // Add light background color
+      color: Colors.grey.shade200, // Light background color
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -1614,6 +1642,49 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return "Success";
       default:
         return "Information";
+    }
+  }
+
+  // Add new method to check for nearby tips
+  Future<void> _checkForNearbyTips() async {
+    if (selectedLocation == null) return;
+    
+    setState(() {
+      _isCheckingNearbyTips = true;
+      _nearbyTips = [];
+      _hasNearbyTips = false;
+    });
+    
+    try {
+      final TipService tipService = TipService();
+      final nearbyTips = await tipService.findNearbyTips(
+        selectedLocation!.latitude,
+        selectedLocation!.longitude,
+        _nearbyTipsRadius
+      );
+      
+      setState(() {
+        _isCheckingNearbyTips = false;
+        _nearbyTips = nearbyTips;
+        _hasNearbyTips = nearbyTips.isNotEmpty;
+      });
+      
+      // Show a notification if there are nearby tips
+      if (_hasNearbyTips) {
+        final tipsCount = _nearbyTips.length;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$tipsCount nearby tip(s) found within ${_nearbyTipsRadius.toInt()} meters of this location'),
+            backgroundColor: Colors.amber.shade700,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error checking for nearby tips: $e');
+      setState(() {
+        _isCheckingNearbyTips = false;
+      });
     }
   }
 }

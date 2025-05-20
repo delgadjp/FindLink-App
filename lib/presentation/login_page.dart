@@ -157,13 +157,19 @@ class _LoginPageState extends State<LoginPage> {
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (_formKey.currentState!.validate()) {
-                                      _authService.loginUser(
-                                        email: emailController.text,
-                                        password: passwordController.text,
-                                        context: context,
-                                      );
+                                      try {
+                                        await _authService.loginUser(
+                                          email: emailController.text,
+                                          password: passwordController.text,
+                                          context: context,
+                                        );
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(e.toString())),
+                                        );
+                                      }
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(

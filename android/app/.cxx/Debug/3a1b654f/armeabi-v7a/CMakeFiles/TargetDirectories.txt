@@ -1,0 +1,2 @@
+C:/Users/HomerJavie/Downloads/FindLink-App/android/app/.cxx/Debug/3a1b654f/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/HomerJavie/Downloads/FindLink-App/android/app/.cxx/Debug/3a1b654f/armeabi-v7a/CMakeFiles/rebuild_cache.dir
