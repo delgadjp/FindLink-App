@@ -42,6 +42,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
     'expirationDate': null, // Added field for expiration date
     'philIDNumber': '', // Added field for Philippine ID number
     'address': '', // Added field for complete address
+    'licenseNo': '', // Added field for Driver's License number
   };
 
   // Current user email from Firebase Auth or registration data
@@ -459,12 +460,86 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       }
     }
     
-    // Set default values to empty string if data wasn't extracted
-    extractedData['firstName'] = extractedData['firstName'] ?? '';
-    extractedData['middleName'] = extractedData['middleName'] ?? '';
-    extractedData['lastName'] = extractedData['lastName'] ?? '';
+    // Extract License No. (Philippines format: Dxx-xx-xxxxx or similar)
+    final licenseNoRegex = RegExp(r'LICENSE\s*NO\.?\s*[:\-]?\s*([A-Z0-9\-]+)', caseSensitive: false);
+    final licenseNoMatch = licenseNoRegex.firstMatch(upperCaseText);
+    if (licenseNoMatch != null) {
+      extractedData['licenseNo'] = licenseNoMatch.group(1)?.trim() ?? '';
+    } else {
+      // Try to find a line that looks like a license number (e.g., D37-24-001894)
+      final lines = upperCaseText.split('\n');
+      for (final line in lines) {
+        if (RegExp(r'^D\d{2,3}[-]?\d{2}[-]?\d{5,}$').hasMatch(line.trim())) {
+          extractedData['licenseNo'] = line.trim();
+          break;
+        }
+      }
+    }
+
+    // Extract Address - specific to Philippines driver's license format
+    String extractedAddress = '';
+
+    // Direct pattern matching for the exact address format
+    final exactAddressPattern = RegExp(
+      r'(?:ADDRESS\s*[:]*\s*)?(?:LOT\s+\d+,?\s*BLOCK\s+\d+[A-Za-z]*,?\s*PHASE\s+\d+[A-Za-z]*,?\s*[A-Za-z]+\s+ST\.,?\s*[A-ZaZ]+,?\s*VILL\.,?\s*[A-Za-z]+\s+[IVX]+,?\s*CITY\s+OF\s+[A-Za-z\sÑñ]+,?\s*[A-Za-z]+,?\s*\d{4})',
+      caseSensitive: false
+    );
     
-    print('Extracted data: $extractedData');
+    final addressMatch = exactAddressPattern.firstMatch(upperCaseText);
+    if (addressMatch != null) {
+      extractedAddress = addressMatch.group(0)?.replaceAll('ADDRESS', '').trim() ?? '';
+    }
+
+    // If exact pattern didn't match, try line-by-line approach
+    if (extractedAddress.isEmpty) {
+      final lines = upperCaseText.split('\n');
+      for (String line in lines) {
+        if (line.contains('LOT') && 
+            line.contains('BLOCK') && 
+            line.contains('PHASE') && 
+            line.contains('ST.') && 
+            line.contains('VILL.')) {
+          extractedAddress = line.trim();
+          
+          // Get the next line if it contains city and zip code
+          final lineIndex = lines.indexOf(line);
+          if (lineIndex < lines.length - 1) {
+            final nextLine = lines[lineIndex + 1].trim();
+            if (nextLine.contains('CITY OF') || RegExp(r'\d{4}$').hasMatch(nextLine)) {
+              extractedAddress += ', ' + nextLine;
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // Clean up the address
+    if (extractedAddress.isNotEmpty) {
+      // Remove any potential header text
+      extractedAddress = extractedAddress
+        .replaceAll(RegExp(r'ADDRESS\s*:?\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'PRESENT\s+ADDRESS\s*:?\s*', caseSensitive: false), '')
+        .trim();
+
+      // Format the address properly
+      final addressParts = extractedAddress
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+      extractedAddress = addressParts.join(', ');
+    }
+
+    extractedData['address'] = _toTitleCase(extractedAddress);
+    
+    // Clean up any double commas in address
+    if (extractedData['address']?.isNotEmpty == true) {
+      extractedData['address'] = extractedData['address']!.replaceAll(RegExp(r',\s*,'), ',');
+    }
+
+    // ...existing code...
   }
   
   // Extract data from national ID
@@ -696,25 +771,25 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
           // Optionally, concatenate the next line if it looks like part of the address
           if (j + 1 < lines.length &&
               RegExp(r'PHILIPPINES|CITY|CAVITE|MANILA|PROVINCE|4103|[0-9]').hasMatch(lines[j + 1])) {
-            extractedAddress += ', ' + lines[j + 1].trim();
+            // Check if the current address already ends with a comma before adding another
+            if (extractedAddress.endsWith(',')) {
+              extractedAddress += ' ' + lines[j + 1].trim();
+            } else {
+              extractedAddress += ', ' + lines[j + 1].trim();
+            }
           }
         }
         break;
-      }
-    }
-    // Fallback: look for a line that matches a typical PH address pattern
-    if (extractedAddress.isEmpty) {
-      for (final line in lines) {
-        if (RegExp(r'PH \d+').hasMatch(line) && line.contains('CITY')) {
-          extractedAddress = line.trim();
-          break;
-        }
       }
     }
     // Remove any header text if present
     if (extractedAddress.contains('REPUBLIC OF THE PHILIPPINES')) {
       extractedAddress = '';
     }
+    
+    // Clean up any double commas that might still be present
+    extractedAddress = extractedAddress.replaceAll(',,', ',');
+    
     extractedData['address'] = _toTitleCase(extractedAddress);
     
     // If we didn't find the address with the label, look for typical address patterns
@@ -734,11 +809,21 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                lines[i+1].contains('MANILA') || 
                lines[i+1].contains('CITY') || 
                lines[i+1].contains('PROVINCE'))) {
-            extractedData['address'] += ', ' + _toTitleCase(lines[i+1].trim());
+            // Check if current address ends with a comma
+            if (extractedData['address']!.endsWith(',')) {
+              extractedData['address'] += ' ' + _toTitleCase(lines[i+1].trim());
+            } else {
+              extractedData['address'] += ', ' + _toTitleCase(lines[i+1].trim());
+            }
           }
           break;
         }
       }
+    }
+    
+    // Final cleanup for any double commas that might still exist
+    if (extractedData['address'] != null) {
+      extractedData['address'] = extractedData['address']!.replaceAll(',,', ',');
     }
     
     print('Extracted data from Philippine Identification Card: $extractedData');
@@ -1148,13 +1233,13 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                             _buildReadOnlyField('Address', extractedData['address']),
                           ],
                           // Driver's License specific fields
-                          if (widget.idType == 'Driver\'s License' && extractedData['expirationDate'] != null)
-                            _buildReadOnlyField(
-                              'Expiration Date',
-                              extractedData['expirationDate'] != null
-                                ? DateFormat('MM/dd/yyyy').format(extractedData['expirationDate'])
-                                : null,
-                            ),
+                          if (widget.idType == 'Driver\'s License') ...[
+                            _buildReadOnlyField('License No.', extractedData['licenseNo']),
+                            _buildReadOnlyField('Address', extractedData['address']),
+                          ],
+                          // Remove the Driver's License expiration date field display
+                          // but keep all the expiration validation logic elsewhere
+                          
                           // Email field
                           _buildReadOnlyField('Email', userEmail),
                           

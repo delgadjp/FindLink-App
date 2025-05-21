@@ -36,7 +36,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
           ),
         ],
       ),
-      drawer: AppDrawer(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

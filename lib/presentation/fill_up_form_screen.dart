@@ -1023,13 +1023,17 @@ class FillUpForm extends State<FillUpFormScreen> {
   @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        elevation: 0, // Remove shadow
+        title: Text(
+          "Incident Record Form",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: Color(0xFF0D47A1),
         actions: [
           // ...existing code...
         ],
       ),
-      drawer: AppDrawer(),
-      body: isCheckingPrivacyStatus 
+            body: isCheckingPrivacyStatus 
         ? Center(child: CircularProgressIndicator()) // Show loading while checking privacy status
         : SingleChildScrollView(
           controller: _scrollController,

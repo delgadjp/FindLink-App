@@ -462,8 +462,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         title: Text("Profile", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
+        actions: [
+          // Modified sign out button with icon positioned after text
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: TextButton(
+              onPressed: _signOut,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                minimumSize: Size(120, 40), // Set minimum size for the button
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Sign Out",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22, // Increased font size to match app bar title
+                    ),
+                  ),
+                  SizedBox(width: 8),  // Space between text and icon
+                  Icon(
+                    Icons.logout, 
+                    color: Colors.white,
+                    size: 24, // Increased icon size
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
-      drawer: AppDrawer(),
       body: _isLoading 
       ? Center(child: CircularProgressIndicator())
       : Container(

@@ -62,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: Color(0xFF0D47A1),
       ),
-      drawer: AppDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _callPNPHotline,
         icon: Icon(Icons.call),
@@ -70,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Color(0xFF0D47A1), // Match app bar color
         foregroundColor: Colors.white, // Make text and icon white
       ),
-            body: Container(
+      body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -208,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: 12),
                     _buildAnimatedGridItem(
                       icon: Icons.file_upload,
-                      label: "FILL UP FILE",
+                      label: "INCIDENT RECORD FORM",
                       subtitle: "Report a new missing person case",
                       onTap: () {
                         Navigator.push(
