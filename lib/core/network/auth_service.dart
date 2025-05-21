@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:intl/intl.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -525,5 +526,194 @@ class AuthService {
     } catch (e) {
       print('Error updating compliance acceptance for $screenKey: $e');
     }
+  }
+  
+  // Get user's cases from multiple collections
+  Future<List<Map<String, dynamic>>> getUserCasesFromMultipleCollections() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final List<Map<String, dynamic>> allCases = [];
+      
+      // 1. Fetch from incidents collection
+      final QuerySnapshot incidentsQuery = await _firestore
+          .collection('incidents')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in incidentsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final incidentDetails = data['incidentDetails'] ?? {};
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': incidentDetails['incidentId'] ?? doc.id,
+          'name': _extractCaseName(data),
+          'dateCreated': _formatTimestamp(incidentDetails['createdAt']),
+          'status': data['status'] ?? 'Reported',
+          'source': 'incidents',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // 2. Fetch from missingPersons collection
+      final QuerySnapshot missingPersonsQuery = await _firestore
+          .collection('missingPersons')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in missingPersonsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['case_id'] ?? doc.id,
+          'name': data['name'] ?? 'Unknown Person',
+          'dateCreated': _formatTimestamp(data['datetime_reported']),
+          'status': data['status'] ?? 'Reported',
+          'source': 'missingPersons',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // 3. Fetch from archivedCases collection
+      final QuerySnapshot archivedCasesQuery = await _firestore
+          .collection('archivedCases')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in archivedCasesQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        String status = data['status'] ?? 'Reported';
+        
+        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
+        if (status == 'Resolved') {
+          status = 'Resolved Case';
+        }
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['incidentId'] ?? doc.id,
+          'name': _extractCaseName(data),
+          'dateCreated': _formatTimestamp(data['createdAt']),
+          'status': status,
+          'source': 'archivedCases',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // Sort all cases by date (newest first)
+      allCases.sort((a, b) {
+        final DateTime dateA = _parseTimestamp(a['dateCreated']);
+        final DateTime dateB = _parseTimestamp(b['dateCreated']);
+        return dateB.compareTo(dateA);
+      });
+      
+      return allCases;
+    } catch (e) {
+      print('Error fetching user cases from multiple collections: $e');
+      return [];
+    }
+  }
+  
+  // Helper method to extract name from different structures
+  String _extractCaseName(Map<String, dynamic> data) {
+    if (data['itemC'] != null) {
+      final itemC = data['itemC'];
+      return ((itemC['firstName'] ?? '') +
+          (itemC['middleName'] != null ? ' ${itemC['middleName']}' : '') +
+          (itemC['familyName'] != null ? ' ${itemC['familyName']}' : '')).trim();
+    } else if (data['name'] != null) {
+      return data['name'];
+    } else {
+      return 'Unknown Person';
+    }
+  }
+  
+  // Helper method to format timestamp
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+    
+    try {
+      DateTime dateTime;
+      if (timestamp is Timestamp) {
+        dateTime = timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      } else if (timestamp is String) {
+        dateTime = DateTime.parse(timestamp);
+      } else {
+        return '';
+      }
+      return DateFormat('dd MMM yyyy').format(dateTime);
+    } catch (e) {
+      print('Error formatting timestamp: $e');
+      return '';
+    }
+  }
+  
+  // Helper method to parse date string or timestamp to DateTime
+  DateTime _parseTimestamp(dynamic timestamp) {
+    try {
+      if (timestamp is String) {
+        return DateFormat('dd MMM yyyy').parse(timestamp);
+      } else if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        return DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      }
+      return DateTime.now();
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+  
+  // Generate progress steps based on status (for case tracking)
+  List<Map<String, String>> generateProgressSteps(String currentStatus) {
+    // Map to convert status to step number (1-indexed)
+    final Map<String, int> statusToStep = {
+      'Reported': 1,
+      'Under Review': 2,
+      'Case Verified': 3,
+      'In Progress': 4,
+      'Resolved Case': 5,
+      'Unresolved Case': 6,
+      'Resolved': 5, // Map 'Resolved' to 'Resolved Case' step
+    };
+    
+    final List<Map<String, String>> caseProgressSteps = [
+      {'stage': 'Reported', 'status': 'Pending'},
+      {'stage': 'Under Review', 'status': 'Pending'},
+      {'stage': 'Case Verified', 'status': 'Pending'},
+      {'stage': 'In Progress', 'status': 'Pending'},
+      {'stage': 'Resolved Case', 'status': 'Pending'},
+      {'stage': 'Unresolved Case', 'status': 'Pending'},
+    ];
+    
+    final int currentStep = statusToStep[currentStatus] ?? 1;
+    
+    return caseProgressSteps.map((step) {
+      final int stepNumber = caseProgressSteps.indexOf(step) + 1;
+      String status;
+      
+      if (stepNumber < currentStep) {
+        status = 'Completed';
+      } else if (stepNumber == currentStep) {
+        status = 'In Progress';
+      } else {
+        status = 'Pending';
+      }
+      
+      return {
+        'stage': step['stage'] ?? '',
+        'status': status,
+      };
+    }).toList();
   }
 }

@@ -24,7 +24,7 @@ export 'package:findlink/widgets/form/form_components.dart';
 
 export 'package:findlink/presentation/home_screen.dart';
 export 'package:findlink/presentation/missing_person_screen.dart';
-export 'package:findlink/presentation/profile_screen.dart';
+
 export 'package:findlink/presentation/case_details_screen.dart';
 export 'package:findlink/presentation/login_page.dart';
 export 'package:findlink/presentation/register_page.dart';
@@ -33,6 +33,7 @@ export 'package:findlink/presentation/faq_screen.dart';
 export 'package:findlink/presentation/id_validation_screen.dart';
 export 'package:findlink/presentation/confirm_id_details_screen.dart';
 export 'package:findlink/presentation/forgot_password_page.dart';
+export 'package:findlink/presentation/splash_screen.dart';
 
 export 'package:findlink/presentation/utils/modal_utils.dart';
 

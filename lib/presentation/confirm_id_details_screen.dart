@@ -229,7 +229,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       throw e;
     }
   }
-    // Extract data from driver's license using regex patterns
+  // Extract data from driver's license using regex patterns
   void _extractDriversLicenseData(String text) {
     // Convert text to uppercase for consistent matching
     final upperCaseText = text.toUpperCase();
@@ -293,14 +293,26 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
             if (nameParts.length >= 2) {
               extractedData['lastName'] = _toTitleCase(nameParts[0].trim());
               
-              // Split the rest by space to get first and middle name
-              final otherNames = nameParts[1].trim().split(' ');
-              if (otherNames.isNotEmpty) {
-                extractedData['firstName'] = _toTitleCase(otherNames[0].trim());
-                
-                if (otherNames.length > 1) {
-                  extractedData['middleName'] = _toTitleCase(otherNames.sublist(1).join(' ').trim());
-                }
+              // Modified: Use similar approach as PhilID to handle multi-word first and middle names
+              // Get everything after the comma
+              final remainingName = nameParts[1].trim();
+              
+              // Try to find where the middle name starts by searching for common middle name patterns
+              // For Philippine names, middle names often appear after 2-3 words for the first name
+              final words = remainingName.split(' ').where((w) => w.isNotEmpty).toList();
+              
+              if (words.length >= 3) {
+                // Assume first 2 words are first name, rest are middle name (common pattern)
+                extractedData['firstName'] = _toTitleCase(words.sublist(0, 2).join(' ').trim());
+                extractedData['middleName'] = _toTitleCase(words.sublist(2).join(' ').trim());
+              } else if (words.length == 2) {
+                // If only 2 words, assume first word is first name, second is middle name
+                extractedData['firstName'] = _toTitleCase(words[0].trim());
+                extractedData['middleName'] = _toTitleCase(words[1].trim());
+              } else if (words.length == 1) {
+                // If only one word, it's the first name with no middle name
+                extractedData['firstName'] = _toTitleCase(words[0].trim());
+                extractedData['middleName'] = '';
               }
             }
           }
@@ -308,7 +320,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
         }
       }
       
-      // If still no match, look for comma-separated name directly (e.g., "FORMILLEZA, EDRIAN JUNTURA")
+      // If still no match, look for comma-separated name directly (e.g., "TANEO, DON ANDREI FLORES")
       if (extractedData['firstName']?.isEmpty == true && extractedData['lastName']?.isEmpty == true) {
         for (String line in lines) {
           if (line.contains(',') && !line.contains("LAST NAME") && !line.contains("EXPIRATION")) {
@@ -316,14 +328,25 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
             if (nameParts.length >= 2) {
               extractedData['lastName'] = _toTitleCase(nameParts[0].trim());
               
-              // Split the rest by space to get first and middle name
-              final otherNames = nameParts[1].trim().split(' ');
-              if (otherNames.isNotEmpty) {
-                extractedData['firstName'] = _toTitleCase(otherNames[0].trim());
-                
-                if (otherNames.length > 1) {
-                  extractedData['middleName'] = _toTitleCase(otherNames.sublist(1).join(' ').trim());
-                }
+              // Modified: Use similar approach as above to handle multi-word first and middle names
+              // Get everything after the comma - this contains both first and middle name
+              final remainingName = nameParts[1].trim();
+              final words = remainingName.split(' ').where((w) => w.isNotEmpty).toList();
+              
+              // For Philippine driver's licenses like "TANEO, DON ANDREI FLORES"
+              // Try to intelligently separate first name and middle name based on common patterns
+              if (words.length >= 3) {
+                // If >= 3 words, assume first 2 are first name (e.g., "DON ANDREI") and rest are middle name
+                extractedData['firstName'] = _toTitleCase(words.sublist(0, 2).join(' ').trim());
+                extractedData['middleName'] = _toTitleCase(words.sublist(2).join(' ').trim());
+              } else if (words.length == 2) {
+                // If 2 words, assume first is first name, second is middle name
+                extractedData['firstName'] = _toTitleCase(words[0].trim());
+                extractedData['middleName'] = _toTitleCase(words[1].trim());
+              } else if (words.length == 1) {
+                // If only one word, it's the first name
+                extractedData['firstName'] = _toTitleCase(words[0].trim());
+                extractedData['middleName'] = '';
               }
               
               // If this looks like a name (contains no numbers or special markers), break
@@ -546,19 +569,27 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
   void _extractNationalIDData(String text) {
     // Convert text to uppercase for consistent matching
     final upperCaseText = text.toUpperCase();
-    
     print('--- PROCESSING PHILIPPINE IDENTIFICATION CARD TEXT ---');
     print(upperCaseText);
     print('----------------------------------');
-    
-    // Look for the Philippines National ID (PhilSys) format
-    
+
     // Extract last name - Appears after "Apelyido / Last Name" label
-    final lastNameRegex = RegExp(r'(?:APELYIDO|LAST NAME)[:\s/]+([A-Z\s]+)(?=\n|MGA|GIVEN)', dotAll: true, caseSensitive: false);
+    final lastNameRegex = RegExp(r'(?:APELYIDO|LAST NAME)[^A-Z0-9]*([A-Z\s]+)', dotAll: true, caseSensitive: false);
     final lastNameMatch = lastNameRegex.firstMatch(upperCaseText);
-    
     if (lastNameMatch != null) {
-      extractedData['lastName'] = _toTitleCase(lastNameMatch.group(1)?.trim() ?? '');
+      String lastName = lastNameMatch.group(1)?.trim() ?? '';
+      // Remove any label text that might have been included
+      lastName = lastName.replaceAll(RegExp(r'LAST NAME', caseSensitive: false), '')
+                         .replaceAll(RegExp(r'APELYIDO', caseSensitive: false), '')
+                         .replaceAll(RegExp(r'MGA PANGALAN', caseSensitive: false), '')
+                         .replaceAll(RegExp(r'GIVEN NAMES', caseSensitive: false), '')
+                         .replaceAll(RegExp(r'MIDDLE NAME', caseSensitive: false), '')
+                         .replaceAll(RegExp(r'GITNANG APELYIDO', caseSensitive: false), '')
+                         .replaceAll(RegExp(r'/'), '')
+                         .trim();
+      // Remove any trailing label fragments
+      lastName = lastName.replaceAll(RegExp(r'\b(MGA PANGALAN|GIVEN NAMES|MIDDLE NAME|GITNANG APELYIDO)\b', caseSensitive: false), '').trim();
+      extractedData['lastName'] = _toTitleCase(lastName);
     }
       // Extract first name - Appears after "Mga Pangalan / Given Names" label
     final firstNameRegex = RegExp(r'(?:MGA PANGALAN|GIVEN NAMES)[:\s/]+([A-Z\s]+)(?=\n|GITNA|MIDDLE)', dotAll: true, caseSensitive: false);
@@ -1219,7 +1250,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                           Divider(color: Color(0xFF53C0FF), thickness: 1.5),
                           SizedBox(height: 15),                          // Display ID information
                           _buildReadOnlyField('First Name', extractedData['firstName']),
-                          _buildReadOnlyField('Middle Name', extractedData['middleName']),
+                          _buildReadOnlyField('Middle Name', extractedData['middleName']),                          
                           _buildReadOnlyField('Last Name', extractedData['lastName']),
                           _buildReadOnlyField(
                             'Date of Birth', 
@@ -1227,18 +1258,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                                 ? DateFormat('MM/dd/yyyy').format(extractedData['dateOfBirth']) 
                                 : null,
                           ),
-                          // Philippine ID specific fields
-                          if (widget.idType == 'Philippine Identification Card') ...[
-                            _buildReadOnlyField('PhilID Number', extractedData['philIDNumber']),
-                            _buildReadOnlyField('Address', extractedData['address']),
-                          ],
-                          // Driver's License specific fields
-                          if (widget.idType == 'Driver\'s License') ...[
-                            _buildReadOnlyField('License No.', extractedData['licenseNo']),
-                            _buildReadOnlyField('Address', extractedData['address']),
-                          ],
-                          // Remove the Driver's License expiration date field display
-                          // but keep all the expiration validation logic elsewhere
+                          // Remove PhilID Number, License No., and Address fields
                           
                           // Email field
                           _buildReadOnlyField('Email', userEmail),

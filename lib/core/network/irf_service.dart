@@ -17,10 +17,20 @@ class IRFService {
   // Google Vision API key - use the same one as in TipService
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
 
+  // Status step definitions from React reference
+  final List<String> statusSteps = [
+    'Reported',
+    'Under Review',
+    'Case Verified',
+    'In Progress',
+    'Resolved Case',
+    'Unresolved Case',
+  ];
   // Add helper method to upload image to Firebase Storage
   Future<String?> uploadImage(dynamic imageData, String irfId) async {
     try {
       // Create reference to the file path in storage
+      // Using 'irf-app-images' folder which is allowed in the Firebase Storage rules
       final Reference storageRef = _storage
           .ref()
           .child('irf-app-images')
@@ -57,10 +67,12 @@ class IRFService {
       final String downloadUrl = await storageRef.getDownloadURL();
       
       print('Image uploaded successfully. URL: $downloadUrl');
-      return downloadUrl;
-    } catch (e) {
+      return downloadUrl;    } catch (e) {
       print('Error uploading image: $e');
-      return null;
+      if (e.toString().contains('unauthorized')) {
+        throw Exception('User not authorized to upload images. Please check your permissions.');
+      }
+      throw Exception('Image upload failed.');
     }
   }
 
@@ -174,7 +186,9 @@ class IRFService {
   CollectionReference get irfCollection => _firestore.collection('incidents');
   
   // Get current user ID
-  String? get currentUserId => _auth.currentUser?.uid;  // Generate a formal document ID format: IRF-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
+  String? get currentUserId => _auth.currentUser?.uid;
+  
+  // Generate a formal document ID format: IRF-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
   Future<String> generateFormalDocumentId() async {
     final today = DateTime.now();
     final dateStr = DateFormat('yyyyMMdd').format(today);
@@ -292,6 +306,194 @@ class IRFService {
         .where('type', isEqualTo: 'report') // Only get reports, not counters
         .orderBy('updatedAt', descending: true)
         .snapshots();
+  }
+  
+  // Get cases from all collections (similar to React implementation)
+  Future<List<Map<String, dynamic>>> getUserCasesFromAllCollections() async {
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final List<Map<String, dynamic>> allCases = [];
+
+      // 1. Fetch from incidents collection
+      final QuerySnapshot incidentsQuery = await _firestore
+          .collection('incidents')
+          .where('userId', isEqualTo: currentUserId)
+          .get();
+
+      for (final doc in incidentsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final incidentDetails = data['incidentDetails'] ?? {};
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': incidentDetails['incidentId'] ?? doc.id,
+          'name': _extractCaseName(data),
+          'dateCreated': _formatTimestamp(incidentDetails['createdAt'] ?? data['createdAt']),
+          'status': data['status'] ?? 'Reported',
+          'source': 'incidents',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // 2. Fetch from missingPersons collection
+      final QuerySnapshot missingPersonsQuery = await _firestore
+          .collection('missingPersons')
+          .where('userId', isEqualTo: currentUserId)
+          .get();
+
+      for (final doc in missingPersonsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['case_id'] ?? doc.id,
+          'name': data['name'] ?? 'Unknown Person',
+          'dateCreated': _formatTimestamp(data['datetime_reported']),
+          'status': data['status'] ?? 'Reported',
+          'source': 'missingPersons',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // 3. Fetch from archivedCases collection
+      final QuerySnapshot archivedCasesQuery = await _firestore
+          .collection('archivedCases')
+          .where('userId', isEqualTo: currentUserId)
+          .get();
+
+      for (final doc in archivedCasesQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        String status = data['status'] ?? 'Reported';
+        
+        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
+        if (status == 'Resolved' && !data['source']) {
+          status = 'Resolved Case';
+        }
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['incidentId'] ?? doc.id,
+          'name': _extractCaseName(data),
+          'dateCreated': _formatTimestamp(data['createdAt']),
+          'status': status,
+          'source': 'archivedCases',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // Sort all cases by date (newest first)
+      allCases.sort((a, b) {
+        final DateTime dateA = _parseTimestamp(a['dateCreated']);
+        final DateTime dateB = _parseTimestamp(b['dateCreated']);
+        return dateB.compareTo(dateA);
+      });
+      
+      return allCases;
+    } catch (e) {
+      print('Error fetching user cases from all collections: $e');
+      return [];
+    }
+  }
+  
+  // Helper method to extract name from different structures
+  String _extractCaseName(Map<String, dynamic> data) {
+    if (data['itemC'] != null) {
+      final itemC = data['itemC'];
+      return ((itemC['firstName'] ?? '') +
+          (itemC['middleName'] != null ? ' ${itemC['middleName']}' : '') +
+          (itemC['familyName'] != null ? ' ${itemC['familyName']}' : '')).trim();
+    } else if (data['name'] != null) {
+      return data['name'];
+    } else {
+      return 'Unknown Person';
+    }
+  }
+  
+  // Helper method to format timestamp
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+    
+    try {
+      DateTime dateTime;
+      if (timestamp is Timestamp) {
+        dateTime = timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      } else if (timestamp is String) {
+        dateTime = DateTime.parse(timestamp);
+      } else {
+        return '';
+      }
+      return DateFormat('dd MMM yyyy').format(dateTime);
+    } catch (e) {
+      print('Error formatting timestamp: $e');
+      return '';
+    }
+  }
+  
+  // Helper method to parse date string or timestamp to DateTime
+  DateTime _parseTimestamp(dynamic timestamp) {
+    try {
+      if (timestamp is String) {
+        return DateFormat('dd MMM yyyy').parse(timestamp);
+      } else if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        return DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      }
+      return DateTime.now();
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+  
+  // Generate progress steps based on status
+  List<Map<String, String>> generateProgressSteps(String currentStatus) {
+    // Map to convert status to step number (1-indexed)
+    final Map<String, int> statusToStep = {
+      'Reported': 1,
+      'Under Review': 2,
+      'Case Verified': 3,
+      'In Progress': 4,
+      'Resolved Case': 5,
+      'Unresolved Case': 6,
+      'Resolved': 5, // Map 'Resolved' to 'Resolved Case' step
+    };
+    
+    final List<Map<String, String>> caseProgressSteps = [
+      {'stage': 'Reported', 'status': 'Pending'},
+      {'stage': 'Under Review', 'status': 'Pending'},
+      {'stage': 'Case Verified', 'status': 'Pending'},
+      {'stage': 'In Progress', 'status': 'Pending'},
+      {'stage': 'Resolved Case', 'status': 'Pending'},
+      {'stage': 'Unresolved Case', 'status': 'Pending'},
+    ];
+    
+    final int currentStep = statusToStep[currentStatus] ?? 1;
+    
+    return caseProgressSteps.map((step) {
+      final int stepNumber = caseProgressSteps.indexOf(step) + 1;
+      String status;
+      
+      if (stepNumber < currentStep) {
+        status = 'Completed';
+      } else if (stepNumber == currentStep) {
+        status = 'In Progress';
+      } else {
+        status = 'Pending';
+      }
+      
+      return {
+        'stage': step['stage'] ?? '',
+        'status': status,
+      };
+    }).toList();
   }
   
   // Delete IRF

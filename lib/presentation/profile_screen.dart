@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
@@ -17,17 +18,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _profileImageUrl = '';
   bool _isLoading = true;
   Map<String, dynamic>? _userData;
-  bool _isVerified = false; // Track verification status
-  String _verificationStatus = 'Not Verified'; // Text status for verification
+  bool _isVerified = false;
+  String _verificationStatus = 'Not Verified';
   
   List<Map<String, dynamic>> _casesData = [];
   int _selectedCaseIndex = 0;
+  
+  // Stream subscriptions for real-time updates
+  List<StreamSubscription<QuerySnapshot>> _streamSubscriptions = [];
+  
+  // Status progression steps
+  final List<Map<String, String>> _caseProgressSteps = [
+    {'stage': 'Reported', 'status': 'Pending'},
+    {'stage': 'Under Review', 'status': 'Pending'},
+    {'stage': 'Case Verified', 'status': 'Pending'},
+    {'stage': 'In Progress', 'status': 'Pending'},
+    {'stage': 'Resolved Case', 'status': 'Pending'},
+    {'stage': 'Unresolved Case', 'status': 'Pending'},
+  ];
+  
+  // Map to convert status to step number (1-indexed)
+  final Map<String, int> _statusToStep = {
+    'Reported': 1,
+    'Under Review': 2,
+    'Case Verified': 3,
+    'In Progress': 4,
+    'Resolved Case': 5,
+    'Unresolved Case': 6,
+    'Resolved': 5, // Map 'Resolved' to 'Resolved Case' step
+  };
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
-    _fetchUserCases();
+    _initializeCaseStreams();
+  }
+
+  @override
+  void dispose() {
+    // Cancel all stream subscriptions
+    for (var subscription in _streamSubscriptions) {
+      subscription.cancel();
+    }
+    super.dispose();
   }
 
   Future<void> _fetchUserData() async {
@@ -101,50 +135,212 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _fetchUserCases() async {
+  // Initialize all case streams
+  void _initializeCaseStreams() async {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Clear existing subscriptions
+    for (var subscription in _streamSubscriptions) {
+      subscription.cancel();
+    }
+    _streamSubscriptions.clear();
+
+    // Stream from incidents collection
+    final incidentsStream = FirebaseFirestore.instance
+        .collection('incidents')
+        .where('userId', isEqualTo: currentUser.uid)
+        .snapshots();
+
+    // Stream from missingPersons collection
+    final missingPersonsStream = FirebaseFirestore.instance
+        .collection('missingPersons')
+        .where('userId', isEqualTo: currentUser.uid)
+        .snapshots();
+
+    // Stream from archivedCases collection
+    final archivedCasesStream = FirebaseFirestore.instance
+        .collection('archivedCases')
+        .where('userId', isEqualTo: currentUser.uid)
+        .snapshots();
+
+    // Add stream subscriptions
+    _streamSubscriptions.add(
+      incidentsStream.listen((snapshot) => _updateCasesData())
+    );
+    
+    _streamSubscriptions.add(
+      missingPersonsStream.listen((snapshot) => _updateCasesData())
+    );
+    
+    _streamSubscriptions.add(
+      archivedCasesStream.listen((snapshot) => _updateCasesData())
+    );
+  }
+
+  // Update cases data from all collections
+  Future<void> _updateCasesData() async {
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      final QuerySnapshot casesQuery = await FirebaseFirestore.instance
+      final List<Map<String, dynamic>> allCases = [];
+      
+      // Fetch from incidents collection
+      final QuerySnapshot incidentsQuery = await FirebaseFirestore.instance
           .collection('incidents')
           .where('userId', isEqualTo: currentUser.uid)
-          .orderBy('updatedAt', descending: true)
           .get();
 
-      final List<Map<String, dynamic>> userCases = [];
-      for (final doc in casesQuery.docs) {
+      for (final doc in incidentsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final incidentDetails = data['incidentDetails'] ?? {};
-        userCases.add({
+        
+        allCases.add({
+          'id': doc.id,
           'caseNumber': incidentDetails['incidentId'] ?? doc.id,
-          'name': (data['itemC']?['firstName'] ?? '') +
-              (data['itemC']?['familyName'] != null ? ' ${data['itemC']['familyName']}' : ''),
-          'dateCreated': incidentDetails['createdAt'] != null
-              ? DateFormat('dd MMM yyyy').format(
-                  (incidentDetails['createdAt'] is Timestamp)
-                      ? (incidentDetails['createdAt'] as Timestamp).toDate()
-                      : DateTime.tryParse(incidentDetails['createdAt'].toString()) ?? DateTime.now())
-              : '',
-          'status': data['status'] ?? 'Unknown',
-          'progress': [
-            {'stage': 'Reported', 'status': 'Completed'},
-            {'stage': 'Under Review', 'status': 'In Progress'},
-            {'stage': 'Case Verified', 'status': 'Pending'},
-            {'stage': 'In Progress', 'status': 'Pending'},
-            {'stage': 'Resolved Case', 'status': 'Pending'},
-            {'stage': 'Unresolved Case', 'status': 'Pending'},
-          ],
+          'name': _extractName(data),
+          'dateCreated': _formatTimestamp(incidentDetails['createdAt']),
+          'status': data['status'] ?? 'Reported',
+          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
         });
       }
+      
+      // Fetch from missingPersons collection
+      final QuerySnapshot missingPersonsQuery = await FirebaseFirestore.instance
+          .collection('missingPersons')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in missingPersonsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['case_id'] ?? doc.id,
+          'name': data['name'] ?? 'Unknown Person',
+          'dateCreated': _formatTimestamp(data['datetime_reported']),
+          'status': data['status'] ?? 'Reported',
+          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // Fetch from archivedCases collection
+      final QuerySnapshot archivedCasesQuery = await FirebaseFirestore.instance
+          .collection('archivedCases')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in archivedCasesQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        String status = data['status'] ?? 'Reported';
+        
+        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
+        if (status == 'Resolved' && data['source'] == 'archivedCases') {
+          status = 'Resolved Case';
+        }
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['incidentId'] ?? doc.id,
+          'name': _extractName(data),
+          'dateCreated': _formatTimestamp(data['createdAt']),
+          'status': status,
+          'progress': _generateProgressSteps(status),
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // Sort all cases by date (newest first)
+      allCases.sort((a, b) {
+        final DateTime dateA = _parseDate(a['dateCreated']);
+        final DateTime dateB = _parseDate(b['dateCreated']);
+        return dateB.compareTo(dateA);
+      });
+      
       setState(() {
-        _casesData = userCases;
-        _selectedCaseIndex = 0;
+        _casesData = allCases;
+        // Maintain selected index within bounds
+        if (_selectedCaseIndex >= allCases.length) {
+          _selectedCaseIndex = allCases.isEmpty ? 0 : allCases.length - 1;
+        }
       });
     } catch (e) {
-      print('Error fetching user cases: $e');
-      // Optionally show a snackbar or handle error
+      print('Error updating user cases: $e');
     }
+  }
+  
+  // Helper method to extract name from different data structures
+  String _extractName(Map<String, dynamic> data) {
+    if (data['itemC'] != null) {
+      final itemC = data['itemC'];
+      return ((itemC['firstName'] ?? '') +
+          (itemC['middleName'] != null ? ' ${itemC['middleName']}' : '') +
+          (itemC['familyName'] != null ? ' ${itemC['familyName']}' : '')).trim();
+    } else if (data['name'] != null) {
+      return data['name'];
+    } else {
+      return 'Unknown Person';
+    }
+  }
+  
+  // Helper method to format timestamp
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+    
+    try {
+      DateTime dateTime;
+      if (timestamp is Timestamp) {
+        dateTime = timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      } else if (timestamp is String) {
+        dateTime = DateTime.parse(timestamp);
+      } else {
+        return '';
+      }
+      return DateFormat('dd MMM yyyy').format(dateTime);
+    } catch (e) {
+      print('Error formatting timestamp: $e');
+      return '';
+    }
+  }
+  
+  // Helper method to parse date string back to DateTime
+  DateTime _parseDate(String dateStr) {
+    try {
+      return DateFormat('dd MMM yyyy').parse(dateStr);
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+  
+  // Generate progress steps based on status
+  List<Map<String, String>> _generateProgressSteps(String currentStatus) {
+    final int currentStep = _statusToStep[currentStatus] ?? 1;
+    
+    return _caseProgressSteps.map((step) {
+      final int stepNumber = _caseProgressSteps.indexOf(step) + 1;
+      String status;
+      
+      if (stepNumber < currentStep) {
+        status = 'Completed';
+      } else if (stepNumber == currentStep) {
+        status = 'In Progress';
+      } else {
+        status = 'Pending';
+      }
+      
+      return {
+        'stage': step['stage'] ?? '',
+        'status': status,
+      };
+    }).toList();
   }
 
   Future<String?> _showEditNameDialog() async {
@@ -517,40 +713,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Padding(
                   padding: EdgeInsets.all(24.0),
                   child: Column(
-                    children: [
-                      Stack(
-                        children: [
-                          ProfileAvatar(
-                            imageUrl: _profileImageUrl,
-                            onEditPressed: () {
-                              _updateProfilePicture();
-                            },
-                          ),
-                          if (_isVerified)
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.verified,
-                                  color: Colors.green,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                        ],
+                    children: [                      ProfileAvatar(
+                        imageUrl: _profileImageUrl,
+                        onEditPressed: () {
+                          _updateProfilePicture();
+                        },
                       ),
                       SizedBox(height: 16),
                       Row(
@@ -627,39 +794,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildContactInfo(Icons.calendar_today, _memberSince),
                           ],
                         ),
-                      ),
-                      SizedBox(height: 12),
-                      // Action buttons
-                      if (!_isVerified) 
-                        TextButton.icon(
-                          icon: Icon(Icons.verified_user, color: Colors.white),
-                          label: Text(
-                            "Verify Your Account",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: TextButton.styleFrom(
-                            backgroundColor: Colors.green.withOpacity(0.3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
-                          onPressed: () {
-                            // Navigate to ID verification screen
-                            Navigator.pushNamed(context, '/id-validation');
-                          },
-                        ),
-                    ],
+                      ),                    ],
                   ),
                 ),
               ),
-              
-              // Track case content section
+                // Track case content section
               Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -687,19 +828,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 16),
-                    
-                    // Case Cards
+                    SizedBox(height: 16),                    // Case Cards
                     Container(
-                      height: 220,
+                      height: 270, // Increased height for better content display
                       child: _casesData.isEmpty
                           ? Center(
-                              child: Text(
-                                "No cases found.",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 16,
-                                ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.search_off_rounded,
+                                    size: 48,
+                                    color: Colors.grey.withOpacity(0.6),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    "No cases found.",
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    "When you submit a case, it will appear here",
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             )
                           : ListView.builder(
@@ -707,20 +866,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               itemCount: _casesData.length,
                               itemBuilder: (context, index) {
                                 final caseData = _casesData[index];
-                                // Determine card color based on status
+                                
+                                // Determine card color and icon based on status
                                 Color statusColor;
+                                IconData statusIcon;
+                                
                                 switch(caseData['status']) {
                                   case 'In Progress':
                                     statusColor = Colors.orange;
+                                    statusIcon = Icons.sync;
                                     break;
+                                  case 'Resolved Case':
                                   case 'Resolved':
                                     statusColor = Colors.green;
+                                    statusIcon = Icons.check_circle;
                                     break;
                                   case 'Under Review':
                                     statusColor = Colors.blue;
+                                    statusIcon = Icons.visibility;
+                                    break;
+                                  case 'Case Verified':
+                                    statusColor = Colors.purple;
+                                    statusIcon = Icons.verified;
+                                    break;
+                                  case 'Unresolved Case':
+                                    statusColor = Colors.red;
+                                    statusIcon = Icons.error_outline;
                                     break;
                                   default:
                                     statusColor = Colors.grey;
+                                    statusIcon = Icons.info_outline;
                                 }
                                 
                                 return GestureDetector(
@@ -731,10 +906,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   },
                                   child: AnimatedContainer(
                                     duration: Duration(milliseconds: 300),
-                                    margin: EdgeInsets.only(right: 16, bottom: 4),
-                                    width: MediaQuery.of(context).size.width * 0.75,
+                                    margin: EdgeInsets.only(right: 16, bottom: 8),
+                                    width: MediaQuery.of(context).size.width * 0.8,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(20),
                                       color: _selectedCaseIndex == index ? 
                                         Colors.blue.shade50 : 
                                         Colors.white,
@@ -746,15 +921,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
+                                          color: (_selectedCaseIndex == index ? 
+                                            Colors.blue.withOpacity(0.2) : 
+                                            Colors.black.withOpacity(0.08)),
                                           spreadRadius: 0,
-                                          blurRadius: 10,
-                                          offset: Offset(0, 4),
+                                          blurRadius: 12,
+                                          offset: Offset(0, 6),
                                         ),
                                       ],
                                     ),
                                     child: Stack(
                                       children: [
+                                        // Selected indicator
                                         if (_selectedCaseIndex == index)
                                           Positioned(
                                             top: 12,
@@ -764,29 +942,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               decoration: BoxDecoration(
                                                 color: Color(0xFF0D47A1),
                                                 shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.blue.withOpacity(0.3),
+                                                    blurRadius: 8,
+                                                    offset: Offset(0, 3),
+                                                  ),
+                                                ],
                                               ),
                                               child: Icon(
                                                 Icons.check,
                                                 color: Colors.white,
-                                                size: 16,
+                                                size: 18,
                                               ),
                                             ),
                                           ),
+                                          
+                                        // Card content
                                         Padding(
-                                          padding: EdgeInsets.all(20),
+                                          padding: EdgeInsets.fromLTRB(20, 20, 20, 20),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                                    decoration: BoxDecoration(
-                                                      color: statusColor.withOpacity(0.1),
-                                                      borderRadius: BorderRadius.circular(20),
-                                                      border: Border.all(color: statusColor, width: 1),
+                                              // Status badge with icon
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: statusColor.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  border: Border.all(color: statusColor, width: 1),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      statusIcon,
+                                                      size: 14,
+                                                      color: statusColor,
                                                     ),
-                                                    child: Text(
+                                                    SizedBox(width: 6),
+                                                    Text(
                                                       caseData['status'],
                                                       style: TextStyle(
                                                         color: statusColor,
@@ -794,54 +989,189 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                         fontSize: 12,
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
                                               SizedBox(height: 16),
-                                              Text(
-                                                "Case ID: ${caseData['caseNumber']}",
-                                                style: TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF0D47A1),
-                                                ),
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                "Missing Person:",
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[600],
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              SizedBox(height: 4),
-                                              Text(
-                                                caseData['name'],
-                                                style: TextStyle(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              Spacer(),
+                                              
+                                              // Case ID with copy button
                                               Row(
                                                 children: [
-                                                  Icon(
-                                                    Icons.calendar_today,
-                                                    size: 14,
-                                                    color: Colors.grey[600],
+                                                  Expanded(
+                                                    child: Text(
+                                                      "Case ID: ${caseData['caseNumber']}",
+                                                      style: TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Color(0xFF0D47A1),
+                                                      ),
+                                                    ),
                                                   ),
-                                                  SizedBox(width: 4),
-                                                  Text(
-                                                    "Reported: ${caseData['dateCreated']}",
-                                                    style: TextStyle(
-                                                      color: Colors.grey[600],
-                                                      fontSize: 14,
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      final data = ClipboardData(text: caseData['caseNumber'] ?? '');
+                                                      Clipboard.setData(data);
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('Case ID copied to clipboard'),
+                                                          duration: Duration(seconds: 2),
+                                                          behavior: SnackBarBehavior.floating,
+                                                        ),
+                                                      );
+                                                    },
+                                                    child: Container(
+                                                      padding: EdgeInsets.all(6),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey.shade100,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.copy_outlined,
+                                                        size: 16,
+                                                        color: Colors.grey.shade700,
+                                                      ),
                                                     ),
                                                   ),
                                                 ],
                                               ),
+                                              SizedBox(height: 12),
+                                                // Missing Person info with enhanced styling
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade50.withOpacity(0.7),
+                                                  borderRadius: BorderRadius.circular(14),
+                                                  border: Border.all(color: Colors.blue.shade200, width: 1),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      padding: EdgeInsets.all(8),
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [Colors.blue.shade300, Colors.blue.shade700],
+                                                          begin: Alignment.topLeft,
+                                                          end: Alignment.bottomRight,
+                                                        ),
+                                                        shape: BoxShape.circle,
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.blue.shade300.withOpacity(0.3),
+                                                            spreadRadius: 1,
+                                                            blurRadius: 3,
+                                                            offset: Offset(0, 1),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.person_search,
+                                                        size: 16,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            "Missing Person",
+                                                            style: TextStyle(
+                                                              fontSize: 13,
+                                                              color: Colors.blue.shade800,
+                                                              fontWeight: FontWeight.w600,
+                                                              letterSpacing: 0.3,
+                                                            ),
+                                                          ),
+                                                          SizedBox(height: 3),
+                                                          Text(
+                                                            caseData['name'],
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: TextStyle(
+                                                              fontSize: 17,
+                                                              fontWeight: FontWeight.w700,
+                                                              color: Colors.black.withOpacity(0.85),
+                                                              height: 1.2,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              
+                                              Spacer(),
+                                              
+                                              // Date reported with styled badge
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.calendar_today,
+                                                      size: 14,
+                                                      color: Colors.grey[700],
+                                                    ),
+                                                    SizedBox(width: 6),
+                                                    Text(
+                                                      "Reported: ${caseData['dateCreated']}",
+                                                      style: TextStyle(
+                                                        color: Colors.grey[700],
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              
+                                              // PDF viewer button if PDF available
+                                              if (caseData['pdfUrl'] != null && caseData['pdfUrl'].toString().isNotEmpty)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 8.0),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      // Launch PDF viewer (This would need URL launcher package implementation)
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Opening PDF viewer...'))
+                                                      );
+                                                    },
+                                                    child: Container(
+                                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red.shade50,
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border.all(color: Colors.red.shade200)
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.picture_as_pdf,
+                                                            size: 16,
+                                                            color: Colors.red,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "View PDF",
+                                                            style: TextStyle(
+                                                              color: Colors.red,
+                                                              fontWeight: FontWeight.w600,
+                                                              fontSize: 13,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ),
