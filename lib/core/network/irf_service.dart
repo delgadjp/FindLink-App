@@ -181,14 +181,13 @@ class IRFService {
     final idPrefix = 'IRF-$dateStr-';
 
     try {
-      // Get all documents with today's date prefix by document ID
+      // Get all documents with today's date prefix by document ID in the incidents collection
       final QuerySnapshot querySnapshot = await _firestore
-          .collection('irf-test')
+          .collection('incidents')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: idPrefix + '0001')
+          .where(FieldPath.documentId, isLessThanOrEqualTo: idPrefix + '9999')
           .get();
 
-      // Debug info
-      print('Found ${querySnapshot.docs.length} documents for today (${dateStr})');
-      
       // Find the highest sequential number by checking doc.id
       int highestNumber = 0;
       for (final doc in querySnapshot.docs) {
@@ -198,7 +197,6 @@ class IRFService {
           final int? seqNum = int.tryParse(seqPart);
           if (seqNum != null && seqNum > highestNumber) {
             highestNumber = seqNum;
-            print('Found higher sequence: $highestNumber from $docId');
           }
         }
       }
@@ -206,27 +204,41 @@ class IRFService {
       final int nextNumber = highestNumber + 1;
       final String paddedNumber = nextNumber.toString().padLeft(4, '0');
       final String newDocId = '$idPrefix$paddedNumber';
-      print('Generated next document ID: $newDocId');
       return newDocId;
     } catch (e) {
-      print('Error generating document ID: $e');      // Fallback ID using more reliable method - but ensure it's still sequential
+      // Fallback ID using more reliable method - but ensure it's still sequential
       final String paddedNumber = '0001'; // Start with 0001 if there's an error
       final String fallbackId = '$idPrefix$paddedNumber';
-      print('Using fallback ID: $fallbackId');
       return fallbackId;
     }
   }
+
   // Submit new IRF with formal document ID
   Future<DocumentReference> submitIRF(IRFModel irfData) async {
     if (currentUserId == null) {
       throw Exception('User not authenticated');
     }
-    
+
     try {
       // Generate formal document ID with sequential numbering
-      final String formalId = await generateFormalDocumentId();
-      print('Generated formal document ID for submission: $formalId');
-      
+      String formalId;
+      DocumentReference docRef;
+      int attempt = 0;
+      do {
+        formalId = await generateFormalDocumentId();
+        docRef = irfCollection.doc(formalId);
+        final docSnap = await docRef.get();
+        if (!docSnap.exists) break;
+        // If exists, increment the highest number and try again
+        attempt++;
+        // Artificially bump the date to force next number (for rare race conditions)
+        if (attempt > 10) {
+          throw Exception('Too many attempts to generate unique IRF ID');
+        }
+        // Wait a bit to avoid race
+        await Future.delayed(Duration(milliseconds: 50));
+      } while (true);
+
       // Prepare the data map
       final dataMap = irfData.toMap();
       // Move createdAt and incidentId inside incidentDetails
@@ -240,15 +252,11 @@ class IRFService {
       dataMap['userId'] = currentUserId;
       dataMap['updatedAt'] = FieldValue.serverTimestamp();
       dataMap['status'] = 'Reported';
-      // dataMap['type'] = 'report'; // Removed as per request
-      
+
       // Use the formal ID as the document ID for the document itself
-      final docRef = irfCollection.doc(formalId);
       await docRef.set(dataMap);
-      print('Successfully submitted IRF with ID: $formalId');
       return docRef;
     } catch (e) {
-      print('Error submitting IRF: $e');
       rethrow; // Rethrow to handle in UI
     }
   }
@@ -297,7 +305,7 @@ class IRFService {
       if (currentUserId == null) return null;
       
       final userQuery = await _firestore
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: currentUserId)
           .limit(1)
           .get();

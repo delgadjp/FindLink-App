@@ -20,58 +20,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isVerified = false; // Track verification status
   String _verificationStatus = 'Not Verified'; // Text status for verification
   
-  // Sample case data to display in profile screen
-  final List<Map<String, dynamic>> _casesData = [
-    {
-      'caseNumber': '2023-0042',
-      'name': 'John Smith',
-      'dateCreated': '15 Apr 2023',
-      'status': 'In Progress',
-      'progress': [
-        {'stage': 'Reported', 'status': 'Completed'},
-        {'stage': 'Under Review', 'status': 'Completed'},
-        {'stage': 'Case Verified', 'status': 'Completed'},
-        {'stage': 'In Progress', 'status': 'In Progress'},
-        {'stage': 'Resolved Case', 'status': 'Pending'},
-        {'stage': 'Unresolved Case', 'status': 'Pending'},
-      ]
-    },
-    {
-      'caseNumber': '2023-0051',
-      'name': 'Sarah Johnson',
-      'dateCreated': '22 May 2023',
-      'status': 'Under Review',
-      'progress': [
-        {'stage': 'Reported', 'status': 'Completed'},
-        {'stage': 'Under Review', 'status': 'In Progress'},
-        {'stage': 'Case Verified', 'status': 'Pending'},
-        {'stage': 'In Progress', 'status': 'Pending'},
-        {'stage': 'Resolved Case', 'status': 'Pending'},
-        {'stage': 'Unresolved Case', 'status': 'Pending'},
-      ]
-    },
-    {
-      'caseNumber': '2023-0063',
-      'name': 'Michael Brown',
-      'dateCreated': '07 Jun 2023',
-      'status': 'Resolved',
-      'progress': [
-        {'stage': 'Reported', 'status': 'Completed'},
-        {'stage': 'Under Review', 'status': 'Completed'},
-        {'stage': 'Case Verified', 'status': 'Completed'},
-        {'stage': 'In Progress', 'status': 'Completed'},
-        {'stage': 'Resolved Case', 'status': 'Completed'},
-        {'stage': 'Unresolved Case', 'status': 'N/A'},
-      ]
-    }
-  ];
-  
-  int _selectedCaseIndex = 0; // Track which case is currently selected
+  List<Map<String, dynamic>> _casesData = [];
+  int _selectedCaseIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _fetchUserCases();
   }
 
   Future<void> _fetchUserData() async {
@@ -142,6 +98,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchUserCases() async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      final QuerySnapshot casesQuery = await FirebaseFirestore.instance
+          .collection('incidents')
+          .where('userId', isEqualTo: currentUser.uid)
+          .orderBy('updatedAt', descending: true)
+          .get();
+
+      final List<Map<String, dynamic>> userCases = [];
+      for (final doc in casesQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final incidentDetails = data['incidentDetails'] ?? {};
+        userCases.add({
+          'caseNumber': incidentDetails['incidentId'] ?? doc.id,
+          'name': (data['itemC']?['firstName'] ?? '') +
+              (data['itemC']?['familyName'] != null ? ' ${data['itemC']['familyName']}' : ''),
+          'dateCreated': incidentDetails['createdAt'] != null
+              ? DateFormat('dd MMM yyyy').format(
+                  (incidentDetails['createdAt'] is Timestamp)
+                      ? (incidentDetails['createdAt'] as Timestamp).toDate()
+                      : DateTime.tryParse(incidentDetails['createdAt'].toString()) ?? DateTime.now())
+              : '',
+          'status': data['status'] ?? 'Unknown',
+          'progress': [
+            {'stage': 'Reported', 'status': 'Completed'},
+            {'stage': 'Under Review', 'status': 'In Progress'},
+            {'stage': 'Case Verified', 'status': 'Pending'},
+            {'stage': 'In Progress', 'status': 'Pending'},
+            {'stage': 'Resolved Case', 'status': 'Pending'},
+            {'stage': 'Unresolved Case', 'status': 'Pending'},
+          ],
+        });
+      }
+      setState(() {
+        _casesData = userCases;
+        _selectedCaseIndex = 0;
+      });
+    } catch (e) {
+      print('Error fetching user cases: $e');
+      // Optionally show a snackbar or handle error
     }
   }
 
@@ -480,7 +482,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 22, // Increased font size to match app bar title
+                      fontSize: 21, // Increased font size to match app bar title
                     ),
                   ),
                   SizedBox(width: 8),  // Space between text and icon
@@ -690,155 +692,165 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Case Cards
                     Container(
                       height: 220,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _casesData.length,
-                        itemBuilder: (context, index) {
-                          final caseData = _casesData[index];
-                          // Determine card color based on status
-                          Color statusColor;
-                          switch(caseData['status']) {
-                            case 'In Progress':
-                              statusColor = Colors.orange;
-                              break;
-                            case 'Resolved':
-                              statusColor = Colors.green;
-                              break;
-                            case 'Under Review':
-                              statusColor = Colors.blue;
-                              break;
-                            default:
-                              statusColor = Colors.grey;
-                          }
-                          
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCaseIndex = index;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: Duration(milliseconds: 300),
-                              margin: EdgeInsets.only(right: 16, bottom: 4),
-                              width: MediaQuery.of(context).size.width * 0.75,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                color: _selectedCaseIndex == index ? 
-                                  Colors.blue.shade50 : 
-                                  Colors.white,
-                                border: Border.all(
-                                  color: _selectedCaseIndex == index ? 
-                                    Color(0xFF0D47A1) : 
-                                    Colors.grey.shade300,
-                                  width: _selectedCaseIndex == index ? 2 : 1,
+                      child: _casesData.isEmpty
+                          ? Center(
+                              child: Text(
+                                "No cases found.",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    spreadRadius: 0,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
                               ),
-                              child: Stack(
-                                children: [
-                                  if (_selectedCaseIndex == index)
-                                    Positioned(
-                                      top: 12,
-                                      right: 12,
-                                      child: Container(
-                                        padding: EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFF0D47A1),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
+                            )
+                          : ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _casesData.length,
+                              itemBuilder: (context, index) {
+                                final caseData = _casesData[index];
+                                // Determine card color based on status
+                                Color statusColor;
+                                switch(caseData['status']) {
+                                  case 'In Progress':
+                                    statusColor = Colors.orange;
+                                    break;
+                                  case 'Resolved':
+                                    statusColor = Colors.green;
+                                    break;
+                                  case 'Under Review':
+                                    statusColor = Colors.blue;
+                                    break;
+                                  default:
+                                    statusColor = Colors.grey;
+                                }
+                                
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedCaseIndex = index;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: Duration(milliseconds: 300),
+                                    margin: EdgeInsets.only(right: 16, bottom: 4),
+                                    width: MediaQuery.of(context).size.width * 0.75,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      color: _selectedCaseIndex == index ? 
+                                        Colors.blue.shade50 : 
+                                        Colors.white,
+                                      border: Border.all(
+                                        color: _selectedCaseIndex == index ? 
+                                          Color(0xFF0D47A1) : 
+                                          Colors.grey.shade300,
+                                        width: _selectedCaseIndex == index ? 2 : 1,
                                       ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          spreadRadius: 0,
+                                          blurRadius: 10,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ],
                                     ),
-                                  Padding(
-                                    padding: EdgeInsets.all(20),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    child: Stack(
                                       children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        if (_selectedCaseIndex == index)
+                                          Positioned(
+                                            top: 12,
+                                            right: 12,
+                                            child: Container(
+                                              padding: EdgeInsets.all(4),
                                               decoration: BoxDecoration(
-                                                color: statusColor.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(color: statusColor, width: 1),
+                                                color: Color(0xFF0D47A1),
+                                                shape: BoxShape.circle,
                                               ),
-                                              child: Text(
-                                                caseData['status'],
+                                              child: Icon(
+                                                Icons.check,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                          ),
+                                        Padding(
+                                          padding: EdgeInsets.all(20),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                    decoration: BoxDecoration(
+                                                      color: statusColor.withOpacity(0.1),
+                                                      borderRadius: BorderRadius.circular(20),
+                                                      border: Border.all(color: statusColor, width: 1),
+                                                    ),
+                                                    child: Text(
+                                                      caseData['status'],
+                                                      style: TextStyle(
+                                                        color: statusColor,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 16),
+                                              Text(
+                                                "Case ID: ${caseData['caseNumber']}",
                                                 style: TextStyle(
-                                                  color: statusColor,
+                                                  fontSize: 20,
                                                   fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
+                                                  color: Color(0xFF0D47A1),
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 16),
-                                        Text(
-                                          "Case ID:${caseData['caseNumber']}",
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF0D47A1),
-                                          ),
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text(
-                                          "Missing Person:",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          caseData['name'],
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.calendar_today,
-                                              size: 14,
-                                              color: Colors.grey[600],
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              "Reported: ${caseData['dateCreated']}",
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 14,
+                                              SizedBox(height: 8),
+                                              Text(
+                                                "Missing Person:",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[600],
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                              SizedBox(height: 4),
+                                              Text(
+                                                caseData['name'],
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              Spacer(),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.calendar_today,
+                                                    size: 14,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    "Reported: ${caseData['dateCreated']}",
+                                                    style: TextStyle(
+                                                      color: Colors.grey[600],
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                     SizedBox(height: 24),
                     
@@ -867,78 +879,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     SizedBox(height: 16),
-                    
+
                     // Timeline Visualization in a Card
-                    Card(
-                      elevation: 2,
-                      color: Colors.blue.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Container(
-                          height: 90,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _casesData[_selectedCaseIndex]['progress'].length,
-                            itemBuilder: (context, index) {
-                              final stage = _casesData[_selectedCaseIndex]['progress'][index];
-                              Color color = stage['status'] == 'Completed' 
-                                  ? Colors.green 
-                                  : stage['status'] == 'In Progress' 
-                                      ? Colors.orange 
-                                      : stage['status'] == 'N/A'
-                                          ? Colors.grey.shade400
-                                          : Colors.grey;
-                              
-                              return Container(
-                                width: MediaQuery.of(context).size.width / 3.5,
-                                child: Column(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor: color.withOpacity(0.2),
-                                      child: CircleAvatar(
-                                        radius: 15,
-                                        backgroundColor: color,
-                                        child: Icon(
-                                          stage['status'] == 'Completed' 
-                                              ? Icons.check 
-                                              : stage['status'] == 'In Progress' 
-                                                  ? Icons.refresh 
-                                                  : stage['status'] == 'N/A'
-                                                      ? Icons.remove
-                                                      : Icons.hourglass_empty,
-                                          color: Colors.white,
-                                          size: 18,
+                    if (_casesData.isNotEmpty)
+                      Card(
+                        elevation: 2,
+                        color: Colors.blue.shade50,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Container(
+                            height: 90,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _casesData[_selectedCaseIndex]['progress'].length,
+                              itemBuilder: (context, index) {
+                                final stage = _casesData[_selectedCaseIndex]['progress'][index];
+                                Color color = stage['status'] == 'Completed' 
+                                    ? Colors.green 
+                                    : stage['status'] == 'In Progress' 
+                                        ? Colors.orange 
+                                        : stage['status'] == 'N/A'
+                                            ? Colors.grey.shade400
+                                            : Colors.grey;
+                                
+                                return Container(
+                                  width: MediaQuery.of(context).size.width / 3.5,
+                                  child: Column(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: color.withOpacity(0.2),
+                                        child: CircleAvatar(
+                                          radius: 15,
+                                          backgroundColor: color,
+                                          child: Icon(
+                                            stage['status'] == 'Completed' 
+                                                ? Icons.check 
+                                                : stage['status'] == 'In Progress' 
+                                                    ? Icons.refresh 
+                                                    : stage['status'] == 'N/A'
+                                                        ? Icons.remove
+                                                        : Icons.hourglass_empty,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      stage['stage'],
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: color,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                      SizedBox(height: 8),
+                                      Text(
+                                        stage['stage'],
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: color,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      stage['status'],
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey[600],
+                                      SizedBox(height: 4),
+                                      Text(
+                                        stage['status'],
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    if (_casesData.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24.0),
+                        child: Center(
+                          child: Text(
+                            "No case progress to show.",
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

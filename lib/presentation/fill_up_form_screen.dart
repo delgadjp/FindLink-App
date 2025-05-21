@@ -311,7 +311,7 @@ class FillUpForm extends State<FillUpFormScreen> {
       String? selectedIDType = await _irfService.getUserSelectedIDType();
       
       final userQuery = await FirebaseFirestore.instance
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: currentUser.uid)
           .limit(1)
           .get();

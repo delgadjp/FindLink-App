@@ -19,11 +19,22 @@ service firebase.storage {
     match /missing_persons/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
-    
-    // Allow access to user_ids_app folder for ID image storage
-    match /user_ids_app/{userId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+
+    // Allow read and write for authenticated users in incident_images folder
+    match /incident_images/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Allow public read, authenticated write for incident_pdfs
+    match /incident_pdfs/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Allow public read, authenticated write for missing_persons_pdfs
+    match /missing_persons_pdfs/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // Allow profile image access
@@ -32,13 +43,19 @@ service firebase.storage {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-   match /user_ids/{userId}/{fileName} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // ✅ NEW: Allow authenticated access to user_ids folder
+    match /user_ids/{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
 
-    // Allow users to manage their own ID uploads in id_images folder
+    // Allow users to manage their own ID uploads in id_images folder (flat structure)
     match /id_images/{fileName} {
       allow read, write: if request.auth != null && request.auth.uid == fileName.split('_')[0];
+    }
+
+    // ✅ Allow read and write for authenticated users in irf-app-images folder
+    match /irf-app-images/{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
