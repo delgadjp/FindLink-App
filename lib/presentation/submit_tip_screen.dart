@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:geocoding/geocoding.dart'; // Add this import for geocoding
 import 'package:http/http.dart' as http; // Add HTTP package for API calls
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -606,6 +608,22 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Cannot submit tip: There is already a tip within ${_nearbyTipsRadius.toInt()} meters of this location.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // NEW: Check for duplicate tip for the same missing person name within 100 meters
+    final double lat = double.tryParse(_latitudeController.text) ?? 0.0;
+    final double lng = double.tryParse(_longitudeController.text) ?? 0.0;
+    final String personName = widget.person.name;
+    final bool duplicateExists = await _hasDuplicateTipForPersonNearby(personName, lat, lng, 100);
+    if (duplicateExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('A tip for this missing person already exists within 100 meters of this location.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 4),
         ),
@@ -1643,6 +1661,62 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       default:
         return "Information";
     }
+  }
+
+  /// Check for existing tip for the same person within 100 meters
+  Future<bool> _hasDuplicateTipForPersonNearby(String personName, double lat, double lng, double radiusMeters) async {
+    try {
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('reports')
+          .where('name', isEqualTo: personName)
+          .get();
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        if (data.containsKey('coordinates')) {
+          final coord = data['coordinates'];
+          double? tipLat;
+          double? tipLng;
+          if (coord is Map) {
+            tipLat = coord['lat'] is double ? coord['lat'] : double.tryParse(coord['lat'].toString());
+            tipLng = coord['lng'] is double ? coord['lng'] : double.tryParse(coord['lng'].toString());
+          } else if (coord is String) {
+            // Parse string format: "[lat° N, lng° E]"
+            final regex = RegExp(r'\\[([\d.\-]+)[^\d\-]+([\d.\-]+)');
+            final match = regex.firstMatch(coord);
+            if (match != null) {
+              tipLat = double.tryParse(match.group(1)!);
+              tipLng = double.tryParse(match.group(2)!);
+            }
+          }
+          if (tipLat != null && tipLng != null) {
+            final double distance = _calculateDistance(lat, lng, tipLat, tipLng);
+            if (distance <= radiusMeters) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Error checking duplicate tip: $e');
+      return false;
+    }
+  }
+
+  // Helper method to calculate distance between two points using the Haversine formula
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371000; // Earth's radius in meters
+    final double lat1Rad = lat1 * (3.141592653589793 / 180);
+    final double lon1Rad = lon1 * (3.141592653589793 / 180);
+    final double lat2Rad = lat2 * (3.141592653589793 / 180);
+    final double lon2Rad = lon2 * (3.141592653589793 / 180);
+    final double dLat = lat2Rad - lat1Rad;
+    final double dLon = lon2Rad - lon1Rad;
+    final double a = 
+        (sin(dLat/2) * sin(dLat/2)) +
+        (cos(lat1Rad) * cos(lat2Rad) * sin(dLon/2) * sin(dLon/2));
+    final double c = 2 * atan2(sqrt(a), sqrt(1-a));
+    return earthRadius * c;
   }
 
   // Add new method to check for nearby tips

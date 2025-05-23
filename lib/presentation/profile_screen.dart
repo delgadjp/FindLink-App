@@ -660,6 +660,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         title: Text("Profile", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+        ),
         actions: [
           // Modified sign out button with icon positioned after text
           Padding(

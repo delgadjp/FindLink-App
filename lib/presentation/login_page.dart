@@ -216,63 +216,35 @@ class _LoginPageState extends State<LoginPage> {
                               
                               SizedBox(height: 20),
                               
-                              // Google Sign-in Button - Improved design
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _authService.signInWithGoogle(context),
-                                  icon: Image.asset(
-                                    ImageConstant.googleLogo,
-                                    height: 24,
-                                  ),
-                                  label: Text(
-                                    'Sign in with Google',
-                                    style: TextStyle(
-                                      color: Color(0xFF424242),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                              // Don't have an account row
+                              Padding(
+                                padding: const EdgeInsets.only(top: 20),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Don't have an account?",
+                                      style: TextStyle(
+                                        color: Color(0xFF424242),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 15),
-                                    side: BorderSide(color: Colors.grey.shade300),
-                                    backgroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pushNamed(context, '/register');
+                                      },
+                                      child: Text(
+                                        'Register',
+                                        style: TextStyle(
+                                          color: Color(0xFF53C0FF),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Don't have an account row
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Don't have an account?",
-                                style: TextStyle(
-                                  color: Color(0xFF424242),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(context, '/register');
-                                },
-                                child: Text(
-                                  'Register',
-                                  style: TextStyle(
-                                    color: Color(0xFF53C0FF),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.underline,
-                                  ),
+                                  ],
                                 ),
                               ),
                             ],

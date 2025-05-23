@@ -504,7 +504,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
 
     // Direct pattern matching for the exact address format
     final exactAddressPattern = RegExp(
-      r'(?:ADDRESS\s*[:]*\s*)?(?:LOT\s+\d+,?\s*BLOCK\s+\d+[A-Za-z]*,?\s*PHASE\s+\d+[A-Za-z]*,?\s*[A-Za-z]+\s+ST\.,?\s*[A-ZaZ]+,?\s*VILL\.,?\s*[A-Za-z]+\s+[IVX]+,?\s*CITY\s+OF\s+[A-Za-z\sÑñ]+,?\s*[A-Za-z]+,?\s*\d{4})',
+      r'(?:ADDRESS\s*[:]*\s*)?(?:LOT\s+\d+,?\s*BLOCK\s+\d+[A-Za-z]*,?\s*PHASE\s+\d+[A-ZaZ]*,?\s*[A-Za-z]+\s+ST\.,?\s*[A-ZaZ]+,?\s*VILL\.,?\s*[A-Za-z]+\s+[IVX]+,?\s*CITY\s+OF\s+[A-Za-z\sÑñ]+,?\s*[A-Za-z]+,?\s*\d{4})',
       caseSensitive: false
     );
     
@@ -1071,278 +1071,256 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF2A5298), // Darker blue at top
-              Color(0xFF4B89DC), // Lighter blue at bottom
+              Color(0xFF2A5298),
+              Color(0xFF4B89DC),
             ],
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Form with styling
                   Container(
-                    margin: EdgeInsets.fromLTRB(0, 20, 0, 20),
-                    padding: EdgeInsets.all(20),
+                    margin: EdgeInsets.symmetric(vertical: 24),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.black.withOpacity(0.08),
                           spreadRadius: 2,
-                          blurRadius: 10,
-                          offset: Offset(0, 3),
+                          blurRadius: 18,
+                          offset: Offset(0, 6),
                         ),
                       ],
-                    ),                    child: isLoading 
-                      ? _buildLoadingState()                      : !_isCorrectIDType || _isExpired 
-                        ? _buildIDTypeMismatchError()
-                        : Column(
-                        children: [
-                          // Logo above the form title
-                          Image.asset(
-                            ImageConstant.logoFinal,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.contain,
-                          ),
-                          SizedBox(height: 10),
-                          
-                          // Title
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Text(
-                              'CONFIRM ID INFORMATION',
-                              style: TextStyle(
-                                color: Color(0xFF424242),
-                                fontSize: 22,
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          
-                          // Description
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: Text(
-                              widget.isFromRegistration 
-                                ? 'Please verify that the information extracted from your ID matches your registration details'
-                                : 'Please verify that the information extracted from your ID is correct before submitting',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          
-                          // Display validation status for registration flow
-                          if (widget.isFromRegistration) ...[
-                            // Check if any data was extracted before showing validation status
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: _isDataMatching ? Color(0xFFEAF7EE) : Color(0xFFFDEAEA),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: _isDataMatching ? Colors.green.shade300 : Colors.red.shade300
-                                ),
-                              ),
-                              child: Row(
+                      border: Border.all(color: Color(0xFFE3E8F0), width: 1.2),
+                    ),
+                    child: isLoading
+                        ? _buildLoadingState()
+                        : !_isCorrectIDType || _isExpired
+                            ? _buildIDTypeMismatchError()
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    _isDataMatching ? Icons.check_circle : Icons.error_outline,
-                                    color: _isDataMatching ? Colors.green : Colors.red,
+                                  // Logo
+                                  Image.asset(
+                                    ImageConstant.logoFinal,
+                                    width: 90,
+                                    height: 90,
+                                    fit: BoxFit.contain,
                                   ),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _isDataMatching ? 'ID Validation Successful' : 'ID Validation Failed',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: _isDataMatching ? Colors.green.shade700 : Colors.red.shade700,
+                                  SizedBox(height: 12),
+                                  // Title
+                                  Text(
+                                    'CONFIRM ID INFORMATION',
+                                    style: TextStyle(
+                                      color: Color(0xFF424242),
+                                      fontSize: 22,
+                                      fontFamily: 'Inter',
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 6),
+                                  // Description
+                                  Text(
+                                    widget.isFromRegistration
+                                        ? 'Please verify that the information below matches your registration details.'
+                                        : 'Please verify that the information below is correct before submitting.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  SizedBox(height: 18),
+                                  // Validation status
+                                  if (widget.isFromRegistration) ...[
+                                    Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: _isDataMatching ? Color(0xFFEAF7EE) : Color(0xFFFDEAEA),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: _isDataMatching ? Colors.green.shade300 : Colors.red.shade300,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Icon(
+                                            _isDataMatching ? Icons.check_circle : Icons.error_outline,
+                                            color: _isDataMatching ? Colors.green : Colors.red,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _isDataMatching ? 'ID Validation Successful' : 'ID Validation Failed',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: _isDataMatching ? Colors.green.shade700 : Colors.red.shade700,
+                                                  ),
+                                                ),
+                                                if (!_isDataMatching && _mismatchReason != null)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 2.0),
+                                                    child: Text(
+                                                      _mismatchReason!,
+                                                      style: TextStyle(
+                                                        color: Colors.red.shade700,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (!_isDataMatching)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 6.0),
+                                                    child: Text(
+                                                      'Please go back and update your registration information to match your ID.',
+                                                      style: TextStyle(
+                                                        color: Colors.red.shade700,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(height: 18),
+                                  ],
+                                  // ID Image
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _buildInputLabel('ID Image'),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Container(
+                                    height: 180,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.grey.shade300),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.file(
+                                        widget.idImage,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 22),
+                                  // Info Section Header
+                                  Row(
+                                    children: [
+                                      Icon(Icons.info_outline, color: Color(0xFF53C0FF)),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'ID INFORMATION',
+                                        style: TextStyle(
+                                          color: Color(0xFF424242),
+                                          fontSize: 16,
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(color: Color(0xFF53C0FF), thickness: 1.2),
+                                  SizedBox(height: 10),
+                                  // Info fields
+                                  _buildReadOnlyField('First Name', extractedData['firstName'], icon: Icons.person_outline),
+                                  _buildReadOnlyField('Middle Name', extractedData['middleName'], icon: Icons.person_outline),
+                                  _buildReadOnlyField('Last Name', extractedData['lastName'], icon: Icons.person_outline),
+                                  _buildReadOnlyField(
+                                    'Date of Birth',
+                                    extractedData['dateOfBirth'] != null
+                                        ? DateFormat('MM/dd/yyyy').format(extractedData['dateOfBirth'])
+                                        : null,
+                                    icon: Icons.cake_outlined,
+                                  ),
+                                  _buildReadOnlyField('Email', userEmail, icon: Icons.email_outlined),
+                                  SizedBox(height: 24),
+                                  // Action Buttons
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: EdgeInsets.symmetric(vertical: 18),
+                                            side: BorderSide(color: Color(0xFFFF3B3B), width: 2),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(14),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'CANCEL',
+                                            style: TextStyle(
+                                              color: Color(0xFFFF3B3B),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 1.2,
+                                            ),
                                           ),
                                         ),
-                                        if (!_isDataMatching && _mismatchReason != null)
-                                          Text(
-                                            _mismatchReason!,
-                                            style: TextStyle(
-                                              color: Colors.red.shade700,
-                                              fontSize: 12,
+                                      ),
+                                      SizedBox(width: 16),
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: (isSubmitting ||
+                                                  (widget.isFromRegistration && !_isDataMatching) ||
+                                                  (!_isDataMatching && !widget.isFromRegistration))
+                                              ? null
+                                              : _submitVerification,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color(0xFFFFD27E),
+                                            foregroundColor: Color(0xFF424242),
+                                            padding: EdgeInsets.symmetric(vertical: 18),
+                                            elevation: 4,
+                                            shadowColor: Color(0xFFFFD27E).withOpacity(0.4),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(14),
                                             ),
+                                            disabledBackgroundColor: Colors.grey.shade400,
                                           ),
-                                        if (!_isDataMatching)
-                                          SizedBox(height: 8),
-                                        if (!_isDataMatching)
-                                          Text(
-                                            'Please go back and update your registration information to match your ID.',
-                                            style: TextStyle(
-                                              color: Colors.red.shade700,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
+                                          child: isSubmitting
+                                              ? Text(
+                                                  'REGISTERING',
+                                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                                                )
+                                              : Text(
+                                                  'REGISTER',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: 1.2,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ),
-                            SizedBox(height: 20),
-                          ],
-                          
-                          // Display uploaded ID image
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInputLabel('ID Image'),
-                              SizedBox(height: 8),
-                              Container(
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.file(
-                                    widget.idImage,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: 25),
-                          
-                          // Information section - no longer mentions "extracted from ID"
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              children: [
-                                Icon(Icons.info_outline, color: Color(0xFF53C0FF)),
-                                SizedBox(width: 8),
-                                Text(
-                                  'ID INFORMATION',
-                                  style: TextStyle(
-                                    color: Color(0xFF424242),
-                                    fontSize: 16,
-                                    fontFamily: 'Inter',
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          Divider(color: Color(0xFF53C0FF), thickness: 1.5),
-                          SizedBox(height: 15),                          // Display ID information
-                          _buildReadOnlyField('First Name', extractedData['firstName']),
-                          _buildReadOnlyField('Middle Name', extractedData['middleName']),                          
-                          _buildReadOnlyField('Last Name', extractedData['lastName']),
-                          _buildReadOnlyField(
-                            'Date of Birth', 
-                            extractedData['dateOfBirth'] != null 
-                                ? DateFormat('MM/dd/yyyy').format(extractedData['dateOfBirth']) 
-                                : null,
-                          ),
-                          // Remove PhilID Number, License No., and Address fields
-                          
-                          // Email field
-                          _buildReadOnlyField('Email', userEmail),
-                          
-                          SizedBox(height: 25),
-                          
-                          // Action Buttons
-                          Row(
-                            children: [
-                              // Go back button
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 15),
-                                    side: BorderSide(color: Color.fromARGB(255, 255, 43, 43), width: 1.5),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'CANCEL',
-                                    style: TextStyle(
-                                      color: Color.fromARGB(255, 255, 43, 43),
-                                      fontSize: 12,  // Reduced font size from 14 to 12
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              
-                              // Submit button - Only enabled if validation passes
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: (isSubmitting || 
-                                              (widget.isFromRegistration && !_isDataMatching) || 
-                                              (!_isDataMatching && !widget.isFromRegistration)) 
-                                    ? null 
-                                    : _submitVerification,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFFFFD27E),
-                                    foregroundColor: Color(0xFF424242),
-                                    padding: EdgeInsets.symmetric(vertical: 15),
-                                    elevation: 2,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    disabledBackgroundColor: Colors.grey.shade400,
-                                  ),
-                                  child: isSubmitting 
-                                    ? Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            widget.isFromRegistration ? 'REGISTERING...' : 'SUBMITTING...',
-                                            style: TextStyle(fontSize: 14)
-                                          ),
-                                        ],
-                                      )
-                                    : Text(
-                                        widget.isFromRegistration ? 'COMPLETE REGISTRATION' : 'SUBMIT',
-                                        style: TextStyle(
-                                          fontSize: 12,  // Reduced font size from 14 to 12
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: -0.5,  // Added negative letter spacing to compact text
-                                        ),
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
                   ),
                 ],
               ),
@@ -1444,8 +1422,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
     );
   }
   
-  Widget _buildReadOnlyField(String label, String? value) {
-    // Clean up common label texts from values
+  Widget _buildReadOnlyField(String label, String? value, {IconData? icon}) {
     String cleanValue = value ?? '';
     if (cleanValue.isNotEmpty) {
       cleanValue = cleanValue
@@ -1457,31 +1434,43 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
           .replaceAll('Last Name', '')
           .trim();
     }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInputLabel(label),
-        SizedBox(height: 5),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Text(
-            cleanValue.isEmpty ? 'Not found' : cleanValue,
-            style: TextStyle(
-              color: cleanValue.isEmpty ? Colors.grey : Colors.black,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: Color(0xFF53C0FF), size: 20),
+            SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildInputLabel(label),
+                SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text(
+                    cleanValue.isEmpty ? 'Not found' : cleanValue,
+                    style: TextStyle(
+                      color: cleanValue.isEmpty ? Colors.grey : Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        SizedBox(height: 15),
-      ],
+        ],
+      ),
     );
   }
 
