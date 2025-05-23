@@ -174,11 +174,14 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
-                    color: Colors.blue.shade900,
+                    color: Colors.white, // Changed to lighter color
                   ),
                 ),
                 SizedBox(height: 8),
-                _buildDescription(),
+                DefaultTextStyle(
+                  style: TextStyle(fontSize: 14, height: 1.4, color: Colors.white), // Changed to lighter color
+                  child: _buildDescription(),
+                ),
                 SizedBox(height: 12),
                 Row(
                   children: [
@@ -186,56 +189,57 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                     SizedBox(width: 8),
                     Text(
                       'Missing since: ${widget.person.datetimeLastSeen}',
-                      style: TextStyle(color: Colors.grey.shade700),
+                      style: TextStyle(color: Colors.white), // Changed to lighter color
                     ),
                   ],
                 ),
                 SizedBox(height: 16),
-                Row(
+                Divider(color: Colors.white54, thickness: 1),
+                SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.tips_and_updates),
-                        label: Text('Report a Sighting'),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SubmitTipScreen(person: widget.person),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.tips_and_updates),
+                      label: Text('Report a Sighting'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SubmitTipScreen(person: widget.person),
                           ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.visibility),
-                        label: Text('View Details'),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CaseDetailsScreen(person: widget.person),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.visibility),
+                      label: Text('View Details'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CaseDetailsScreen(person: widget.person),
                           ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

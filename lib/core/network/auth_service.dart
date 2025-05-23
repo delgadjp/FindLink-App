@@ -1,13 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:intl/intl.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
@@ -54,69 +55,24 @@ class AuthService {
     }
   }
 
-  // Modified Google Sign In to update last sign-in time
-  Future<void> signInWithGoogle(BuildContext context) async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) return;
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in to Firebase with the Google credential
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-
-      // Check if user already exists in Firestore before adding
-      final bool userExists = await checkIfUserExists(userCredential.user!.uid);
-
-      // Only add the user to Firestore if they don't already exist
-      if (!userExists) {
-        await addUserToFirestore(userCredential.user!, userCredential.user!.email ?? '');
-        
-        // Redirect to ID validation for new users
-        Navigator.pushReplacementNamed(context, '/id-validation');
-      } else {
-        // Update last sign-in time for existing users
-        await updateLastSignIn(userCredential.user!.uid);
-        
-        // Redirect straight to home for existing users
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign In failed: $e')),
-      );
-    }
-  }
-
-  // New method to check if a user already exists in Firestore by UID
-  Future<bool> checkIfUserExists(String uid) async {
-    try {
-      // Query Firestore for any documents with the user's UID
-      final QuerySnapshot result = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
-          .where('userId', isEqualTo: uid)
-          .limit(1)
-          .get();
-
-      // If we found any documents, the user exists
-      return result.docs.isNotEmpty;
-    } catch (e) {
-      print('Error checking if user exists: $e');
-      return false;
-    }
-  }
-
   // Upload ID image to Firebase Storage
   Future<String?> uploadIDImage({
     required String uid, 
     required File idImage,
   }) async {
     try {
+      // Ensure user is authenticated before attempting upload
+      if (_auth.currentUser == null) {
+        await Future.delayed(Duration(seconds: 1));
+        if (_auth.currentUser == null) {
+          print('Error: User not authenticated during ID upload');
+          throw FirebaseException(
+            plugin: 'firebase_storage',
+            message: 'User must be authenticated to upload ID images',
+          );
+        }
+      }
+      
       final String imagePath = 'user_ids_app/$uid/id_image.jpg';
       final Reference imageRef = _storage.ref().child(imagePath);
       
@@ -125,10 +81,26 @@ class AuthService {
         SettableMetadata(contentType: 'image/jpeg'),
       );
       
+      // Add error handling for the upload task
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        print('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+      }, onError: (e) {
+        print('Upload task error: $e');
+      });
+      
       final TaskSnapshot snapshot = await uploadTask;
       final String imageURL = await snapshot.ref.getDownloadURL();
       
+      print('Successfully uploaded ID image to: $imagePath');
       return imageURL;
+    } on FirebaseException catch (e) {
+      if (e.code == 'unauthorized') {
+        print('Error uploading ID image: Unauthorized access. Check Firebase Storage rules.');
+        // You might want to show a more user-friendly error to the user
+      } else {
+        print('Firebase error uploading ID image: ${e.code} - ${e.message}');
+      }
+      throw e;
     } catch (e) {
       print('Error uploading ID image: $e');
       throw e;
@@ -187,7 +159,7 @@ class AuthService {
       }
 
       // Store user data with the custom document ID
-      await _firestore.collection('users').doc(customDocId).set({ // changed from 'users-app' to 'users'
+      await _firestore.collection('users').doc(customDocId).set({
         'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
@@ -222,7 +194,7 @@ class AuthService {
     try {
       // Find the user document that contains this uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -245,7 +217,7 @@ class AuthService {
     try {
       // Find the user document by uid
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -265,7 +237,7 @@ class AuthService {
   Future<bool> updatePrivacyPolicyAcceptance(String uid, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -404,7 +376,7 @@ class AuthService {
     try {
       // Find the user document
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -444,11 +416,7 @@ class AuthService {
   // Sign out function
   Future<void> signOutUser(BuildContext context) async {
     try {
-      // Sign out from Google if signed in with Google
-      if (await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
-      }
-      // Sign out from Firebase
+      // Sign out from Firebase only
       await _auth.signOut();
       Navigator.pushReplacementNamed(context, '/login'); // Replace with your login route
     } catch (e) {
@@ -465,7 +433,7 @@ class AuthService {
   Future<bool> getScreenComplianceAccepted(String uid, String screenKey) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -484,7 +452,7 @@ class AuthService {
   Future<void> updateScreenComplianceAccepted(String uid, String screenKey, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
-          .collection('users') // changed from 'users-app' to 'users'
+          .collection('users')
           .where('userId', isEqualTo: uid)
           .limit(1)
           .get();
@@ -497,5 +465,194 @@ class AuthService {
     } catch (e) {
       print('Error updating compliance acceptance for $screenKey: $e');
     }
+  }
+  
+  // Get user's cases from multiple collections
+  Future<List<Map<String, dynamic>>> getUserCasesFromMultipleCollections() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final List<Map<String, dynamic>> allCases = [];
+      
+      // 1. Fetch from incidents collection
+      final QuerySnapshot incidentsQuery = await _firestore
+          .collection('incidents')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in incidentsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final incidentDetails = data['incidentDetails'] ?? {};
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': incidentDetails['incidentId'] ?? doc.id,
+          'name': _extractCaseName(data),
+          'dateCreated': _formatTimestamp(incidentDetails['createdAt']),
+          'status': data['status'] ?? 'Reported',
+          'source': 'incidents',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // 2. Fetch from missingPersons collection
+      final QuerySnapshot missingPersonsQuery = await _firestore
+          .collection('missingPersons')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in missingPersonsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['case_id'] ?? doc.id,
+          'name': data['name'] ?? 'Unknown Person',
+          'dateCreated': _formatTimestamp(data['datetime_reported']),
+          'status': data['status'] ?? 'Reported',
+          'source': 'missingPersons',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // 3. Fetch from archivedCases collection
+      final QuerySnapshot archivedCasesQuery = await _firestore
+          .collection('archivedCases')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      for (final doc in archivedCasesQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        String status = data['status'] ?? 'Reported';
+        
+        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
+        if (status == 'Resolved') {
+          status = 'Resolved Case';
+        }
+        
+        allCases.add({
+          'id': doc.id,
+          'caseNumber': data['incidentId'] ?? doc.id,
+          'name': _extractCaseName(data),
+          'dateCreated': _formatTimestamp(data['createdAt']),
+          'status': status,
+          'source': 'archivedCases',
+          'pdfUrl': data['pdfUrl'],
+          'rawData': data,
+        });
+      }
+      
+      // Sort all cases by date (newest first)
+      allCases.sort((a, b) {
+        final DateTime dateA = _parseTimestamp(a['dateCreated']);
+        final DateTime dateB = _parseTimestamp(b['dateCreated']);
+        return dateB.compareTo(dateA);
+      });
+      
+      return allCases;
+    } catch (e) {
+      print('Error fetching user cases from multiple collections: $e');
+      return [];
+    }
+  }
+  
+  // Helper method to extract name from different structures
+  String _extractCaseName(Map<String, dynamic> data) {
+    if (data['itemC'] != null) {
+      final itemC = data['itemC'];
+      return ((itemC['firstName'] ?? '') +
+          (itemC['middleName'] != null ? ' ${itemC['middleName']}' : '') +
+          (itemC['familyName'] != null ? ' ${itemC['familyName']}' : '')).trim();
+    } else if (data['name'] != null) {
+      return data['name'];
+    } else {
+      return 'Unknown Person';
+    }
+  }
+  
+  // Helper method to format timestamp
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+    
+    try {
+      DateTime dateTime;
+      if (timestamp is Timestamp) {
+        dateTime = timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      } else if (timestamp is String) {
+        dateTime = DateTime.parse(timestamp);
+      } else {
+        return '';
+      }
+      return DateFormat('dd MMM yyyy').format(dateTime);
+    } catch (e) {
+      print('Error formatting timestamp: $e');
+      return '';
+    }
+  }
+  
+  // Helper method to parse date string or timestamp to DateTime
+  DateTime _parseTimestamp(dynamic timestamp) {
+    try {
+      if (timestamp is String) {
+        return DateFormat('dd MMM yyyy').parse(timestamp);
+      } else if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      } else if (timestamp is Map && timestamp['seconds'] != null) {
+        return DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      }
+      return DateTime.now();
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+  
+  // Generate progress steps based on status (for case tracking)
+  List<Map<String, String>> generateProgressSteps(String currentStatus) {
+    // Map to convert status to step number (1-indexed)
+    final Map<String, int> statusToStep = {
+      'Reported': 1,
+      'Under Review': 2,
+      'Case Verified': 3,
+      'In Progress': 4,
+      'Resolved Case': 5,
+      'Unresolved Case': 6,
+      'Resolved': 5, // Map 'Resolved' to 'Resolved Case' step
+    };
+    
+    final List<Map<String, String>> caseProgressSteps = [
+      {'stage': 'Reported', 'status': 'Pending'},
+      {'stage': 'Under Review', 'status': 'Pending'},
+      {'stage': 'Case Verified', 'status': 'Pending'},
+      {'stage': 'In Progress', 'status': 'Pending'},
+      {'stage': 'Resolved Case', 'status': 'Pending'},
+      {'stage': 'Unresolved Case', 'status': 'Pending'},
+    ];
+    
+    final int currentStep = statusToStep[currentStatus] ?? 1;
+    
+    return caseProgressSteps.map((step) {
+      final int stepNumber = caseProgressSteps.indexOf(step) + 1;
+      String status;
+      
+      if (stepNumber < currentStep) {
+        status = 'Completed';
+      } else if (stepNumber == currentStep) {
+        status = 'In Progress';
+      } else {
+        status = 'Pending';
+      }
+      
+      return {
+        'stage': step['stage'] ?? '',
+        'status': status,
+      };
+    }).toList();
   }
 }

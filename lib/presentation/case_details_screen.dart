@@ -11,7 +11,38 @@ class CaseDetailsScreen extends StatefulWidget {
 }
 
 class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {bool isMultiline = false}) {
+    if (isMultiline) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D47A1),
+                fontSize: 15,
+              ),
+            ),
+            SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 15,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -171,12 +202,6 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: _buildStatusChip(),
-          ),
-        ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -205,29 +230,34 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
               Hero(
                 tag: 'missing_person_image_${widget.person.caseId}',
                 child: Card(
-                  elevation: 8,
-                  shadowColor: Colors.black.withOpacity(0.4),
+                  elevation: 10,
+                  shadowColor: Colors.black.withOpacity(0.5),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(18),
                     child: _buildImage(),
                   ),
                 ),
               ),
-              
-              SizedBox(height: 16),
-                // Merged person name and info card
+              SizedBox(height: 18),
+              // Status chip moved below image
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _buildStatusChip(),
+              ),
+              SizedBox(height: 10),
+              // Merged person name and info card
               Card(
-                elevation: 6,
-                shadowColor: Colors.black.withOpacity(0.2),
+                elevation: 7,
+                shadowColor: Colors.black.withOpacity(0.18),
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(18),
                 ),
                 child: Padding(
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -235,16 +265,15 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                       Text(
                         widget.person.name,
                         style: TextStyle(
-                          fontSize: 26,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0D47A1),
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.7,
                         ),
                       ),
-                      SizedBox(height: 6),
-                      
-                      SizedBox(height: 24),
-                      
+                      SizedBox(height: 8),
+                      Divider(thickness: 1.5, color: Colors.blue.shade50, height: 18),
+                      SizedBox(height: 18),
                       // Case information section
                       Row(
                         children: [
@@ -253,7 +282,7 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                           Text(
                             'Case Information',
                             style: TextStyle(
-                              fontSize: 19,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0D47A1),
                               letterSpacing: 0.5,
@@ -262,14 +291,13 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                         ],
                       ),
                       Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
-                      SizedBox(height: 8),
-                      _buildInfoRow('Description', widget.person.descriptions),
+                      SizedBox(height: 10),
+                      _buildInfoRow('Description', widget.person.descriptions, isMultiline: true),
                       _buildInfoRow('Address', widget.person.address),
                       _buildInfoRow('Last Seen At', widget.person.placeLastSeen),
                       _buildInfoRow('Last Seen Date', widget.person.datetimeLastSeen),
                       _buildInfoRow('Date Reported', widget.person.datetimeReported),
-                      
-                      SizedBox(height: 20),
+                      SizedBox(height: 22),
                       Row(
                         children: [
                           Icon(Icons.contact_phone_outlined, color: Color(0xFF0D47A1)),
@@ -277,7 +305,7 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                           Text(
                             'Contact Information',
                             style: TextStyle(
-                              fontSize: 19,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0D47A1),
                               letterSpacing: 0.5,
@@ -286,13 +314,12 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                         ],
                       ),
                       Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
-                      SizedBox(height: 8),
+                      SizedBox(height: 10),
                       _buildInfoRow('Complainant', widget.person.complainant),
                       _buildInfoRow('Relationship', widget.person.relationship),
                       _buildInfoRow('Contact', widget.person.contactNo),
-                      
                       if (widget.person.additionalInfo.isNotEmpty) ...[
-                        SizedBox(height: 20),
+                        SizedBox(height: 22),
                         Row(
                           children: [
                             Icon(Icons.notes_outlined, color: Color(0xFF0D47A1)),
@@ -300,7 +327,7 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                             Text(
                               'Additional Information',
                               style: TextStyle(
-                                fontSize: 19,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF0D47A1),
                                 letterSpacing: 0.5,
@@ -309,16 +336,14 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                           ],
                         ),
                         Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
-                        SizedBox(height: 8),
-                        _buildInfoRow('Notes', widget.person.additionalInfo),
+                        SizedBox(height: 10),
+                        _buildInfoRow('Notes', widget.person.additionalInfo, isMultiline: true),
                       ],
                     ],
                   ),
                 ),
               ),
-              
-              SizedBox(height: 24),
-              
+              SizedBox(height: 28),
               // Action button with improved styling
               Container(
                 width: double.infinity,
@@ -357,8 +382,7 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                   ),
                 ),
               ),
-              
-              SizedBox(height: 20),
+              SizedBox(height: 24),
             ],
           ),
         ),

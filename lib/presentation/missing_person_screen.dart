@@ -27,6 +27,10 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
           ),
         ),
         backgroundColor: Color(0xFF0D47A1),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.filter_list),
@@ -36,7 +40,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
           ),
         ],
       ),
-      drawer: AppDrawer(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

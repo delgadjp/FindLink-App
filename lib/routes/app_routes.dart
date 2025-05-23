@@ -1,5 +1,7 @@
 import '../core/app_export.dart';
 import 'package:findlink/presentation/fill_up_form_screen.dart';
+import 'package:findlink/presentation/profile_screen.dart';
+
 
 class AppRoutes {
   static const String home = '/home';
@@ -12,6 +14,7 @@ class AppRoutes {
   static const String chatbot = '/chatbot';  // Added chatbot route
   static const String idValidation = '/id-validation'; // Added ID validation route
   static const String confirmIdDetails = '/confirm-id-details'; // Added confirm ID details route
+  static const String forgotPassword = '/forgot-password'; // Added forgot password route
 
   static Map<String, WidgetBuilder> routes = {
     home: (context) => HomeScreen(),
@@ -22,6 +25,7 @@ class AppRoutes {
     register: (context) => RegisterPage(),
     fillUpForm: (context) => FillUpFormScreen(),
     idValidation: (context) => IDValidationScreen(), // Added ID validation screen to routes
+    forgotPassword: (context) => ForgotPasswordPage(), // Added forgot password screen to routes
     
   };
 }

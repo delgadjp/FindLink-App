@@ -37,6 +37,9 @@ class FillUpForm extends State<FillUpFormScreen> {
   bool hasAcceptedPrivacyPolicy = false;
   bool isCheckingPrivacyStatus = true;
   
+  // Add for copying address from reporting to victim
+  bool sameAddressAsReporting = false;
+  
   // Image handling variables
   File? _imageFile;
   Uint8List? _webImage;
@@ -311,7 +314,7 @@ class FillUpForm extends State<FillUpFormScreen> {
       String? selectedIDType = await _irfService.getUserSelectedIDType();
       
       final userQuery = await FirebaseFirestore.instance
-          .collection('users-app')
+          .collection('users')
           .where('userId', isEqualTo: currentUser.uid)
           .limit(1)
           .get();
@@ -584,6 +587,50 @@ class FillUpForm extends State<FillUpFormScreen> {
           _qualifierVictimController.text = value;
           break;
       }
+      updateFormState();
+    });
+  }
+  // Store original victim address fields for restoration when checkbox is unchecked
+  Map<String, dynamic> _originalVictimAddress = {};
+  
+  // Helper to copy address fields from reporting person to victim
+  void copyReportingAddressToVictim() {
+    setState(() {
+      // Store original values before copying
+      _originalVictimAddress = {
+        'currentAddress': _currentAddressVictimController.text,
+        'villageSitio': _villageSitioVictimController.text,
+        'region': victimRegion,
+        'province': victimProvince,
+        'municipality': victimMunicipality,
+        'barangay': victimBarangay,
+      };
+      
+      // Copy reporting person address to victim
+      _currentAddressVictimController.text = _currentAddressReportingController.text;
+      _villageSitioVictimController.text = _villageSitioReportingController.text;
+      victimRegion = reportingPersonRegion;
+      victimProvince = reportingPersonProvince;
+      victimMunicipality = reportingPersonMunicipality;
+      victimBarangay = reportingPersonBarangay;
+      
+      // Update formState for victim address fields
+      updateFormState();
+    });
+  }
+  
+  // Helper to restore original victim address fields when checkbox is unchecked
+  void restoreVictimAddress() {
+    setState(() {
+      // Restore original values if they exist
+      _currentAddressVictimController.text = _originalVictimAddress['currentAddress'] ?? '';
+      _villageSitioVictimController.text = _originalVictimAddress['villageSitio'] ?? '';
+      victimRegion = _originalVictimAddress['region'];
+      victimProvince = _originalVictimAddress['province'];
+      victimMunicipality = _originalVictimAddress['municipality'];
+      victimBarangay = _originalVictimAddress['barangay'];
+      
+      // Update formState for victim address fields
       updateFormState();
     });
   }
@@ -1023,13 +1070,18 @@ class FillUpForm extends State<FillUpFormScreen> {
   @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        elevation: 0, // Remove shadow
+        title: Text(
+          "Incident Record Form",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: Color(0xFF0D47A1),
-        actions: [
-          // ...existing code...
-        ],
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+        ),
       ),
-      drawer: AppDrawer(),
-      body: isCheckingPrivacyStatus 
+            body: isCheckingPrivacyStatus 
         ? Center(child: CircularProgressIndicator()) // Show loading while checking privacy status
         : SingleChildScrollView(
           controller: _scrollController,
@@ -1741,6 +1793,20 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ],
                           formState: formState,
                           onFieldChange: onFieldChange,
+                        ),                        // Checkbox for copying address from reporting person
+                        CheckboxListTile(
+                          title: Text("Same address as reporting person?", style: TextStyle(fontSize: 15, color: Colors.black)),
+                          value: sameAddressAsReporting,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              sameAddressAsReporting = value ?? false;
+                              if (sameAddressAsReporting) {
+                                copyReportingAddressToVictim();
+                              } else {
+                                restoreVictimAddress();
+                              }
+                            });
+                          },
                         ),
                         
                         SizedBox(height: 10),
@@ -2154,36 +2220,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                   controller = _copyForController;
                   break;
                 case 'SURNAME':
-                  controller = _surnameReportingController;
-                  break;
-                case 'FIRST NAME':
-                  controller = _firstNameReportingController;
-                  break;
-                case 'MIDDLE NAME':
-                  controller = _middleNameReportingController;
-                  break;
-                case 'QUALIFIER':
-                  controller = _qualifierReportingController;
-                  break;
-                case 'NICKNAME':
-                  controller = _nicknameReportingController;
-                  break;
-                case 'CITIZENSHIP':
-                  controller = _citizenshipReportingController;
-                  break;
-                case 'SEX/GENDER':
-                  controller = _sexGenderReportingController;
-                  break;
-                case 'CIVIL STATUS':
-                  controller = _civilStatusReportingController;
-                  break;
-                case 'DATE OF BIRTH':
-                  controller = _dateOfBirthReportingController;
-                  break;
-                case 'AGE':
-                  controller = _ageReportingController;
-                  break;
-                case 'PLACE OF BIRTH':
                   controller = _placeOfBirthReportingController;
                   break;
                 case 'HOME PHONE':

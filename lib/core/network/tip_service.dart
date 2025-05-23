@@ -306,9 +306,8 @@ class TipService {
         print('Error fetching missing person name: $e');
       }
 
-      // Format coordinates as string
-      String coordinates =
-        "[${lat.toStringAsFixed(14)}\u00b0 N, ${lng.toStringAsFixed(14)}\u00b0 E]";
+      // Format coordinates as object for admin compatibility
+      final Map<String, double> coordinates = {'lat': lat, 'lng': lng};
 
       // Format dateTimeLastSeen and timestamp
       final DateTime now = DateTime.now();

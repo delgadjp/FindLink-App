@@ -97,7 +97,7 @@ class _FAQScreenState extends State<FAQScreen> {
         backgroundColor: Color(0xFF0D47A1),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
       ),
       body: Container(
