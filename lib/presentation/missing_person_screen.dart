@@ -89,19 +89,84 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
 
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasData) {
+                    }                    if (snapshot.hasData) {
                       final persons = snapshot.data!;
                       for (var person in persons) {
                         person.debugPrint();
                       }
-                      final filteredPersons = persons.where((person) {
+                      
+                      // Filter persons based on search query and date range
+                      var filteredPersons = persons.where((person) {
                         final searchLower = searchQuery.toLowerCase();
-                        return searchQuery.isEmpty ||
+                        bool matchesSearch = searchQuery.isEmpty ||
                             person.name.toLowerCase().contains(searchLower) ||
-                            person.descriptions.toLowerCase().contains(searchLower);
-                      }).toList();
+                            person.descriptions.toLowerCase().contains(searchLower);                        // Check date range filter
+                        bool matchesDateRange = true;
+                        if (startDate != null || endDate != null) {
+                          DateTime? personDate;
+                          try {
+                            personDate = DateTime.parse(person.datetimeReported.toString());
+                          } catch (e) {
+                            personDate = null;
+                          }
+                          
+                          if (personDate != null) {
+                            if (startDate != null && personDate.isBefore(startDate!)) {
+                              matchesDateRange = false;
+                            }
+                            if (endDate != null && personDate.isAfter(endDate!.add(Duration(days: 1)))) {
+                              matchesDateRange = false;
+                            }
+                          }
+                        }
+                        
+                        return matchesSearch && matchesDateRange;
+                      }).toList();                      // Sort persons based on selected sort option
+                      // Default sorting is 'Recent' based on date reported (most recent first)
+                      switch (sortBy) {
+                        case 'Name (A-Z)':
+                          filteredPersons.sort((a, b) => a.name.compareTo(b.name));
+                          break;
+                        case 'Age':
+                          filteredPersons.sort((a, b) {
+                            // Since age property doesn't exist, sort by name as fallback
+                            return a.name.compareTo(b.name);
+                          });
+                          break;
+                        case 'Recent':
+                        default:
+                          // Use the parsed DateTime fields for more accurate sorting
+                          filteredPersons.sort((a, b) {
+                            DateTime? dateA = a.reportedDateTime;
+                            DateTime? dateB = b.reportedDateTime;
+                            
+                            // If parsed DateTime is null, fallback to string parsing
+                            if (dateA == null) {
+                              try {
+                                dateA = DateTime.parse(a.datetimeReported.toString());
+                              } catch (e) {
+                                dateA = null;
+                              }
+                            }
+                            
+                            if (dateB == null) {
+                              try {
+                                dateB = DateTime.parse(b.datetimeReported.toString());
+                              } catch (e) {
+                                dateB = null;
+                              }
+                            }
+                            
+                            // Handle null cases - put null dates at the end
+                            if (dateA == null && dateB == null) return 0;
+                            if (dateA == null) return 1;
+                            if (dateB == null) return -1;
+                            
+                            // Sort by most recent first (descending order)
+                            return dateB.compareTo(dateA);
+                          });
+                          break;
+                      }
 
                       return ListView.builder(
                         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -156,12 +221,10 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                     ),
                     SizedBox(height: 8),
                     Wrap(
-                      spacing: 8,
-                      children: [
+                      spacing: 8,                      children: [
                         _buildSortChip('Recent', setState),
                         _buildSortChip('Name (A-Z)', setState),
                         _buildSortChip('Age', setState),
-                        _buildSortChip('Location', setState),
                       ],
                     ),
                     SizedBox(height: 16),
@@ -261,13 +324,15 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                       ),
                   ],
                 ),
-              ),
-              actions: [
+              ),              actions: [
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
                   },
                   child: Text('Cancel'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -281,6 +346,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                   child: Text('Apply'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade900,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],

@@ -165,34 +165,33 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
             child: _buildImage(),
           ),
           Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Last seen at ${widget.person.placeLastSeen}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.white, // Changed to lighter color
-                  ),
-                ),
-                SizedBox(height: 8),
-                DefaultTextStyle(
-                  style: TextStyle(fontSize: 14, height: 1.4, color: Colors.white), // Changed to lighter color
-                  child: _buildDescription(),
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text(
-                      'Missing since: ${widget.person.datetimeLastSeen}',
-                      style: TextStyle(color: Colors.white), // Changed to lighter color
-                    ),
-                  ],
-                ),
+            padding: EdgeInsets.all(16),                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Last seen at ${widget.person.placeLastSeen}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Colors.white, // Changed to black for better readability
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      DefaultTextStyle(
+                        style: TextStyle(fontSize: 14, height: 1.4, color: Colors.white), // Changed to dark color
+                        child: _buildDescription(),
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 16, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'Missing since: ${widget.person.datetimeLastSeen}',
+                            style: TextStyle(color: Colors.white), // Changed to dark color for readability
+                          ),
+                        ],
+                      ),
                 SizedBox(height: 16),
                 Divider(color: Colors.white54, thickness: 1),
                 SizedBox(height: 12),

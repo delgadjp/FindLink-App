@@ -45,18 +45,30 @@ class MissingPerson {
       return null;
     }
   }
-
   static String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return '';
     
+    DateTime? dateTime;
     if (timestamp is Timestamp) {
-      DateTime dateTime = timestamp.toDate();
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+      dateTime = timestamp.toDate();
     } else if (timestamp is DateTime) {
-      return '${timestamp.day}/${timestamp.month}/${timestamp.year} ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+      dateTime = timestamp;
+    } else {
+      try {
+        dateTime = DateTime.parse(timestamp.toString());
+      } catch (e) {
+        return timestamp.toString();
+      }
     }
     
-    return timestamp.toString();
+    if (dateTime == null) return '';
+    
+    // Format with 12-hour time and AM/PM
+    String period = dateTime.hour >= 12 ? 'PM' : 'AM';
+    int hour12 = dateTime.hour == 0 ? 12 : (dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour);
+    String minute = dateTime.minute.toString().padLeft(2, '0');
+    
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${hour12}:${minute} ${period}';
   }
 
   static MissingPerson fromSnapshot(DocumentSnapshot snap) {
