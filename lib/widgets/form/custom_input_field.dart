@@ -13,6 +13,7 @@ class CustomInputField extends StatelessWidget {
   final Function(String?)? onChanged;
   final String? value;
   final String dropdownPlaceholder;
+  final String? hintText;
 
   const CustomInputField({
     Key? key,
@@ -28,6 +29,7 @@ class CustomInputField extends StatelessWidget {
     this.onChanged,
     this.value,
     this.dropdownPlaceholder = 'SELECT',
+    this.hintText,
   }) : super(key: key);
 
   @override
@@ -75,9 +77,14 @@ class CustomInputField extends StatelessWidget {
               height: 35,
               child: dropdownItems != null
                   ? LayoutBuilder(
-                      builder: (context, constraints) {
+                      builder: (context, constraints) {                        String currentValue = value ?? dropdownPlaceholder;
+                        // Use controller text if value is null or placeholder
+                        if (controller != null && controller!.text.isNotEmpty && controller!.text != dropdownPlaceholder) {
+                          currentValue = controller!.text;
+                        }
+                        
                         return DropdownButtonFormField<String>(
-                          value: value ?? dropdownPlaceholder,
+                          value: dropdownItems!.contains(currentValue) ? currentValue : dropdownPlaceholder,
                           items: dropdownItems!.map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
@@ -96,6 +103,7 @@ class CustomInputField extends StatelessWidget {
                           }).toList(),
                           onChanged: (String? newValue) {
                             if (newValue != dropdownPlaceholder) {
+                              controller?.text = newValue ?? '';
                               onChanged?.call(newValue);
                             }
                           },
@@ -133,10 +141,11 @@ class CustomInputField extends StatelessWidget {
                           keyboardType: keyboardType,
                           inputFormatters: inputFormatters,
                           validator: validator,
-                          style: TextStyle(fontSize: 13, color: Colors.black),
-                          decoration: InputDecoration(
+                          style: TextStyle(fontSize: 13, color: Colors.black),                          decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
+                            hintText: hintText,
+                            hintStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(5),
                               borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),

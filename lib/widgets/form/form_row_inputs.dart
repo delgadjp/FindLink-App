@@ -12,35 +12,35 @@ class FormRowInputs extends StatelessWidget {
     required this.formState,
     required this.onFieldChange,
   }) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return Row(
       children: fields.map((field) {
+        final fieldKey = field['key'] as Key?; // Extract the key
+
         // Handle specialized address fields
         if (field['section'] != null && field['label'] == 'REGION') {
-          return _buildRegionField(field);
+          return _buildRegionField(field, fieldKey);
         } else if (field['section'] != null && field['label'] == 'PROVINCE') {
-          return _buildProvinceField(field);
+          return _buildProvinceField(field, fieldKey);
         } else if (field['section'] != null && field['label'] == 'TOWN/CITY') {
-          return _buildMunicipalityField(field);
+          return _buildMunicipalityField(field, fieldKey);
         } else if (field['section'] != null && field['label'] == 'BARANGAY') {
-          return _buildBarangayField(field);
+          return _buildBarangayField(field, fieldKey);
         }
         
         // Handle specialized education and occupation fields
         else if (field['label'] == 'HIGHEST EDUCATION ATTAINMENT') {
-          return _buildEducationField(field);
+          return _buildEducationField(field, fieldKey);
         } else if (field['label'] == 'OCCUPATION') {
-          return _buildOccupationField(field);
+          return _buildOccupationField(field, fieldKey);
         } else if (field['label'] == 'CITIZENSHIP') {
-          return _buildCitizenshipField(field);
+          return _buildCitizenshipField(field, fieldKey);
         } else if (field['label'] == 'CIVIL STATUS') {
-          return _buildCivilStatusField(field);
-        }
-
-        // Handle standard fields
+          return _buildCivilStatusField(field, fieldKey);
+        }        // Handle standard fields
         return CustomInputField(
+          key: fieldKey, // Pass the extracted key to the CustomInputField
           label: field['label'] ?? '',
           isRequired: field['required'] ?? false,
           keyboardType: field['keyboardType'],
@@ -52,16 +52,16 @@ class FormRowInputs extends StatelessWidget {
           onTap: field['onTap'],
           onChanged: field['onChanged'],
           value: field['value'],
+          hintText: field['hintText'],
         );
       }).toList(),
     );
-  }
-
-  Widget _buildRegionField(Map<String, dynamic> field) {
+  }  Widget _buildRegionField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final regionKey = '${section}Region';
     
     return Expanded(
+      key: key, // Apply the key here
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Column(
@@ -89,6 +89,7 @@ class FormRowInputs extends StatelessWidget {
             ),
             SizedBox(height: 4),
             CustomPhilippineRegionDropdown(
+              key: key, // Pass key to the dropdown
               value: formState[regionKey],
               onChanged: (Region? value) => onFieldChange(regionKey, value),
             ),
@@ -98,12 +99,13 @@ class FormRowInputs extends StatelessWidget {
     );
   }
 
-  Widget _buildProvinceField(Map<String, dynamic> field) {
+  Widget _buildProvinceField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final provinceKey = '${section}Province';
     final regionKey = '${section}Region';
     
     return Expanded(
+      key: key, // Apply the key here
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Column(
@@ -141,12 +143,13 @@ class FormRowInputs extends StatelessWidget {
     );
   }
 
-  Widget _buildMunicipalityField(Map<String, dynamic> field) {
+  Widget _buildMunicipalityField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final municipalityKey = '${section}Municipality';
     final provinceKey = '${section}Province';
     
     return Expanded(
+      key: key, // Apply the key here
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Column(
@@ -184,12 +187,13 @@ class FormRowInputs extends StatelessWidget {
     );
   }
 
-  Widget _buildBarangayField(Map<String, dynamic> field) {
+  Widget _buildBarangayField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final barangayKey = '${section}Barangay';
     final municipalityKey = '${section}Municipality';
     
     return Expanded(
+      key: key, // Apply the key here
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Column(
@@ -225,13 +229,13 @@ class FormRowInputs extends StatelessWidget {
         ),
       ),
     );
-  }
-  Widget _buildEducationField(Map<String, dynamic> field) {
+  }Widget _buildEducationField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final educationKey = '${section}Education';
     final educationOptions = field['dropdownItems'] ?? [];
     
     return CustomInputField(
+      key: key, // Pass the key
       label: field['label'],
       isRequired: field['required'] ?? false,
       dropdownItems: educationOptions,
@@ -250,13 +254,13 @@ class FormRowInputs extends StatelessWidget {
         onFieldChange(educationKey, value);
       },
     );
-  }
-  Widget _buildOccupationField(Map<String, dynamic> field) {
+  }  Widget _buildOccupationField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final occupationKey = '${section}Occupation';
     final occupationOptions = field['dropdownItems'] ?? [];
     
     return CustomInputField(
+      key: key, // Pass the key
       label: field['label'],
       isRequired: field['required'] ?? false,
       dropdownItems: occupationOptions,
@@ -269,13 +273,13 @@ class FormRowInputs extends StatelessWidget {
         onFieldChange(occupationKey, value);
       },
     );
-  }
-  Widget _buildCitizenshipField(Map<String, dynamic> field) {
+  }  Widget _buildCitizenshipField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final citizenshipKey = '${section}Citizenship';
     final citizenshipOptions = field['dropdownItems'] ?? [];
 
     return CustomInputField(
+      key: key, // Pass the key
       label: field['label'],
       isRequired: field['required'] ?? false,
       dropdownItems: citizenshipOptions,
@@ -294,8 +298,7 @@ class FormRowInputs extends StatelessWidget {
         onFieldChange(citizenshipKey, value);
       },
     );
-  }
-  Widget _buildCivilStatusField(Map<String, dynamic> field) {
+  }  Widget _buildCivilStatusField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String?;
     String? civilStatusKey;
     if (section == 'reporting') {
@@ -305,6 +308,7 @@ class FormRowInputs extends StatelessWidget {
     }
     final civilStatusOptions = field['dropdownItems'] ?? [];
     return CustomInputField(
+      key: key, // Pass the key
       label: field['label'],
       isRequired: field['required'] ?? false,
       dropdownItems: civilStatusOptions,

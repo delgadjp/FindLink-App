@@ -177,7 +177,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       archivedCasesStream.listen((snapshot) => _updateCasesData())
     );
   }
-
   // Update cases data from all collections
   Future<void> _updateCasesData() async {
     try {
@@ -195,13 +194,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       for (final doc in incidentsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final incidentDetails = data['incidentDetails'] ?? {};
-          allCases.add({
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          continue;
+        }
+        
+        allCases.add({
           'id': doc.id,
           'caseNumber': incidentDetails['incidentId'] ?? doc.id,
           'name': _extractName(data),
           'dateCreated': _formatTimestamp(incidentDetails['createdAt']),
-          'status': data['status'] ?? 'Reported',
-          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
+          'status': status,
+          'progress': _generateProgressSteps(status),
           'rawData': data,
         });
       }
@@ -214,41 +220,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       for (final doc in missingPersonsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
-          allCases.add({
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          continue;
+        }
+        
+        allCases.add({
           'id': doc.id,
           'caseNumber': data['case_id'] ?? doc.id,
           'name': data['name'] ?? 'Unknown Person',
           'dateCreated': _formatTimestamp(data['datetime_reported']),
-          'status': data['status'] ?? 'Reported',
-          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
-          'rawData': data,
-        });
-      }
-      
-      // Fetch from archivedCases collection
-      final QuerySnapshot archivedCasesQuery = await FirebaseFirestore.instance
-          .collection('archivedCases')
-          .where('userId', isEqualTo: currentUser.uid)
-          .get();
-
-      for (final doc in archivedCasesQuery.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        String status = data['status'] ?? 'Reported';
-        
-        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
-        if (status == 'Resolved' && data['source'] == 'archivedCases') {
-          status = 'Resolved Case';
-        }
-          allCases.add({
-          'id': doc.id,
-          'caseNumber': data['incidentId'] ?? doc.id,
-          'name': _extractName(data),
-          'dateCreated': _formatTimestamp(data['createdAt']),
           'status': status,
           'progress': _generateProgressSteps(status),
           'rawData': data,
         });
       }
+      
+      // Note: We don't fetch from archivedCases collection for active case tracking
+      // as these are resolved cases that should not appear in the user's active case list
       
       // Sort all cases by date (newest first)
       allCases.sort((a, b) {
