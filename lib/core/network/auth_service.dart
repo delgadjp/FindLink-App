@@ -466,8 +466,7 @@ class AuthService {
       print('Error updating compliance acceptance for $screenKey: $e');
     }
   }
-  
-  // Get user's cases from multiple collections
+    // Get user's cases from multiple collections
   Future<List<Map<String, dynamic>>> getUserCasesFromMultipleCollections() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -486,13 +485,19 @@ class AuthService {
       for (final doc in incidentsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final incidentDetails = data['incidentDetails'] ?? {};
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          continue;
+        }
         
         allCases.add({
           'id': doc.id,
           'caseNumber': incidentDetails['incidentId'] ?? doc.id,
           'name': _extractCaseName(data),
           'dateCreated': _formatTimestamp(incidentDetails['createdAt']),
-          'status': data['status'] ?? 'Reported',
+          'status': status,
           'source': 'incidents',
           'pdfUrl': data['pdfUrl'],
           'rawData': data,
@@ -507,45 +512,27 @@ class AuthService {
 
       for (final doc in missingPersonsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          continue;
+        }
         
         allCases.add({
           'id': doc.id,
           'caseNumber': data['case_id'] ?? doc.id,
           'name': data['name'] ?? 'Unknown Person',
           'dateCreated': _formatTimestamp(data['datetime_reported']),
-          'status': data['status'] ?? 'Reported',
+          'status': status,
           'source': 'missingPersons',
           'pdfUrl': data['pdfUrl'],
           'rawData': data,
         });
       }
       
-      // 3. Fetch from archivedCases collection
-      final QuerySnapshot archivedCasesQuery = await _firestore
-          .collection('archivedCases')
-          .where('userId', isEqualTo: currentUser.uid)
-          .get();
-
-      for (final doc in archivedCasesQuery.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        String status = data['status'] ?? 'Reported';
-        
-        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
-        if (status == 'Resolved') {
-          status = 'Resolved Case';
-        }
-        
-        allCases.add({
-          'id': doc.id,
-          'caseNumber': data['incidentId'] ?? doc.id,
-          'name': _extractCaseName(data),
-          'dateCreated': _formatTimestamp(data['createdAt']),
-          'status': status,
-          'source': 'archivedCases',
-          'pdfUrl': data['pdfUrl'],
-          'rawData': data,
-        });
-      }
+      // Note: We don't fetch from archivedCases collection for active case tracking
+      // as these are resolved cases that should not appear in the user's active case list
       
       // Sort all cases by date (newest first)
       allCases.sort((a, b) {

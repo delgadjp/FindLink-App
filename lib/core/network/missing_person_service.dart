@@ -37,8 +37,7 @@ class MissingPersonService {
       await doc.docs.first.reference.update(data);
     }
   }
-  
-  // New method to get user's missing person cases
+    // New method to get user's missing person cases
   Future<List<Map<String, dynamic>>> getUserMissingPersonCases() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -53,18 +52,25 @@ class MissingPersonService {
       
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          return null;
+        }
+        
         return {
           'id': doc.id,
           'caseNumber': data['case_id'] ?? doc.id,
           'name': data['name'] ?? 'Unknown Person',
           'dateCreated': _formatTimestamp(data['datetime_reported']),
-          'status': data['status'] ?? 'Reported',
+          'status': status,
           'source': 'missingPersons',
           'pdfUrl': data['pdfUrl'],
           'rawData': data,
-          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
+          'progress': _generateProgressSteps(status),
         };
-      }).toList();
+      }).where((element) => element != null).cast<Map<String, dynamic>>().toList();
     } catch (e) {
       print('Error fetching missing person cases: $e');
       return [];

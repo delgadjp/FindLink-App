@@ -177,7 +177,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       archivedCasesStream.listen((snapshot) => _updateCasesData())
     );
   }
-
   // Update cases data from all collections
   Future<void> _updateCasesData() async {
     try {
@@ -195,15 +194,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       for (final doc in incidentsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final incidentDetails = data['incidentDetails'] ?? {};
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          continue;
+        }
         
         allCases.add({
           'id': doc.id,
           'caseNumber': incidentDetails['incidentId'] ?? doc.id,
           'name': _extractName(data),
           'dateCreated': _formatTimestamp(incidentDetails['createdAt']),
-          'status': data['status'] ?? 'Reported',
-          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
-          'pdfUrl': data['pdfUrl'],
+          'status': status,
+          'progress': _generateProgressSteps(status),
           'rawData': data,
         });
       }
@@ -216,45 +220,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       for (final doc in missingPersonsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
+        final status = data['status'] ?? 'Reported';
+        
+        // Skip resolved cases as they are archived
+        if (status == 'Resolved Case' || status == 'Resolved') {
+          continue;
+        }
         
         allCases.add({
           'id': doc.id,
           'caseNumber': data['case_id'] ?? doc.id,
           'name': data['name'] ?? 'Unknown Person',
           'dateCreated': _formatTimestamp(data['datetime_reported']),
-          'status': data['status'] ?? 'Reported',
-          'progress': _generateProgressSteps(data['status'] ?? 'Reported'),
-          'pdfUrl': data['pdfUrl'],
+          'status': status,
+          'progress': _generateProgressSteps(status),
           'rawData': data,
         });
       }
       
-      // Fetch from archivedCases collection
-      final QuerySnapshot archivedCasesQuery = await FirebaseFirestore.instance
-          .collection('archivedCases')
-          .where('userId', isEqualTo: currentUser.uid)
-          .get();
-
-      for (final doc in archivedCasesQuery.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        String status = data['status'] ?? 'Reported';
-        
-        // For archivedCases, if status is "Resolved", map it to "Resolved Case"
-        if (status == 'Resolved' && data['source'] == 'archivedCases') {
-          status = 'Resolved Case';
-        }
-        
-        allCases.add({
-          'id': doc.id,
-          'caseNumber': data['incidentId'] ?? doc.id,
-          'name': _extractName(data),
-          'dateCreated': _formatTimestamp(data['createdAt']),
-          'status': status,
-          'progress': _generateProgressSteps(status),
-          'pdfUrl': data['pdfUrl'],
-          'rawData': data,
-        });
-      }
+      // Note: We don't fetch from archivedCases collection for active case tracking
+      // as these are resolved cases that should not appear in the user's active case list
       
       // Sort all cases by date (newest first)
       allCases.sort((a, b) {
@@ -832,9 +817,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 16),                    // Case Cards
+                    SizedBox(height: 16),                    // Case Cards Carousel
                     Container(
-                      height: 270, // Increased height for better content display
+                      height: 300, // Increased height to accommodate navigation
                       child: _casesData.isEmpty
                           ? Center(
                               child: Column(
@@ -865,327 +850,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                             )
-                          : ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _casesData.length,
-                              itemBuilder: (context, index) {
-                                final caseData = _casesData[index];
-                                
-                                // Determine card color and icon based on status
-                                Color statusColor;
-                                IconData statusIcon;
-                                
-                                switch(caseData['status']) {
-                                  case 'In Progress':
-                                    statusColor = Colors.orange;
-                                    statusIcon = Icons.sync;
-                                    break;
-                                  case 'Resolved Case':
-                                  case 'Resolved':
-                                    statusColor = Colors.green;
-                                    statusIcon = Icons.check_circle;
-                                    break;
-                                  case 'Under Review':
-                                    statusColor = Colors.blue;
-                                    statusIcon = Icons.visibility;
-                                    break;
-                                  case 'Case Verified':
-                                    statusColor = Colors.purple;
-                                    statusIcon = Icons.verified;
-                                    break;
-                                  case 'Unresolved Case':
-                                    statusColor = Colors.red;
-                                    statusIcon = Icons.error_outline;
-                                    break;
-                                  default:
-                                    statusColor = Colors.grey;
-                                    statusIcon = Icons.info_outline;
-                                }
-                                
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCaseIndex = index;
-                                    });
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: Duration(milliseconds: 300),
-                                    margin: EdgeInsets.only(right: 16, bottom: 8),
-                                    width: MediaQuery.of(context).size.width * 0.8,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      color: _selectedCaseIndex == index ? 
-                                        Colors.blue.shade50 : 
-                                        Colors.white,
-                                      border: Border.all(
-                                        color: _selectedCaseIndex == index ? 
-                                          Color(0xFF0D47A1) : 
-                                          Colors.grey.shade300,
-                                        width: _selectedCaseIndex == index ? 2 : 1,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (_selectedCaseIndex == index ? 
-                                            Colors.blue.withOpacity(0.2) : 
-                                            Colors.black.withOpacity(0.08)),
-                                          spreadRadius: 0,
-                                          blurRadius: 12,
-                                          offset: Offset(0, 6),
-                                        ),
-                                      ],
+                          : Column(
+                              children: [
+                                // Case card display area
+                                Expanded(
+                                  child: Center(
+                                    child: Container(
+                                      width: MediaQuery.of(context).size.width * 0.9,
+                                      child: _buildCaseCard(_selectedCaseIndex),
                                     ),
-                                    child: Stack(
+                                  ),
+                                ),
+                                
+                                // Navigation controls below the card
+                                if (_casesData.length > 1)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        // Selected indicator
-                                        if (_selectedCaseIndex == index)
-                                          Positioned(
-                                            top: 12,
-                                            right: 12,
-                                            child: Container(
-                                              padding: EdgeInsets.all(4),
-                                              decoration: BoxDecoration(
-                                                color: Color(0xFF0D47A1),
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.blue.withOpacity(0.3),
-                                                    blurRadius: 8,
-                                                    offset: Offset(0, 3),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Icon(
-                                                Icons.check,
-                                                color: Colors.white,
-                                                size: 18,
-                                              ),
+                                        // Previous button
+                                        ElevatedButton.icon(
+                                          onPressed: () {
+                                            setState(() {
+                                              _selectedCaseIndex = _selectedCaseIndex > 0 
+                                                  ? _selectedCaseIndex - 1 
+                                                  : _casesData.length - 1;
+                                            });
+                                          },
+                                          icon: Icon(Icons.skip_previous, size: 18),
+                                          label: Text('Previous'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: Color(0xFF0D47A1),
+                                            elevation: 2,
+                                            side: BorderSide(color: Color(0xFF0D47A1)),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          ),
+                                        ),
+                                        
+                                        SizedBox(width: 16),
+                                        
+                                        // Case indicator with current position
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFF0D47A1),
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            '${_selectedCaseIndex + 1} / ${_casesData.length}',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
                                             ),
                                           ),
-                                          
-                                        // Card content
-                                        Padding(
-                                          padding: EdgeInsets.fromLTRB(20, 20, 20, 20),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              // Status badge with icon
-                                              Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                decoration: BoxDecoration(
-                                                  color: statusColor.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(20),
-                                                  border: Border.all(color: statusColor, width: 1),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      statusIcon,
-                                                      size: 14,
-                                                      color: statusColor,
-                                                    ),
-                                                    SizedBox(width: 6),
-                                                    Text(
-                                                      caseData['status'],
-                                                      style: TextStyle(
-                                                        color: statusColor,
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              SizedBox(height: 16),
-                                              
-                                              // Case ID with copy button
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      "Case ID: ${caseData['caseNumber']}",
-                                                      style: TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: Color(0xFF0D47A1),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  GestureDetector(
-                                                    onTap: () {
-                                                      final data = ClipboardData(text: caseData['caseNumber'] ?? '');
-                                                      Clipboard.setData(data);
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text('Case ID copied to clipboard'),
-                                                          duration: Duration(seconds: 2),
-                                                          behavior: SnackBarBehavior.floating,
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      padding: EdgeInsets.all(6),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey.shade100,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: Icon(
-                                                        Icons.copy_outlined,
-                                                        size: 16,
-                                                        color: Colors.grey.shade700,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 12),
-                                                // Missing Person info with enhanced styling
-                                              Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue.shade50.withOpacity(0.7),
-                                                  borderRadius: BorderRadius.circular(14),
-                                                  border: Border.all(color: Colors.blue.shade200, width: 1),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Container(
-                                                      padding: EdgeInsets.all(8),
-                                                      decoration: BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                          colors: [Colors.blue.shade300, Colors.blue.shade700],
-                                                          begin: Alignment.topLeft,
-                                                          end: Alignment.bottomRight,
-                                                        ),
-                                                        shape: BoxShape.circle,
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            color: Colors.blue.shade300.withOpacity(0.3),
-                                                            spreadRadius: 1,
-                                                            blurRadius: 3,
-                                                            offset: Offset(0, 1),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: Icon(
-                                                        Icons.person_search,
-                                                        size: 16,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                    SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Text(
-                                                            "Missing Person",
-                                                            style: TextStyle(
-                                                              fontSize: 13,
-                                                              color: Colors.blue.shade800,
-                                                              fontWeight: FontWeight.w600,
-                                                              letterSpacing: 0.3,
-                                                            ),
-                                                          ),
-                                                          SizedBox(height: 3),
-                                                          Text(
-                                                            caseData['name'],
-                                                            maxLines: 1,
-                                                            overflow: TextOverflow.ellipsis,
-                                                            style: TextStyle(
-                                                              fontSize: 17,
-                                                              fontWeight: FontWeight.w700,
-                                                              color: Colors.black.withOpacity(0.85),
-                                                              height: 1.2,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              
-                                              Spacer(),
-                                              
-                                              // Date reported with styled badge
-                                              Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.shade100,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.calendar_today,
-                                                      size: 14,
-                                                      color: Colors.grey[700],
-                                                    ),
-                                                    SizedBox(width: 6),
-                                                    Text(
-                                                      "Reported: ${caseData['dateCreated']}",
-                                                      style: TextStyle(
-                                                        color: Colors.grey[700],
-                                                        fontSize: 13,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              
-                                              // PDF viewer button if PDF available
-                                              if (caseData['pdfUrl'] != null && caseData['pdfUrl'].toString().isNotEmpty)
-                                                Padding(
-                                                  padding: const EdgeInsets.only(top: 8.0),
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      // Launch PDF viewer (This would need URL launcher package implementation)
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(content: Text('Opening PDF viewer...'))
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.red.shade50,
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        border: Border.all(color: Colors.red.shade200)
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          Icon(
-                                                            Icons.picture_as_pdf,
-                                                            size: 16,
-                                                            color: Colors.red,
-                                                          ),
-                                                          SizedBox(width: 6),
-                                                          Text(
-                                                            "View PDF",
-                                                            style: TextStyle(
-                                                              color: Colors.red,
-                                                              fontWeight: FontWeight.w600,
-                                                              fontSize: 13,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
+                                        ),
+                                        
+                                        SizedBox(width: 16),
+                                        
+                                        // Next button
+                                        ElevatedButton.icon(
+                                          onPressed: () {
+                                            setState(() {
+                                              _selectedCaseIndex = _selectedCaseIndex < _casesData.length - 1 
+                                                  ? _selectedCaseIndex + 1 
+                                                  : 0;
+                                            });
+                                          },
+                                          icon: Icon(Icons.skip_next, size: 18),
+                                          label: Text('Next'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: Color(0xFF0D47A1),
+                                            elevation: 2,
+                                            side: BorderSide(color: Color(0xFF0D47A1)),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                );
-                              },
+                                
+                                // Dot indicators
+                                if (_casesData.length > 1)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(
+                                        _casesData.length,
+                                        (index) => GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedCaseIndex = index;
+                                            });
+                                          },
+                                          child: Container(
+                                            margin: EdgeInsets.symmetric(horizontal: 4),
+                                            width: 10,
+                                            height: 10,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: index == _selectedCaseIndex
+                                                  ? Color(0xFF0D47A1)
+                                                  : Colors.grey.shade400,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                    ),
+                    ),SizedBox(height: 24),
                     SizedBox(height: 24),
                     
                     // Status Timeline Section
@@ -1320,6 +1105,245 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }  // Helper method to build a case card
+  Widget _buildCaseCard(int index) {
+    if (index >= _casesData.length) return Container();
+    
+    final caseData = _casesData[index];
+    
+    // Determine card color and icon based on status
+    Color statusColor;
+    IconData statusIcon;
+    
+    switch(caseData['status']) {
+      case 'In Progress':
+        statusColor = Colors.orange;
+        statusIcon = Icons.sync;
+        break;
+      case 'Resolved Case':
+      case 'Resolved':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'Under Review':
+        statusColor = Colors.blue;
+        statusIcon = Icons.visibility;
+        break;
+      case 'Case Verified':
+        statusColor = Colors.purple;
+        statusIcon = Icons.verified;
+        break;
+      case 'Unresolved Case':
+        statusColor = Colors.red;
+        statusIcon = Icons.error_outline;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.info_outline;
+    }
+    
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      margin: EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        border: Border.all(
+          color: Color(0xFF0D47A1),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.2),
+            spreadRadius: 0,
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(12), // Reduced padding from 16 to 12
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Status badge with icon
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3), // Reduced padding
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: statusColor, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    statusIcon,
+                    size: 11, // Reduced from 12
+                    color: statusColor,
+                  ),
+                  SizedBox(width: 3), // Reduced from 4
+                  Text(
+                    caseData['status'],
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10, // Reduced from 11
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8), // Reduced from 12
+            
+            // Case ID with copy button
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    "Case ID: ${caseData['caseNumber']}",
+                    style: TextStyle(
+                      fontSize: 17, // Reduced from 16
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D47A1),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    final data = ClipboardData(text: caseData['caseNumber'] ?? '');
+                    Clipboard.setData(data);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Case ID copied to clipboard'),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(3), // Reduced from 4
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.copy_outlined,
+                      size: 12, // Reduced from 14
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8), // Reduced from 10
+            
+            // Missing Person info with enhanced styling
+            Expanded( // Changed from Flexible to Expanded
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8), // Reduced padding
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade200, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(5), // Reduced from 6
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade300, Colors.blue.shade700],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.shade300.withOpacity(0.3),
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.person_search,
+                        size: 12, // Reduced from 14
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8), // Reduced from 10
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Missing Person",
+                            style: TextStyle(
+                              fontSize: 16, // Reduced from 11
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 1), // Reduced from 2
+                          Text(
+                            caseData['name'],
+                            maxLines: 2, // Allow 2 lines instead of 1
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16, // Reduced from 15
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black.withOpacity(0.85),
+                              height: 1.1, // Reduced line height
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            SizedBox(height: 6), // Reduced from 10
+            
+            // Date reported with styled badge
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced padding
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 10, // Reduced from 12
+                    color: Colors.grey[700],
+                  ),
+                  SizedBox(width: 3), // Reduced from 4
+                  Text(
+                    "Reported: ${caseData['dateCreated']}",
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 12, // Reduced from 11
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
