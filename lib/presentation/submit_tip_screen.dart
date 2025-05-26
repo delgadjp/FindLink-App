@@ -601,29 +601,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       );
       
       return;
-    }
-
-    // Check if there are nearby tips before proceeding
-    if (_hasNearbyTips && _nearbyTips.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cannot submit tip: There is already a tip within ${_nearbyTipsRadius.toInt()} meters of this location.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
-      return;
-    }
-
-    // NEW: Check for duplicate tip for the same missing person name within 100 meters
+    }    // Check for duplicate tip for the same missing person within 100 meters
+    // This matches the logic from SubmitReport.jsx
     final double lat = double.tryParse(_latitudeController.text) ?? 0.0;
     final double lng = double.tryParse(_longitudeController.text) ?? 0.0;
     final String personName = widget.person.name;
+    
+    print("DEBUG: Checking for duplicates for person: $personName at location: $lat, $lng");
+    
     final bool duplicateExists = await _hasDuplicateTipForPersonNearby(personName, lat, lng, 100);
     if (duplicateExists) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('A tip for this missing person already exists within 100 meters of this location.'),
+          content: Text('A tip for "${personName}" already exists within 100 meters of this location.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 4),
         ),
@@ -1047,16 +1037,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 16),
-                  _buildCard(
+                  SizedBox(height: 16),                  _buildCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSectionHeader("Photo Evidence"),
                         _buildImagePicker(),
-                        // Add validation feedback UI
-                        if (_validationStatus != ValidationStatus.none)
-                          _buildValidationFeedback(),
                       ],
                     ),
                   ),
@@ -1064,6 +1050,14 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   _buildCard(
                     child: _buildMapSection(),
                   ),
+                  // Add validation feedback UI below the maps
+                  if (_validationStatus != ValidationStatus.none)
+                    Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: _buildCard(
+                        child: _buildValidationFeedback(),
+                      ),
+                    ),
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _submitTip,
@@ -1073,7 +1067,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       padding: EdgeInsets.symmetric(vertical: 15),
                     ),
                     child: Text(
-                      "Submit Tip",
+                      "Submit Sighting",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),                  SizedBox(height: 32),
@@ -1662,40 +1656,74 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return "Information";
     }
   }
-
-  /// Check for existing tip for the same person within 100 meters
+  /// Check for existing tip for the same person within specified radius (matches SubmitReport.jsx logic)
   Future<bool> _hasDuplicateTipForPersonNearby(String personName, double lat, double lng, double radiusMeters) async {
     try {
+      print("DEBUG: Querying reports collection for person: $personName");
+      
       final QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('reports')
           .where('name', isEqualTo: personName)
           .get();
+      
+      print("DEBUG: Found ${snapshot.docs.length} reports for person: $personName");
+      
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
+        print("DEBUG: Checking report ${doc.id} with data: ${data['name']} at coordinates: ${data['coordinates']}");
+        
         if (data.containsKey('coordinates')) {
           final coord = data['coordinates'];
           double? tipLat;
           double? tipLng;
-          if (coord is Map) {
+          
+          // Handle GeoPoint format (new format)
+          if (coord is GeoPoint) {
+            tipLat = coord.latitude;
+            tipLng = coord.longitude;
+          }
+          // Handle legacy Map format
+          else if (coord is Map) {
             tipLat = coord['lat'] is double ? coord['lat'] : double.tryParse(coord['lat'].toString());
             tipLng = coord['lng'] is double ? coord['lng'] : double.tryParse(coord['lng'].toString());
-          } else if (coord is String) {
-            // Parse string format: "[lat° N, lng° E]"
-            final regex = RegExp(r'\\[([\d.\-]+)[^\d\-]+([\d.\-]+)');
+          }
+          // Handle string format: "[lat° N, lng° E]" (old format)
+          else if (coord is String) {
+            final regex = RegExp(r'([\d.\-]+)°\s*N,\s*([\d.\-]+)°\s*E');
             final match = regex.firstMatch(coord);
             if (match != null) {
               tipLat = double.tryParse(match.group(1)!);
               tipLng = double.tryParse(match.group(2)!);
             }
           }
+          
           if (tipLat != null && tipLng != null) {
             final double distance = _calculateDistance(lat, lng, tipLat, tipLng);
-            if (distance <= radiusMeters) {
+            print("DEBUG: Distance to report ${doc.id}: ${distance.toStringAsFixed(2)} meters");
+              // This matches the React logic: same name AND within radius
+            final bool nameMatch = data['name'].toString().toLowerCase() == personName.toLowerCase();
+            final bool withinRadius = distance <= radiusMeters;
+            final bool isDuplicate = withinRadius && nameMatch;
+            
+            print("DEBUG: Report ${doc.id} analysis:");
+            print("  - Name in DB: '${data['name']}' vs Target: '$personName'");
+            print("  - Name match: $nameMatch");
+            print("  - Distance: ${distance.toStringAsFixed(2)}m <= ${radiusMeters}m = $withinRadius");
+            print("  - isDuplicate: $isDuplicate");
+            
+            if (isDuplicate) {
+              print("DEBUG: *** DUPLICATE FOUND! Blocking submission. ***");
               return true;
             }
+          } else {
+            print("DEBUG: Could not parse coordinates for report ${doc.id}");
           }
+        } else {
+          print("DEBUG: Report ${doc.id} has no coordinates");
         }
       }
+      
+      print("DEBUG: No duplicates found for $personName within ${radiusMeters}m");
       return false;
     } catch (e) {
       print('Error checking duplicate tip: $e');
@@ -1741,18 +1769,24 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _isCheckingNearbyTips = false;
         _nearbyTips = nearbyTips;
         _hasNearbyTips = nearbyTips.isNotEmpty;
-      });
-      
-      // Show a notification if there are nearby tips
+      });      // Debug logging only - no user notifications
       if (_hasNearbyTips) {
-        final tipsCount = _nearbyTips.length;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$tipsCount nearby tip(s) found within ${_nearbyTipsRadius.toInt()} meters of this location'),
-            backgroundColor: Colors.amber.shade700,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        final String personName = widget.person.name;
+        int samePersonCount = 0;
+        int otherPersonCount = 0;
+        
+        for (var tip in _nearbyTips) {
+          if (tip['name']?.toString().toLowerCase() == personName.toLowerCase()) {
+            samePersonCount++;
+          } else {
+            otherPersonCount++;
+          }
+        }
+        
+        // Debug logging only
+        print("DEBUG: Nearby tips analysis for $personName:");
+        print("  - Same person tips: $samePersonCount");
+        print("  - Other person tips: $otherPersonCount");
       }
     } catch (e) {
       print('Error checking for nearby tips: $e');

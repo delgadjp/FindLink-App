@@ -294,20 +294,20 @@ class TipService {
     
       // Generate formal reportId
       final String reportId = await generateFormalReportId();
-      
-      // Fetch missing person name by caseId
+        // Fetch missing person name by caseId using the correct field name
       String name = missingPersonName;
       try {
-        final doc = await FirebaseFirestore.instance.collection('missingPersons').where('case_id', isEqualTo: caseId).get();
+        final doc = await FirebaseFirestore.instance.collection('missingPersons').where('alarm_id', isEqualTo: caseId).get();
         if (doc.docs.isNotEmpty) {
           name = doc.docs.first.data()['name'] ?? missingPersonName;
+          print('Found missing person in database: $name (using alarm_id: $caseId)');
+        } else {
+          print('No missing person found with alarm_id: $caseId, using provided name: $missingPersonName');
         }
       } catch (e) {
         print('Error fetching missing person name: $e');
-      }
-
-      // Format coordinates as object for admin compatibility
-      final Map<String, double> coordinates = {'lat': lat, 'lng': lng};
+      }// Format coordinates as GeoPoint for Firestore
+      final GeoPoint coordinates = GeoPoint(lat, lng);
 
       // Format dateTimeLastSeen and timestamp
       final DateTime now = DateTime.now();
@@ -427,25 +427,42 @@ class TipService {
       
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        
-        // Check if this tip has coordinates
-        if (data.containsKey('coordinates') && 
-            data['coordinates'] != null &&
-            data['coordinates']['lat'] != null &&
-            data['coordinates']['lng'] != null) {
+          // Check if this tip has coordinates
+        if (data.containsKey('coordinates') && data['coordinates'] != null) {
+          double? tipLat;
+          double? tipLng;
           
-          // Calculate distance between this tip and provided coordinates
-          final double tipLat = data['coordinates']['lat'];
-          final double tipLng = data['coordinates']['lng'];
+          // Handle GeoPoint format
+          if (data['coordinates'] is GeoPoint) {
+            final GeoPoint geoPoint = data['coordinates'] as GeoPoint;
+            tipLat = geoPoint.latitude;
+            tipLng = geoPoint.longitude;
+          }
+          // Handle legacy coordinate formats
+          else if (data['coordinates'] is Map) {
+            tipLat = data['coordinates']['lat']?.toDouble();
+            tipLng = data['coordinates']['lng']?.toDouble();
+          }
+          // Handle string format: "[lat° N, lng° E]"
+          else if (data['coordinates'] is String) {
+            final regex = RegExp(r'([\d.\-]+)°\s*N,\s*([\d.\-]+)°\s*E');
+            final match = regex.firstMatch(data['coordinates']);
+            if (match != null) {
+              tipLat = double.tryParse(match.group(1)!);
+              tipLng = double.tryParse(match.group(2)!);
+            }
+          }
           
-          final double distance = _calculateDistance(
-            latitude, longitude, tipLat, tipLng);
-          
-          // If within radius, add to result list
-          if (distance <= radiusInMeters) {
-            data['id'] = doc.id;
-            data['distance'] = distance;
-            nearbyTips.add(data);
+          if (tipLat != null && tipLng != null) {
+            final double distance = _calculateDistance(
+              latitude, longitude, tipLat, tipLng);
+            
+            // If within radius, add to result list
+            if (distance <= radiusInMeters) {
+              data['id'] = doc.id;
+              data['distance'] = distance;
+              nearbyTips.add(data);
+            }
           }
         }
       }

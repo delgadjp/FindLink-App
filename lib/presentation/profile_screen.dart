@@ -26,26 +26,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   // Stream subscriptions for real-time updates
   List<StreamSubscription<QuerySnapshot>> _streamSubscriptions = [];
-  
-  // Status progression steps
+    // Status progression steps
   final List<Map<String, String>> _caseProgressSteps = [
     {'stage': 'Reported', 'status': 'Pending'},
     {'stage': 'Under Review', 'status': 'Pending'},
     {'stage': 'Case Verified', 'status': 'Pending'},
     {'stage': 'In Progress', 'status': 'Pending'},
-    {'stage': 'Resolved Case', 'status': 'Pending'},
     {'stage': 'Unresolved Case', 'status': 'Pending'},
+    {'stage': 'Resolved Case', 'status': 'Pending'},
   ];
-  
-  // Map to convert status to step number (1-indexed)
+    // Map to convert status to step number (1-indexed)
   final Map<String, int> _statusToStep = {
     'Reported': 1,
     'Under Review': 2,
     'Case Verified': 3,
     'In Progress': 4,
-    'Resolved Case': 5,
-    'Unresolved Case': 6,
-    'Resolved': 5, // Map 'Resolved' to 'Resolved Case' step
+    'Unresolved Case': 5,
+    'Resolved Case': 6,
+    'Resolved': 6, // Map 'Resolved' to 'Resolved Case' step
   };
 
   @override
@@ -708,16 +706,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _updateProfilePicture();
                         },
                       ),
-                      SizedBox(height: 16),
-                      Row(
+                      SizedBox(height: 16),                      Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            _name,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          Flexible(
+                            child: Text(
+                              _name,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
                           SizedBox(width: 2),
@@ -861,42 +862,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                 ),
-                                
-                                // Navigation controls below the card
+                                  // Navigation controls below the card
                                 if (_casesData.length > 1)
                                   Padding(
                                     padding: EdgeInsets.symmetric(vertical: 12),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
                                         // Previous button
-                                        ElevatedButton.icon(
-                                          onPressed: () {
-                                            setState(() {
-                                              _selectedCaseIndex = _selectedCaseIndex > 0 
-                                                  ? _selectedCaseIndex - 1 
-                                                  : _casesData.length - 1;
-                                            });
-                                          },
-                                          icon: Icon(Icons.skip_previous, size: 18),
-                                          label: Text('Previous'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.white,
-                                            foregroundColor: Color(0xFF0D47A1),
-                                            elevation: 2,
-                                            side: BorderSide(color: Color(0xFF0D47A1)),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(20),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(right: 8),
+                                            child: ElevatedButton.icon(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedCaseIndex = _selectedCaseIndex > 0 
+                                                      ? _selectedCaseIndex - 1 
+                                                      : _casesData.length - 1;
+                                                });
+                                              },
+                                              icon: Icon(Icons.skip_previous, size: 18),
+                                              label: Text('Previous'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.white,
+                                                foregroundColor: Color(0xFF0D47A1),
+                                                elevation: 2,
+                                                side: BorderSide(color: Color(0xFF0D47A1)),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                minimumSize: Size(120, 40),
+                                              ),
                                             ),
-                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                           ),
                                         ),
                                         
-                                        SizedBox(width: 16),
-                                        
                                         // Case indicator with current position
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                           decoration: BoxDecoration(
                                             color: Color(0xFF0D47A1),
                                             borderRadius: BorderRadius.circular(20),
@@ -911,28 +915,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                         ),
                                         
-                                        SizedBox(width: 16),
-                                        
                                         // Next button
-                                        ElevatedButton.icon(
-                                          onPressed: () {
-                                            setState(() {
-                                              _selectedCaseIndex = _selectedCaseIndex < _casesData.length - 1 
-                                                  ? _selectedCaseIndex + 1 
-                                                  : 0;
-                                            });
-                                          },
-                                          icon: Icon(Icons.skip_next, size: 18),
-                                          label: Text('Next'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.white,
-                                            foregroundColor: Color(0xFF0D47A1),
-                                            elevation: 2,
-                                            side: BorderSide(color: Color(0xFF0D47A1)),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(20),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(left: 8),
+                                            child: ElevatedButton.icon(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedCaseIndex = _selectedCaseIndex < _casesData.length - 1 
+                                                      ? _selectedCaseIndex + 1 
+                                                      : 0;
+                                                });
+                                              },
+                                              icon: Icon(Icons.skip_next, size: 18),
+                                              label: Text('Next'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.white,
+                                                foregroundColor: Color(0xFF0D47A1),
+                                                elevation: 2,
+                                                side: BorderSide(color: Color(0xFF0D47A1)),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                minimumSize: Size(120, 40),
+                                              ),
                                             ),
-                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                           ),
                                         ),
                                       ],
@@ -1241,74 +1249,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             SizedBox(height: 8), // Reduced from 10
-            
-            // Missing Person info with enhanced styling
-            Expanded( // Changed from Flexible to Expanded
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8), // Reduced padding
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.blue.shade200, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(5), // Reduced from 6
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade300, Colors.blue.shade700],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+              // Missing Person info with enhanced styling
+            Container(
+              height: 70, // Fixed height to make it smaller
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Reduced vertical padding
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade200, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(5), // Reduced from 6
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade300, Colors.blue.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.shade300.withOpacity(0.3),
+                          spreadRadius: 1,
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
                         ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.shade300.withOpacity(0.3),
-                            spreadRadius: 1,
-                            blurRadius: 3,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.person_search,
-                        size: 12, // Reduced from 14
-                        color: Colors.white,
-                      ),
+                      ],
                     ),
-                    SizedBox(width: 8), // Reduced from 10
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "Missing Person",
-                            style: TextStyle(
-                              fontSize: 16, // Reduced from 11
-                              color: Colors.blue.shade800,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 1), // Reduced from 2
-                          Text(
-                            caseData['name'],
-                            maxLines: 2, // Allow 2 lines instead of 1
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 16, // Reduced from 15
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black.withOpacity(0.85),
-                              height: 1.1, // Reduced line height
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: Icon(
+                      Icons.person_search,
+                      size: 12, // Reduced from 14
+                      color: Colors.white,
                     ),
-                  ],
-                ),
+                  ),
+                  SizedBox(width: 8), // Reduced from 10
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Missing Person",
+                          style: TextStyle(
+                            fontSize: 16, // Reduced font size
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 1), // Reduced from 2
+                        Text(
+                          caseData['name'],
+                          maxLines: 1, // Changed back to 1 line for smaller height
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16, // Reduced from 16
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black.withOpacity(0.85),
+                            height: 1.1, // Reduced line height
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             
