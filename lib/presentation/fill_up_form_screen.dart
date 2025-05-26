@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'dart:ui'; // Added import for ImageFilter
 
 class FillUpFormScreen extends StatefulWidget {
@@ -230,11 +229,8 @@ class FillUpForm extends State<FillUpFormScreen> {
   
   // Service for Firebase operations
   final IRFService _irfService = IRFService();
-  
-  // General information controllers
+    // General information controllers (moved to narrative section)
   final TextEditingController _typeOfIncidentController = TextEditingController();
-  final TextEditingController _copyForController = TextEditingController();
-  final TextEditingController _dateTimeReportedController = TextEditingController();
   final TextEditingController _dateTimeIncidentController = TextEditingController();
   final TextEditingController _placeOfIncidentController = TextEditingController();
   
@@ -356,13 +352,11 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
     return age;
   }
-
   @override
   void initState() {
     super.initState();
     // Initialize with current date and time
     dateTimeReported = DateTime.now();
-    _dateTimeReportedController.text = _formatDateTime(dateTimeReported!);
     _typeOfIncidentController.text = "Missing Person";
     _typeOfIncidentDController.text = "Missing Person";
     if (dateTimeIncident != null) {
@@ -563,33 +557,31 @@ class FillUpForm extends State<FillUpFormScreen> {
         case 'reportingBarangay':
           reportingPersonBarangay = value;
           break;
-          
-        // Add missing victim address field handlers
-        case 'victimRegion':
-          if (victimRegion != value) {
-            victimProvince = null;
-            victimMunicipality = null;
-            victimBarangay = null;
+        // Add missing reporting other address field handlers
+        case 'reportingOtherRegion':
+          if (reportingPersonOtherRegion != value) {
+            reportingPersonOtherProvince = null;
+            reportingPersonOtherMunicipality = null;
+            reportingPersonOtherBarangay = null;
           }
-          victimRegion = value;
+          reportingPersonOtherRegion = value;
           break;
-        case 'victimProvince':
-          if (victimProvince != value) {
-            victimMunicipality = null;
-            victimBarangay = null;
+        case 'reportingOtherProvince':
+          if (reportingPersonOtherProvince != value) {
+            reportingPersonOtherMunicipality = null;
+            reportingPersonOtherBarangay = null;
           }
-          victimProvince = value;
+          reportingPersonOtherProvince = value;
           break;
-        case 'victimMunicipality':
-          if (victimMunicipality != value) {
-            victimBarangay = null;
+        case 'reportingOtherMunicipality':
+          if (reportingPersonOtherMunicipality != value) {
+            reportingPersonOtherBarangay = null;
           }
-          victimMunicipality = value;
+          reportingPersonOtherMunicipality = value;
           break;
-        case 'victimBarangay':
-          victimBarangay = value;
+        case 'reportingOtherBarangay':
+          reportingPersonOtherBarangay = value;
           break;
-          
         // Add missing victim other address field handlers  
         case 'victimOtherRegion':
           if (victimOtherRegion != value) {
@@ -640,9 +632,6 @@ class FillUpForm extends State<FillUpFormScreen> {
           break;
         case 'sexGenderVictim':
           _sexGenderVictimController.text = value;
-          break;
-        case 'civilStatusVictim':
-          _civilStatusVictimController.text = value;
           break;
         case 'educationVictim':
           _educationVictimController.text = value;
@@ -704,14 +693,11 @@ class FillUpForm extends State<FillUpFormScreen> {
       updateFormState();
     });
   }
-
   @override
   void dispose() {
     // Dispose all controllers
     // General information controllers
     _typeOfIncidentController.dispose();
-    _copyForController.dispose();
-    _dateTimeReportedController.dispose();
     _dateTimeIncidentController.dispose();
     _placeOfIncidentController.dispose();
     
@@ -854,12 +840,10 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
     return true;
   }
-
   Map<String, dynamic> collectFormData() {
     Map<String, dynamic> formData = {
       // General information
       'typeOfIncident': _typeOfIncidentController.text,
-      'copyFor': _copyForController.text,
       'dateTimeReported': dateTimeReported,
       'dateTimeIncident': dateTimeIncident,
       'placeOfIncident': _placeOfIncidentController.text,
@@ -1097,77 +1081,40 @@ class FillUpForm extends State<FillUpFormScreen> {
     if (!(await _validatePhoneFields())) {
       return false;
     }
-
-    final List<Map<String, dynamic>> requiredFields = [
-      // General Information Fields
-      {'field': 'Type of Incident', 'value': _typeOfIncidentController.text.trim(), 'controller': _typeOfIncidentController},
-      {'field': 'Copy For', 'value': _copyForController.text.trim(), 'controller': _copyForController},
-      {'field': 'Date and Time Reported', 'value': _dateTimeReportedController.text.trim(), 'controller': _dateTimeReportedController},
-      {'field': 'Date and Time of Incident', 'value': _dateTimeIncidentController.text.trim(), 'controller': _dateTimeIncidentController},
-      {'field': 'Place of Incident', 'value': _placeOfIncidentController.text.trim(), 'controller': _placeOfIncidentController},
-      
-      // Reporting Person Required Fields - using exact labels that match form fields
-      {'field': 'Surname (Reporting)', 'value': _surnameReportingController.text.trim(), 'controller': _surnameReportingController, 'label': 'SURNAME'},
-      {'field': 'First Name (Reporting)', 'value': _firstNameReportingController.text.trim(), 'controller': _firstNameReportingController, 'label': 'FIRST NAME'},
-      {'field': 'Middle Name (Reporting)', 'value': _middleNameReportingController.text.trim(), 'controller': _middleNameReportingController, 'label': 'MIDDLE NAME'},
-      {'field': 'Qualifier (Reporting)', 'value': _qualifierReportingController.text.trim(), 'controller': _qualifierReportingController, 'label': 'QUALIFIER'},
-      {'field': 'Nickname (Reporting)', 'value': _nicknameReportingController.text.trim(), 'controller': _nicknameReportingController, 'label': 'NICKNAME'},
-      {'field': 'Citizenship (Reporting)', 'value': _citizenshipReportingController.text.trim(), 'controller': _citizenshipReportingController, 'label': 'CITIZENSHIP'},
-      {'field': 'Sex/Gender (Reporting)', 'value': _sexGenderReportingController.text.trim(), 'controller': _sexGenderReportingController, 'label': 'SEX/GENDER'},
-      {'field': 'Civil Status (Reporting)', 'value': _civilStatusReportingController.text.trim(), 'controller': _civilStatusReportingController, 'label': 'CIVIL STATUS'},
-      {'field': 'Date of Birth (Reporting)', 'value': _dateOfBirthReportingController.text.trim(), 'controller': _dateOfBirthReportingController, 'label': 'DATE OF BIRTH'},
-      {'field': 'Age (Reporting)', 'value': _ageReportingController.text.trim(), 'controller': _ageReportingController, 'label': 'AGE'},
-      {'field': 'Place of Birth (Reporting)', 'value': _placeOfBirthReportingController.text.trim(), 'controller': _placeOfBirthReportingController, 'label': 'PLACE OF BIRTH'},
-      {'field': 'Home Phone (Reporting)', 'value': _homePhoneReportingController.text.trim(), 'controller': _homePhoneReportingController, 'label': 'HOME PHONE'},
-      {'field': 'Mobile Phone (Reporting)', 'value': _mobilePhoneReportingController.text.trim(), 'controller': _mobilePhoneReportingController, 'label': 'MOBILE PHONE'},
-      {'field': 'Current Address (Reporting)', 'value': _currentAddressReportingController.text.trim(), 'controller': _currentAddressReportingController, 'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET)'},
-      {'field': 'Village/Sitio (Reporting)', 'value': _villageSitioReportingController.text.trim(), 'controller': _villageSitioReportingController, 'label': 'VILLAGE/SITIO'},
-      {'field': 'Education (Reporting)', 'value': _educationReportingController.text.trim(), 'controller': _educationReportingController, 'label': 'HIGHEST EDUCATION ATTAINMENT'},
-      {'field': 'Occupation (Reporting)', 'value': _occupationReportingController.text.trim(), 'controller': _occupationReportingController, 'label': 'OCCUPATION'},
-      {'field': 'ID Card Presented (Reporting)', 'value': _idCardPresentedController.text.trim(), 'controller': _idCardPresentedController, 'label': 'ID CARD PRESENTED'},
-      {'field': 'Email (Reporting)', 'value': _emailReportingController.text.trim(), 'controller': _emailReportingController, 'label': 'EMAIL ADDRESS'},
-      
-      // Missing Person Required Fields - using exact labels that match form fields
-      {'field': 'Surname (Missing Person)', 'value': _surnameVictimController.text.trim(), 'controller': _surnameVictimController, 'label': 'SURNAME VICTIM'},
-      {'field': 'First Name (Missing Person)', 'value': _firstNameVictimController.text.trim(), 'controller': _firstNameVictimController, 'label': 'FIRST NAME VICTIM'},
-      {'field': 'Middle Name (Missing Person)', 'value': _middleNameVictimController.text.trim(), 'controller': _middleNameVictimController, 'label': 'MIDDLE NAME VICTIM'},
-      {'field': 'Qualifier (Missing Person)', 'value': _qualifierVictimController.text.trim(), 'controller': _qualifierVictimController, 'label': 'QUALIFIER VICTIM'},
-      {'field': 'Nickname (Missing Person)', 'value': _nicknameVictimController.text.trim(), 'controller': _nicknameVictimController, 'label': 'NICKNAME VICTIM'},
-      {'field': 'Citizenship (Missing Person)', 'value': _citizenshipVictimController.text.trim(), 'controller': _citizenshipVictimController, 'label': 'CITIZENSHIP VICTIM'},
-      {'field': 'Sex/Gender (Missing Person)', 'value': _sexGenderVictimController.text.trim(), 'controller': _sexGenderVictimController, 'label': 'SEX/GENDER VICTIM'},
-      {'field': 'Civil Status (Missing Person)', 'value': _civilStatusVictimController.text.trim(), 'controller': _civilStatusVictimController, 'label': 'CIVIL STATUS VICTIM'},
-      {'field': 'Date of Birth (Missing Person)', 'value': _dateOfBirthVictimController.text.trim(), 'controller': _dateOfBirthVictimController, 'label': 'DATE OF BIRTH VICTIM'},
-      {'field': 'Age (Missing Person)', 'value': _ageVictimController.text.trim(), 'controller': _ageVictimController, 'label': 'AGE VICTIM'},
-      {'field': 'Place of Birth (Missing Person)', 'value': _placeOfBirthVictimController.text.trim(), 'controller': _placeOfBirthVictimController, 'label': 'PLACE OF BIRTH VICTIM'},
-      {'field': 'Home Phone (Missing Person)', 'value': _homePhoneVictimController.text.trim(), 'controller': _homePhoneVictimController, 'label': 'HOME PHONE VICTIM'},
-      {'field': 'Mobile Phone (Missing Person)', 'value': _mobilePhoneVictimController.text.trim(), 'controller': _mobilePhoneVictimController, 'label': 'MOBILE PHONE VICTIM'},
-      {'field': 'Current Address (Missing Person)', 'value': _currentAddressVictimController.text.trim(), 'controller': _currentAddressVictimController, 'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM'},
-      {'field': 'Village/Sitio (Missing Person)', 'value': _villageSitioVictimController.text.trim(), 'controller': _villageSitioVictimController, 'label': 'VILLAGE/SITIO VICTIM'},
-      {'field': 'Education (Missing Person)', 'value': _educationVictimController.text.trim(), 'controller': _educationVictimController, 'label': 'HIGHEST EDUCATION ATTAINMENT VICTIM'},
-      {'field': 'Occupation (Missing Person)', 'value': _occupationVictimController.text.trim(), 'controller': _occupationVictimController, 'label': 'OCCUPATION VICTIM'},
-      
-      // Incident Details Required Fields - using exact labels that match form fields
-      {'field': 'Date/Time of Incident', 'value': _dateTimeIncidentController.text.trim(), 'controller': _dateTimeIncidentController, 'label': 'DATE/TIME OF INCIDENT'},
-      {'field': 'Place of Incident', 'value': _placeOfIncidentController.text.trim(), 'controller': _placeOfIncidentController, 'label': 'PLACE OF INCIDENT'},
-      {'field': 'Narrative', 'value': _narrativeController.text.trim(), 'controller': _narrativeController, 'label': 'NARRATIVE OF INCIDENT'},
-    ];
-
-    // Check for empty required fields and auto-scroll to first empty field
-    for (final field in requiredFields) {
-      if (field['value']!.isEmpty) {
-        // Auto-scroll to the first invalid field using the exact controller
-        await _scrollToFieldByController(field['controller']);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${field['field']} is required and cannot be empty.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return false;
-      }
-    }// Additional validation for dropdown placeholders with auto-scroll
+    // Reporting Person Section
+    if (_surnameReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('SURNAME');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Surname (Reporting Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_firstNameReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('FIRST NAME');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('First Name (Reporting Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_middleNameReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('MIDDLE NAME');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Middle Name (Reporting Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
     if (_qualifierReportingController.text.isEmpty || _qualifierReportingController.text == dropdownPlaceholder) {
       await _scrollToSpecificField('QUALIFIER');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1179,7 +1126,17 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    
+    if (_nicknameReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('NICKNAME');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Nickname (Reporting Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
     if (_citizenshipReportingController.text.isEmpty || _citizenshipReportingController.text == dropdownPlaceholder) {
       await _scrollToSpecificField('CITIZENSHIP');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1191,7 +1148,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-      
     if (_sexGenderReportingController.text.isEmpty || _sexGenderReportingController.text == dropdownPlaceholder) {
       await _scrollToSpecificField('SEX/GENDER');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1203,31 +1159,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    
-    if (_homePhoneReportingController.text.trim().isEmpty) {
-      await _scrollToSpecificField('HOME PHONE');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Home Phone (Reporting Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    
-    if (_villageSitioReportingController.text.trim().isEmpty) {
-      await _scrollToSpecificField('VILLAGE/SITIO');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Village/Sitio (Reporting Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    
     if (_civilStatusReportingController.text.isEmpty || _civilStatusReportingController.text == dropdownPlaceholder) {
       await _scrollToSpecificField('CIVIL STATUS');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1239,149 +1170,83 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    
-    if (_educationReportingController.text.isEmpty || _educationReportingController.text == dropdownPlaceholder) {
-      await _scrollToSpecificField('HIGHEST EDUCATION ATTAINMENT');
+    if (_dateOfBirthReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('DATE OF BIRTH');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select education level for the reporting person.'),
+          content: Text('Date of Birth (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_idCardPresentedController.text.trim().isEmpty) {
-      await _scrollToSpecificField('ID CARD PRESENTED');
+    if (_ageReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('AGE');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('ID Card Presented (Reporting Person) is required and cannot be empty.'),
+          content: Text('Age (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_qualifierVictimController.text.isEmpty || _qualifierVictimController.text == dropdownPlaceholder) {
-      await _scrollToSpecificField('QUALIFIER VICTIM');
+    if (_placeOfBirthReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('PLACE OF BIRTH');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Qualifier (Missing Person) is required and cannot be empty.'),
+          content: Text('Place of Birth (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_nicknameVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('NICKNAME VICTIM');
+    if (_homePhoneReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('HOME PHONE');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Nickname (Missing Person) is required and cannot be empty.'),
+          content: Text('Home Phone (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_citizenshipVictimController.text.isEmpty || _citizenshipVictimController.text == dropdownPlaceholder) {
-      await _scrollToSpecificField('CITIZENSHIP VICTIM');
+    if (_mobilePhoneReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('MOBILE PHONE');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Citizenship (Missing Person) is required and cannot be empty.'),
+          content: Text('Mobile Phone (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_homePhoneVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('HOME PHONE VICTIM');
+    if (_currentAddressReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('CURRENT ADDRESS (HOUSE NUMBER/STREET)');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Home Phone (Missing Person) is required and cannot be empty.'),
+          content: Text('Current Address (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_mobilePhoneVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('MOBILE PHONE VICTIM');
+    if (_villageSitioReportingController.text.trim().isEmpty) {
+      await _scrollToSpecificField('VILLAGE/SITIO');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Mobile Phone (Missing Person) is required and cannot be empty.'),
+          content: Text('Village/Sitio (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return false;
     }
-    
-    if (_villageSitioVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('VILLAGE/SITIO VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Village/Sitio (Missing Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    
-    if (_sexGenderVictimController.text.isEmpty || _sexGenderVictimController.text == dropdownPlaceholder) {
-      await _scrollToSpecificField('SEX/GENDER VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sex/Gender (Missing Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    
-    if (_civilStatusVictimController.text.isEmpty || _civilStatusVictimController.text == dropdownPlaceholder) {
-      await _scrollToSpecificField('CIVIL STATUS VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select civil status for the missing person.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-      if (_educationVictimController.text.isEmpty || _educationVictimController.text == dropdownPlaceholder) {
-      await _scrollToSpecificField('HIGHEST EDUCATION ATTAINMENT VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select education level for the missing person.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    
-    if (_idCardVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('ID CARD PRESENTED VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ID Card Presented (Missing Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }// Additional validation for address components with auto-scroll
     if (reportingPersonRegion == null || reportingPersonProvince == null || 
         reportingPersonMunicipality == null || (reportingPersonBarangay?.isEmpty ?? true)) {
       await _scrollToSpecificField('REGION REPORTING');
@@ -1393,7 +1258,207 @@ class FillUpForm extends State<FillUpFormScreen> {
         ),
       );
       return false;
-    }    if (victimRegion == null || victimProvince == null || 
+    }
+    if (_educationReportingController.text.isEmpty || _educationReportingController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('HIGHEST EDUCATION ATTAINMENT');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select education level for the reporting person.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_occupationReportingController.text.isEmpty || _occupationReportingController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('OCCUPATION');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Occupation (Reporting Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_idCardPresentedController.text.trim().isEmpty) {
+      await _scrollToSpecificField('ID CARD PRESENTED');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ID Card Presented (Reporting Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    // Missing Person Section
+    if (_surnameVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('SURNAME VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Surname (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_firstNameVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('FIRST NAME VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('First Name (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_middleNameVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('MIDDLE NAME VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Middle Name (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_qualifierVictimController.text.isEmpty || _qualifierVictimController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('QUALIFIER VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Qualifier (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_nicknameVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('NICKNAME VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Nickname (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_citizenshipVictimController.text.isEmpty || _citizenshipVictimController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('CITIZENSHIP VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Citizenship (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_sexGenderVictimController.text.isEmpty || _sexGenderVictimController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('SEX/GENDER VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sex/Gender (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_civilStatusVictimController.text.isEmpty || _civilStatusVictimController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('CIVIL STATUS VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select civil status for the missing person.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_dateOfBirthVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('DATE OF BIRTH VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Date of Birth (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_ageVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('AGE VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Age (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_placeOfBirthVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('PLACE OF BIRTH VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Place of Birth (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_homePhoneVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('HOME PHONE VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Home Phone (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_mobilePhoneVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('MOBILE PHONE VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mobile Phone (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_currentAddressVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Current Address (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_villageSitioVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('VILLAGE/SITIO VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Village/Sitio (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (victimRegion == null || victimProvince == null || 
         victimMunicipality == null || (victimBarangay?.isEmpty ?? true)) {
       await _scrollToSpecificField('REGION VICTIM');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1405,7 +1470,84 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-
+    if (_educationVictimController.text.isEmpty || _educationVictimController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('HIGHEST EDUCATION ATTAINMENT VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select education level for the missing person.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_occupationVictimController.text.isEmpty || _occupationVictimController.text == dropdownPlaceholder) {
+      await _scrollToSpecificField('OCCUPATION VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Occupation (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_idCardVictimController.text.trim().isEmpty) {
+      await _scrollToSpecificField('ID CARD PRESENTED VICTIM');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ID Card Presented (Missing Person) is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    // Incident Details Section
+    if (_typeOfIncidentController.text.trim().isEmpty) {
+      await _scrollToSpecificField('TYPE OF INCIDENT');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Type of Incident is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_dateTimeIncidentController.text.trim().isEmpty) {
+      await _scrollToSpecificField('DATE/TIME OF INCIDENT');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Date/Time of Incident is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_placeOfIncidentController.text.trim().isEmpty) {
+      await _scrollToSpecificField('PLACE OF INCIDENT');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Place of Incident is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    if (_narrativeController.text.trim().isEmpty) {
+      await _scrollToSpecificField('NARRATIVE OF INCIDENT');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Narrative of Incident is required and cannot be empty.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
     return true;
   }
   // Helper method to scroll to a specific field by label
@@ -1427,13 +1569,10 @@ class FillUpForm extends State<FillUpFormScreen> {
   Future<void> _scrollToFieldByController(TextEditingController controller) async {
     // Find the controller in our mapping and get its label
     String? labelToFind;
-    
-    // Map controllers to their field labels
+      // Map controllers to their field labels
     final Map<TextEditingController, String> controllerToLabel = {
       // General information fields
       _typeOfIncidentController: 'TYPE OF INCIDENT',
-      _copyForController: 'TYPE OF INCIDENT', 
-      _dateTimeReportedController: 'DATE AND TIME REPORTED',
       _dateTimeIncidentController: 'DATE AND TIME REPORTED',
       _placeOfIncidentController: 'DATE AND TIME REPORTED',
       
@@ -1465,10 +1604,12 @@ class FillUpForm extends State<FillUpFormScreen> {
       _citizenshipVictimController: 'CITIZENSHIP VICTIM',
       _sexGenderVictimController: 'SEX/GENDER VICTIM',
       _civilStatusVictimController: 'CIVIL STATUS VICTIM',
-      _dateOfBirthVictimController: 'DATE OF BIRTH VICTIM',      _ageVictimController: 'AGE VICTIM',
+      _dateOfBirthVictimController: 'DATE OF BIRTH VICTIM',      
+      _ageVictimController: 'AGE VICTIM',
       _placeOfBirthVictimController: 'PLACE OF BIRTH VICTIM',
       _homePhoneVictimController: 'HOME PHONE VICTIM',
-      _mobilePhoneVictimController: 'MOBILE PHONE VICTIM',      _currentAddressVictimController: 'CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM',
+      _mobilePhoneVictimController: 'MOBILE PHONE VICTIM',      
+      _currentAddressVictimController: 'CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM',
       _villageSitioVictimController: 'VILLAGE/SITIO VICTIM',
       _educationVictimController: 'HIGHEST EDUCATION ATTAINMENT VICTIM',
       _occupationVictimController: 'OCCUPATION VICTIM',
@@ -1640,7 +1781,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        elevation: 0, // Remove shadow
+        elevation: 0,
         title: Text(
           "Incident Record Form",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
@@ -1651,8 +1792,8 @@ class FillUpForm extends State<FillUpFormScreen> {
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
       ),
-            body: isCheckingPrivacyStatus 
-        ? Center(child: CircularProgressIndicator()) // Show loading while checking privacy status
+      body: isCheckingPrivacyStatus 
+        ? Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
           controller: _scrollController,
           padding: EdgeInsets.all(16),
@@ -1700,75 +1841,6 @@ class FillUpForm extends State<FillUpFormScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [          
-                        // --- Wrap each required field in a KeyedSubtree for scrolling ---
-                        KeyedSubtree(
-                          key: _getOrCreateKey('TYPE OF INCIDENT'),
-                          child: FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'TYPE OF INCIDENT',
-                                'required': true,
-                                'keyboardType': TextInputType.text,
-                                'controller': _typeOfIncidentController,
-                                'readOnly': true, // Make it read-only
-                                'backgroundColor': Color(0xFFF0F0F0), // Light gray background to indicate fixed field
-                              },
-                              {
-                                'label': 'COPY FOR',
-                                'required': true,
-                                'controller': _copyForController,
-                              },
-                            ],
-                            formState: formState,
-                            onFieldChange: onFieldChange,
-                          ),
-                        ),
-                        
-                        SizedBox(height: 10),
-                         
-                        KeyedSubtree(
-                          key: _getOrCreateKey('DATE AND TIME REPORTED'),
-                          child: FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'DATE AND TIME REPORTED',
-                                'required': true,
-                                'controller': _dateTimeReportedController,
-                                'readOnly': true,
-                              },
-                              {
-                                'label': 'DATE AND TIME OF INCIDENT',
-                                'required': true,
-                                'controller': _dateTimeIncidentController,
-                                'readOnly': true,
-                                'onTap': () {
-                                  _pickDateTime(
-                                    _dateTimeIncidentController,
-                                    dateTimeIncident,
-                                    (DateTime selectedDateTime) {
-                                      setState(() {
-                                        dateTimeIncident = selectedDateTime;
-                                        // Sync with Item D dateTime
-                                        _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
-                                      });
-                                    },
-                                  );
-                                },
-                              },
-                              {
-                                'label': 'PLACE OF INCIDENT',
-                                'required': true,
-                                'controller': _placeOfIncidentController,
-                                'keyboardType': TextInputType.text,
-                              },
-                            ],
-                            formState: formState,
-                            onFieldChange: onFieldChange,
-                          ),
-                        ),
-                        
-                        SizedBox(height: 10),
-
                         // Section title using the new component
                         SectionTitle(
                           title: 'REPORTING PERSON',
@@ -2326,7 +2398,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ],
                           formState: formState,
                           onFieldChange: onFieldChange,
-                        ),// Checkbox for copying address from reporting person
+                        ),
+                        // Checkbox for copying address from reporting person
                         CheckboxListTile(
                           title: Text("Same address as reporting person?", style: TextStyle(fontSize: 15, color: Colors.black)),
                           value: sameAddressAsReporting,
@@ -2563,6 +2636,59 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
                         
+                        // Type of Incident, Date/Time of Incident, Place of Incident moved here
+                        FormRowInputs(
+                          fields: [
+                            {
+                              'label': 'TYPE OF INCIDENT',
+                              'required': true,
+                              'controller': _typeOfIncidentController,
+                              'readOnly': true,
+                              'backgroundColor': Color(0xFFF0F0F0),
+                              'key': _getOrCreateKey('TYPE OF INCIDENT'),
+                            },
+                          ],
+                          formState: formState,
+                          onFieldChange: onFieldChange,
+                        ),
+                        
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
+                          fields: [
+                            {
+                              'label': 'DATE/TIME OF INCIDENT',
+                              'required': true,
+                              'controller': _dateTimeIncidentController,
+                              'readOnly': true,
+                              'key': _getOrCreateKey('DATE/TIME OF INCIDENT'),
+                              'onTap': () {
+                                _pickDateTime(
+                                  _dateTimeIncidentController,
+                                  dateTimeIncident,
+                                  (DateTime selectedDateTime) {
+                                    setState(() {
+                                      dateTimeIncident = selectedDateTime;
+                                      _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
+                                    });
+                                  },
+                                );
+                              },
+                            },
+                            {
+                              'label': 'PLACE OF INCIDENT',
+                              'required': true,
+                              'controller': _placeOfIncidentController,
+                              'keyboardType': TextInputType.text,
+                              'key': _getOrCreateKey('PLACE OF INCIDENT'),
+                            },
+                          ],
+                          formState: formState,
+                          onFieldChange: onFieldChange,
+                        ),
+                        
+                        SizedBox(height: 10),
+                        
                         KeyedSubtree(
                           key: _getOrCreateKey('NARRATIVE OF INCIDENT'),
                           child: Padding(
@@ -2696,14 +2822,13 @@ class FillUpForm extends State<FillUpFormScreen> {
               ),
             ),
           ),
-        ),      bottomNavigationBar: SubmitButton(
+        ),
+      bottomNavigationBar: SubmitButton(
         formKey: _formKey,
         onSubmit: () async {
-          // Use comprehensive validation which includes auto-scroll
           if (!(await _validateAllRequiredFields())) {
-            return; // Validation failed, auto-scroll already handled
+            return;
           }
-          
           await submitForm();
         },
         isSubmitting: isSubmitting,

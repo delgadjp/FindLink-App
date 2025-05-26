@@ -58,8 +58,7 @@ class FormRowInputs extends StatelessWidget {
     );
   }  Widget _buildRegionField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final regionKey = '${section}Region';
-    
+    final regionKey = section == 'reportingOther' ? 'reportingOtherRegion' : section == 'victimOther' ? 'victimOtherRegion' : '${section}Region';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -101,9 +100,8 @@ class FormRowInputs extends StatelessWidget {
 
   Widget _buildProvinceField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final provinceKey = '${section}Province';
-    final regionKey = '${section}Region';
-    
+    final provinceKey = section == 'reportingOther' ? 'reportingOtherProvince' : section == 'victimOther' ? 'victimOtherProvince' : '${section}Province';
+    final regionKey = section == 'reportingOther' ? 'reportingOtherRegion' : section == 'victimOther' ? 'victimOtherRegion' : '${section}Region';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -145,9 +143,8 @@ class FormRowInputs extends StatelessWidget {
 
   Widget _buildMunicipalityField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final municipalityKey = '${section}Municipality';
-    final provinceKey = '${section}Province';
-    
+    final municipalityKey = section == 'reportingOther' ? 'reportingOtherMunicipality' : section == 'victimOther' ? 'victimOtherMunicipality' : '${section}Municipality';
+    final provinceKey = section == 'reportingOther' ? 'reportingOtherProvince' : section == 'victimOther' ? 'victimOtherProvince' : '${section}Province';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -189,9 +186,8 @@ class FormRowInputs extends StatelessWidget {
 
   Widget _buildBarangayField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final barangayKey = '${section}Barangay';
-    final municipalityKey = '${section}Municipality';
-    
+    final barangayKey = section == 'reportingOther' ? 'reportingOtherBarangay' : section == 'victimOther' ? 'victimOtherBarangay' : '${section}Barangay';
+    final municipalityKey = section == 'reportingOther' ? 'reportingOtherMunicipality' : section == 'victimOther' ? 'victimOtherMunicipality' : '${section}Municipality';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
