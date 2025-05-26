@@ -1047,16 +1047,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 16),
-                  _buildCard(
+                  SizedBox(height: 16),                  _buildCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSectionHeader("Photo Evidence"),
                         _buildImagePicker(),
-                        // Add validation feedback UI
-                        if (_validationStatus != ValidationStatus.none)
-                          _buildValidationFeedback(),
                       ],
                     ),
                   ),
@@ -1064,6 +1060,14 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   _buildCard(
                     child: _buildMapSection(),
                   ),
+                  // Add validation feedback UI below the maps
+                  if (_validationStatus != ValidationStatus.none)
+                    Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: _buildCard(
+                        child: _buildValidationFeedback(),
+                      ),
+                    ),
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _submitTip,
