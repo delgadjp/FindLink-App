@@ -106,7 +106,6 @@ class AuthService {
       throw e;
     }
   }
-
   // Modified method with custom document ID format and additional user fields
   Future<void> addUserToFirestore(
     User user,
@@ -114,7 +113,7 @@ class AuthService {
     String? firstName,
     String? middleName,
     String? lastName,
-    DateTime? dateOfBirth,
+    DateTime? birthday,
     int? age,
     String? gender,
     String? phoneNumber,
@@ -156,16 +155,14 @@ class AuthService {
           uid: user.uid,
           idImage: uploadedIDImage,
         );
-      }
-
-      // Store user data with the custom document ID
+      }      // Store user data with the custom document ID
       await _firestore.collection('users').doc(customDocId).set({
         'userId': user.uid,
         'email': email,
         'firstName': firstName ?? '',
         'middleName': middleName ?? '',
         'lastName': lastName ?? '',
-        'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
+        'birthday': birthday != null ? Timestamp.fromDate(birthday) : null,
         'age': age ?? 0,
         'gender': gender ?? 'Not specified',
         'phoneNumber': phoneNumber ?? '',
@@ -258,7 +255,6 @@ class AuthService {
       return false;
     }
   }
-
   // Modified Register function with improved error handling and additional user fields
   Future<void> registerUser({
     required String email,
@@ -268,7 +264,7 @@ class AuthService {
     String? firstName,
     String? middleName,
     String? lastName,
-    DateTime? dateOfBirth,
+    DateTime? birthday,
     int? age,
     String? gender,
     String? phoneNumber,
@@ -302,16 +298,14 @@ class AuthService {
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
-      );
-
-      // Add user to Firestore with additional profile information
+      );      // Add user to Firestore with additional profile information
       await addUserToFirestore(
         userCredential.user!, 
         email,
         firstName: firstName,
         middleName: middleName,
         lastName: lastName,
-        dateOfBirth: dateOfBirth,
+        birthday: birthday,
         age: age,
         gender: gender,
         phoneNumber: phoneNumber,

@@ -1670,24 +1670,32 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           .collection('reports')
           .where('name', isEqualTo: personName)
           .get();
-      for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+      for (var doc in snapshot.docs) {        final data = doc.data() as Map<String, dynamic>;
         if (data.containsKey('coordinates')) {
           final coord = data['coordinates'];
           double? tipLat;
           double? tipLng;
-          if (coord is Map) {
+          
+          // Handle GeoPoint format (new format)
+          if (coord is GeoPoint) {
+            tipLat = coord.latitude;
+            tipLng = coord.longitude;
+          }
+          // Handle legacy Map format
+          else if (coord is Map) {
             tipLat = coord['lat'] is double ? coord['lat'] : double.tryParse(coord['lat'].toString());
             tipLng = coord['lng'] is double ? coord['lng'] : double.tryParse(coord['lng'].toString());
-          } else if (coord is String) {
-            // Parse string format: "[lat° N, lng° E]"
-            final regex = RegExp(r'\\[([\d.\-]+)[^\d\-]+([\d.\-]+)');
+          }
+          // Handle string format: "[lat° N, lng° E]" (old format)
+          else if (coord is String) {
+            final regex = RegExp(r'([\d.\-]+)°\s*N,\s*([\d.\-]+)°\s*E');
             final match = regex.firstMatch(coord);
             if (match != null) {
               tipLat = double.tryParse(match.group(1)!);
               tipLng = double.tryParse(match.group(2)!);
             }
           }
+          
           if (tipLat != null && tipLng != null) {
             final double distance = _calculateDistance(lat, lng, tipLat, tipLng);
             if (distance <= radiusMeters) {

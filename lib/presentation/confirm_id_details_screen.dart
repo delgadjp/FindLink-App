@@ -1013,15 +1013,14 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       // Create user in Firebase Auth
       final UserCredential userCredential = await FirebaseAuth.instance
         .createUserWithEmailAndPassword(email: email, password: password);
-        
-      // Add user to Firestore with additional profile information
+          // Add user to Firestore with additional profile information
       await authService.addUserToFirestore(
         userCredential.user!, 
         email,
         firstName: widget.registrationData!['firstName'],
         middleName: widget.registrationData!['middleName'],
         lastName: widget.registrationData!['lastName'],
-        dateOfBirth: widget.registrationData!['dateOfBirth'],
+        birthday: widget.registrationData!['dateOfBirth'],
         age: widget.registrationData!['age'],
         gender: widget.registrationData!['gender'],
         phoneNumber: widget.registrationData!['phoneNumber'],

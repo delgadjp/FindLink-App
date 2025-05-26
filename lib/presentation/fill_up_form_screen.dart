@@ -386,21 +386,53 @@ class FillUpForm extends State<FillUpFormScreen> {
         final userData = userQuery.docs.first.data() as Map<String, dynamic>;
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
-          _firstNameReportingController.text = userData['firstName'] ?? '';          _middleNameReportingController.text = userData['middleName'] ?? '';
+          _firstNameReportingController.text = userData['firstName'] ?? '';          
+          _middleNameReportingController.text = userData['middleName'] ?? '';
           _emailReportingController.text = userData['email'] ?? '';
           _sexGenderReportingController.text = userData['gender'] ?? '';
           _ageReportingController.text = userData['age'] != null ? userData['age'].toString() : '';
-          _idCardPresentedController.text = selectedIDType ?? '';
-          if (userData['dateOfBirth'] != null) {
-            DateTime dob;
-            if (userData['dateOfBirth'] is Timestamp) {
-              dob = (userData['dateOfBirth'] as Timestamp).toDate();
-            } else if (userData['dateOfBirth'] is String) {
-              dob = DateTime.tryParse(userData['dateOfBirth']) ?? DateTime.now();
-            } else {
-              dob = DateTime.now();
+          _idCardPresentedController.text = selectedIDType ?? '';          // Handle birthday field for date of birth
+          if (userData['birthday'] != null) {
+            DateTime? dob;
+            try {
+              if (userData['birthday'] is Timestamp) {
+                dob = userData['birthday'].toDate();
+              } else if (userData['birthday'] is String) {
+                String dobString = userData['birthday'];
+                // Try different date formats
+                dob = DateTime.tryParse(dobString);
+                if (dob == null) {
+                  // Try parsing MM/DD/YYYY format
+                  List<String> parts = dobString.split('/');
+                  if (parts.length == 3) {
+                    int? month = int.tryParse(parts[0]);
+                    int? day = int.tryParse(parts[1]);
+                    int? year = int.tryParse(parts[2]);
+                    if (day != null && month != null && year != null) {
+                      dob = DateTime(year, month, day);
+                    }
+                  }
+                  
+                  // If MM/DD/YYYY failed, try DD/MM/YYYY format
+                  if (dob == null && parts.length == 3) {
+                    int? day = int.tryParse(parts[0]);
+                    int? month = int.tryParse(parts[1]);
+                    int? year = int.tryParse(parts[2]);
+                    if (day != null && month != null && year != null) {
+                      dob = DateTime(year, month, day);
+                    }
+                  }
+                }
+              } else {
+                print('Unexpected birthday format: ${userData['birthday'].runtimeType}');
+              }
+              
+              if (dob != null) {
+                _dateOfBirthReportingController.text = "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+              }
+            } catch (e) {
+              print('Error parsing birthday: $e');
             }
-            _dateOfBirthReportingController.text = "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
           }
           _mobilePhoneReportingController.text = userData['phoneNumber'] ?? '';
           _citizenshipReportingController.text = userData['citizenship'] ?? '';
