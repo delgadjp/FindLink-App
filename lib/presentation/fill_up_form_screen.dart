@@ -1031,16 +1031,28 @@ class FillUpForm extends State<FillUpFormScreen> {
     final reportingHomePhone = _homePhoneReportingController.text.trim();
     if (reportingHomePhone.isNotEmpty && 
         reportingHomePhone.toLowerCase() != 'n/a' && 
-        reportingHomePhone.toLowerCase() != 'none' && 
-        !RegExp(r'^[0-9]+$').hasMatch(reportingHomePhone)) {
-      await _scrollToFieldByController(_homePhoneReportingController);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please fix the reporting person home phone field before submitting. Enter valid number or None.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
+        reportingHomePhone.toLowerCase() != 'none') {
+      
+      // Philippines Cavite landline format validation
+      // Format: (046) XXX-XXXX or 046-XXX-XXXX or 046XXXXXXX
+      bool isValidFormat = false;
+      
+      if (RegExp(r'^\(046\)\s*\d{3}-\d{4}$').hasMatch(reportingHomePhone) || // (046) XXX-XXXX
+          RegExp(r'^046-\d{3}-\d{4}$').hasMatch(reportingHomePhone) ||        // 046-XXX-XXXX
+          RegExp(r'^046\d{7}$').hasMatch(reportingHomePhone)) {               // 046XXXXXXX
+        isValidFormat = true;
+      }
+      
+      if (!isValidFormat) {
+        await _scrollToFieldByController(_homePhoneReportingController);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please fix the reporting person home phone field before submitting. Enter valid Cavite landline format (046) XXX-XXXX or None.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
     }
     
     // Check reporting person mobile phone
@@ -1055,21 +1067,32 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    
-    // Check victim home phone
+      // Check victim home phone
     final victimHomePhone = _homePhoneVictimController.text.trim();
     if (victimHomePhone.isNotEmpty && 
         victimHomePhone.toLowerCase() != 'n/a' && 
-        victimHomePhone.toLowerCase() != 'none' && 
-        !RegExp(r'^[0-9]+$').hasMatch(victimHomePhone)) {
-      await _scrollToFieldByController(_homePhoneVictimController);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please fix the missing person home phone field before submitting. Enter valid number or None.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
+        victimHomePhone.toLowerCase() != 'none') {
+      
+      // Philippines Cavite landline format validation
+      // Format: (046) XXX-XXXX or 046-XXX-XXXX or 046XXXXXXX
+      bool isValidFormat = false;
+      
+      if (RegExp(r'^\(046\)\s*\d{3}-\d{4}$').hasMatch(victimHomePhone) || // (046) XXX-XXXX
+          RegExp(r'^046-\d{3}-\d{4}$').hasMatch(victimHomePhone) ||        // 046-XXX-XXXX
+          RegExp(r'^046\d{7}$').hasMatch(victimHomePhone)) {               // 046XXXXXXX
+        isValidFormat = true;
+      }
+      
+      if (!isValidFormat) {
+        await _scrollToFieldByController(_homePhoneVictimController);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please fix the missing person home phone field before submitting. Enter valid Cavite landline format (046) XXX-XXXX or None.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
     }
     
     // Check victim mobile phone

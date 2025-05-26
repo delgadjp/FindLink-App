@@ -16,21 +16,20 @@ class MissingPersonService {
             .map((doc) => MissingPerson.fromSnapshot(doc))
             .toList());
   }
-
-  Future<MissingPerson?> getMissingPersonById(String caseId) async {
+  Future<MissingPerson?> getMissingPersonById(String alarmId) async {
     final doc = await _firestore
         .collection(collection)
-        .where('case_id', isEqualTo: caseId)
+        .where('alarm_id', isEqualTo: alarmId)
         .get();
     
     if (doc.docs.isEmpty) return null;
     return MissingPerson.fromSnapshot(doc.docs.first);
   }
 
-  Future<void> updateMissingPerson(String caseId, Map<String, dynamic> data) async {
+  Future<void> updateMissingPerson(String alarmId, Map<String, dynamic> data) async {
     final doc = await _firestore
         .collection(collection)
-        .where('case_id', isEqualTo: caseId)
+        .where('alarm_id', isEqualTo: alarmId)
         .get();
     
     if (doc.docs.isNotEmpty) {
@@ -58,10 +57,9 @@ class MissingPersonService {
         if (status == 'Resolved Case' || status == 'Resolved') {
           return null;
         }
-        
-        return {
+          return {
           'id': doc.id,
-          'caseNumber': data['case_id'] ?? doc.id,
+          'caseNumber': data['alarm_id'] ?? doc.id,
           'name': data['name'] ?? 'Unknown Person',
           'dateCreated': _formatTimestamp(data['datetime_reported']),
           'status': status,

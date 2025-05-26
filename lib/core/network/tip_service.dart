@@ -294,17 +294,19 @@ class TipService {
     
       // Generate formal reportId
       final String reportId = await generateFormalReportId();
-      
-      // Fetch missing person name by caseId
+        // Fetch missing person name by caseId using the correct field name
       String name = missingPersonName;
       try {
-        final doc = await FirebaseFirestore.instance.collection('missingPersons').where('case_id', isEqualTo: caseId).get();
+        final doc = await FirebaseFirestore.instance.collection('missingPersons').where('alarm_id', isEqualTo: caseId).get();
         if (doc.docs.isNotEmpty) {
           name = doc.docs.first.data()['name'] ?? missingPersonName;
+          print('Found missing person in database: $name (using alarm_id: $caseId)');
+        } else {
+          print('No missing person found with alarm_id: $caseId, using provided name: $missingPersonName');
         }
       } catch (e) {
         print('Error fetching missing person name: $e');
-      }      // Format coordinates as GeoPoint for Firestore
+      }// Format coordinates as GeoPoint for Firestore
       final GeoPoint coordinates = GeoPoint(lat, lng);
 
       // Format dateTimeLastSeen and timestamp
