@@ -1,0 +1,66 @@
+I have a flutter app regarding reporting missing person cases in the Philippines with collaboration with the PNP where the user can send IRF (Incident Record Form) to the Admin Side which is the Web version of the system, and after that the Admin can make an MPAS (Missing Person Alarm Sheet) and once made can be viewed by the users and can see MPAS for different people as well. The user can also submit a sighting if they have recently seen this person. The App and Web system works on a firebase backend.
+
+Currently the flutter app was suggested that a find me feature is added where based on my understanding if the user went missing then other family members or the police (I don't know which is more viable the police or family members) will be able to find the location of said missing person. The function I can compare this as is the google share location but maybe you have other ideas.
+
+How to Implement
+
+1. Enable the Feature: Let users opt-in to "find me," clearly explaining that their location will be tracked and shared in emergencies. Get explicit consent.
+2. se Background Tracking: Use a package like flutter_background_geolocation to track locations efficiently in the background, sending updates to Firebase.
+3. Store and Secure Data: Save location data in Firestore, but restrict access until the user is marked missing (e.g., via an MPAS). Use Firestore rules for security.
+4. Access Control: Allow designated family contacts and PNP to view data only when the user is reported missing, with verification steps for family.
+5. Legal Compliance: Ensure compliance with the Data Privacy Act of 2012, obtain consent, and consult the PNP for their requirements.
+
+Who Should Access Location?
+
+Both family (trusted contacts) and PNP can access, but only with user consent and proper authorization. Family needs pre-designation; PNP access ties to official MPAS creation.
+
+Continuous vs. Triggered Tracking?
+
+Continuous tracking is recommended for historical data, but it’s a privacy trade-off. Triggered tracking (when missing) is an alternative, but may miss critical data if delayed.
+
+App and Automatic Tracking?
+
+The app must be installed and "find me" enabled. Automatic pulling is better for reliability, especially in emergencies, aligning with your preference.
+
+Privacy and Legal Notes
+
+Comply with the Data Privacy Act by securing data, limiting retention, and getting consent. Discuss with the PNP to ensure alignment with their protocols and legal standards.
+
+Implementation Approach
+To implement the "find me" feature, we recommend a structured approach that balances functionality, privacy, and legal compliance:
+
+1. Feature Enablement and User Consent
+- Users must explicitly opt-in to the "find me" feature, understanding that their location will be tracked in the background and shared with designated contacts or PNP in case of a missing person report. This aligns with the Data Privacy Act of 2012, which requires consent for processing personal data, including location data. The app should display a clear consent form, detailing purposes (e.g., aiding in missing person searches) and data recipients (family, PNP).
+
+2. Background Location Tracking
+Given the need for real-time, continuous tracking when triggered, we suggest using a Flutter package like flutter_background_geolocation for efficient background location tracking. This package, supported on both Android and iOS, uses motion-detection intelligence to conserve battery, activating location services only when the device is moving. It has been field-tested since 2013 and is suitable for applications like emergency response.
+- Technical Details: The package can be configured to send location updates (latitude, longitude, timestamp) to Firebase Realtime Database or Firestore periodically. For iOS, ensure "Always" location permission is requested, and consider significant location change APIs for background execution, given iOS restrictions.
+- Battery Efficiency: The package samples the accelerometer to power down GPS when stationary, addressing battery concerns.
+
+3. Data Storage and Access Control
+Location data should be stored in Firestore, linked to the user’s ID, with a document structure including timestamp, coordinates, and accuracy. To protect privacy, access should be restricted until the user is reported missing. We propose:
+- A user document with a boolean field "isMissing," initially false.
+- When a trusted contact reports missing or PNP creates an MPAS, set "isMissing" to true.
+- Use Firestore security rules to allow read access to location data only if "isMissing" is true and the requester is authorized (e.g., designated contacts or PNP admin role).
+- Example Firestore structure:
+users/{userId}/
+  - isMissing: boolean
+  - locations/{locationId}/
+    - timestamp: DateTime
+    - latitude: double
+    - longitude: double
+
+4. Reporting and Access Mechanisms
+- Trusted Contacts: Users designate family members as trusted contacts in the app settings. When a contact reports the user missing, the app sends a request to the backend, which, after verification (e.g., via OTP or relationship proof), sets "isMissing" to true. The contact can then view location data through the app.
+- PNP Access: Integrate with the existing MPAS creation process. When the admin (PNP) creates an MPAS, the system automatically sets "isMissing" to true, granting PNP access to location data via the web interface.
+- Data Access Logging: Log all access attempts for auditability, ensuring compliance with data privacy laws.
+
+5. Privacy and Legal Compliance
+The Data Privacy Act of 2012 governs location data handling in the Philippines, requiring consent, purpose limitation, and data security. Key considerations include:
+- Consent: Users must consent to continuous background tracking, with clear disclosure in the app’s privacy policy.
+- Data Security: Encrypt location data in transit and at rest, using Firebase’s security features. Limit retention to necessary periods (e.g., 30 days unless missing, then until case resolution).
+- PNP Collaboration: Given the partnership, consult the PNP to ensure alignment with their protocols. There may be specific memoranda of understanding (MOUs) or legal agreements outlining data sharing.
+- Legal Research: The Act applies to global entities processing Philippine data, with no specific exceptions for law enforcement, but exclusions may apply for national security (consult legal experts).
+- Anti-Wiretapping Laws: Ensure tracking does not violate privacy rights, especially if the phone is lost or stolen, by requiring user consent and limiting access to authorized parties.
+
+The "find me" feature can be implemented using flutter_background_geolocation for continuous, efficient background tracking, storing data in Firestore with access controls tied to missing person reports. Both family (trusted contacts) and PNP should have access, with strict consent and verification processes. Ensure compliance with the Data Privacy Act by securing data, limiting retention, and consulting the PNP for alignment. Given the complexity, schedule a legal review and PNP consultation to finalize the feature, ensuring it meets all requirements as of July 12, 2025.
