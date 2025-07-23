@@ -17,17 +17,6 @@ class FillUpFormScreen extends StatefulWidget {
   FillUpForm createState() => FillUpForm();
 }
 
-// Add ValidationStatus enum for image validation
-enum ValidationStatus {
-  none,
-  processing,
-  error,
-  warning,
-  noHuman,
-  humanDetected,
-  success
-}
-
 class FillUpForm extends State<FillUpFormScreen> {
   bool hasOtherAddressReporting = false;
   bool hasOtherAddressVictim = false;
@@ -43,10 +32,6 @@ class FillUpForm extends State<FillUpFormScreen> {
   File? _imageFile;
   Uint8List? _webImage;
   final picker = ImagePicker();
-  ValidationStatus _validationStatus = ValidationStatus.none;
-  String _validationMessage = '';
-  String _validationConfidence = '0.0';
-  bool _isProcessingImage = false;
   
   // Add a ScrollController for the form
   final ScrollController _scrollController = ScrollController();
@@ -162,8 +147,6 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Image picking and validation
   Future<void> _pickImage(ImageSource source) async {
     try {
-      setState(() => _isProcessingImage = true);
-      
       final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
         dynamic imageData;
@@ -183,14 +166,10 @@ class FillUpForm extends State<FillUpFormScreen> {
           
           setState(() {
             if (!validationResult['isValid']) {
-              _validationMessage = 'Error validating image: ${validationResult['message']}';
-              _validationStatus = ValidationStatus.error;
+              // Error occurred during validation - remove image
             } else if (!validationResult['containsHuman']) {
               _imageFile = null;
               _webImage = null;
-              _validationMessage = 'No person detected in the image. Image has been removed.';
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-              _validationStatus = ValidationStatus.noHuman;
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -199,15 +178,12 @@ class FillUpForm extends State<FillUpFormScreen> {
                 ),
               );
             } else {
-              _validationMessage = 'Person detected in image!';
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-              _validationStatus = ValidationStatus.humanDetected;
+              // Person detected - validation successful
             }
           });
         } catch (e) {
           setState(() {
-            _validationMessage = 'Image validation error: ${e.toString()}';
-            _validationStatus = ValidationStatus.warning;
+            // Image validation error occurred
           });
         }
       }
@@ -216,13 +192,10 @@ class FillUpForm extends State<FillUpFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error accessing image: ${e.toString()}')),
       );
-    } finally {
-      setState(() => _isProcessingImage = false);
     }
   }
   
   // Reference to Firestore
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -383,7 +356,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           .limit(1)
           .get();
       if (userQuery.docs.isNotEmpty) {
-        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+        final userData = userQuery.docs.first.data();
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
           _firstNameReportingController.text = userData['firstName'] ?? '';          
