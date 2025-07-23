@@ -61,8 +61,6 @@ class MissingPerson {
       }
     }
     
-    if (dateTime == null) return '';
-    
     // Format with 12-hour time and AM/PM
     String period = dateTime.hour >= 12 ? 'PM' : 'AM';
     int hour12 = dateTime.hour == 0 ? 12 : (dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour);
