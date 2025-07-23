@@ -1,8 +1,6 @@
 import '../core/app_export.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
 import 'package:flutter/gestures.dart';
-import 'package:findlink/presentation/id_validation_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -21,7 +19,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
   int? age;
-  final AuthService _authService = AuthService();
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isFirstNameValid = true;
