@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+
 import '../core/app_export.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';  // Add this import for older API
@@ -127,15 +127,81 @@ class _FAQScreenState extends State<FAQScreen> {
             
             // FAQ List
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.all(16),
-                itemCount: faqs.length,
-                itemBuilder: (context, index) {
-                  return FAQItem(
-                    question: faqs[index]["question"]!,
-                    answer: faqs[index]["answer"]!,
-                  );
-                },
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.all(16),
+                      itemCount: faqs.length,
+                      itemBuilder: (context, index) {
+                        return FAQItem(
+                          question: faqs[index]["question"]!,
+                          answer: faqs[index]["answer"]!,
+                        );
+                      },
+                    ),
+                  ),
+                  // Emergency Contact Section
+                  Container(
+                    margin: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.emergency,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "Emergency Contact",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          "For immediate assistance or emergency situations",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _callPNPHotline,
+                          icon: Icon(Icons.phone, color: Colors.white),
+                          label: Text(
+                            "Call PNP Hotline (117)",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
