@@ -2,6 +2,8 @@ I have a flutter app regarding reporting missing person cases in the Philippines
 
 Currently the flutter app was suggested that a find me feature is added where based on my understanding if the user went missing then other family members or the police (I don't know which is more viable the police or family members) will be able to find the location of said missing person. The function I can compare this as is the google share location but maybe you have other ideas.
 
+IMPORTANT (The App is only user side and the Web is the Admin Side)
+
 How to Implement
 
 1. Enable the Feature: Let users opt-in to "find me," clearly explaining that their location will be tracked and shared in emergencies. Get explicit consent.

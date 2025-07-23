@@ -1,131 +1,67 @@
 rules_version = '2';
 service cloud.firestore {
- match /databases/{database}/documents {
-    match /users/{docId} {
-      // Allow read if the authenticated user owns the document or is an admin
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-
-      // Allow list (query) for authenticated users (needed for sequential ID generation)
-      allow list: if request.auth != null;
-
-      // Allow create if the userId in the new document matches the authenticated user's UID
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-
-      // Allow update/delete if the authenticated user owns the document or is an admin
+  match /databases/{database}/documents {
+  
+        match /users/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-        );
-      }
-
-    // Rules for users-app collection - Updated to use userId instead of uid
-    match /users-app/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Allow updating specifically privacy acceptance fields and lastSignIn
-      allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['privacyPolicyAccepted', 'privacyPolicyAcceptedAt', 'lastSignIn'])
-      );
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
-   // Rules for missingPersons collection
-    match /missingPersons/{documentId} {
-      allow read: if true; // Allow anyone to read
-      allow create: if request.auth != null; // Allow authenticated users to create
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId || // Allow the owner to update/delete
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Allow admins to update/delete
+        get(/databases/$(database)/documents/users/$(docId)).data.role == 'admin'
       );
     }
 
-    // Rules for reports collection
-    match /reports/{reportId} {
+    // Missing Persons: public read, only owners or admins can modify
+    match /missingPersons/{docId} {
       allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow create: if request.auth != null;
       allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.uid ||
+        (resource.data.userId != null && request.auth.uid == resource.data.userId) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
 
-    // Allow authenticated users to read/write reports data
-    match /reports-app/{reportId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      allow delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
+              // Reports: public read, only creators or admins can write
+          match /reports/{reportId} {
+            // Allow anyone to read
+            allow read: if true;
 
-    // Rules for irf-test collection
-    match /irf-test/{irfId} {
-      allow read: if request.auth != null && (
-        resource == null ||
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      
-      // Allow querying documents for sequential ID generation
-      allow list: if request.auth != null;
-      
-      allow create: if request.auth != null && (
-        // Ensure the userId field is set to the current user's UID for new documents
-        request.resource.data.userId == request.auth.uid
-      );
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      allow delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
+            // Allow any authenticated user to create a report
+            allow create: if request.auth != null;
+
+            // Allow only the report creator or an admin to update/delete
+            allow update, delete: if request.auth != null && (
+              request.auth.uid == resource.data.uid || // Matches the uid field in report
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
+            );
+          }
 
     // Rules for incidents collection
     match /incidents/{incidentId} {
-      // Allow read access for duplicate checking and normal access
-      allow read: if request.auth != null && (
-        // Allow listing/querying for duplicate checks
-        (request.query.limit <= 1) ||
-        // Allow normal document access
-        resource.data.userId == request.auth.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'viewer'
-      );
-
-      // Allow create access only if the userId matches the authenticated user's UID
-      allow create: if request.auth != null; // Temporarily allow all authenticated users for testing
-
-      // Allow update and delete access only to the owner or admin
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
     }
 
-    // Rules for sequences collection
+
+    // Sequences: authenticated users only
     match /sequences/{sequenceId} {
-      // Allow read and write access only to authenticated users
       allow read, write: if request.auth != null;
     }
+    
+           match /UnderInvestigation/{docId} {
+        allow read, write: if true;
+      }
 
-    // Rules for archivedCases collection
     match /archivedCases/{docId} {
-      allow read: if request.auth != null; // Only authenticated users can read
-      allow create: if request.auth != null;
+      // Allow read and create if the user is authenticated
+      allow read, create: if request.auth != null;
+
+      // Allow update and delete if:
+      // - the user is the owner of the document (matches userId in the existing doc)
+      // - OR the user has role 'admin'
       allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId || 
+        (resource.data.userId == request.auth.uid) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
