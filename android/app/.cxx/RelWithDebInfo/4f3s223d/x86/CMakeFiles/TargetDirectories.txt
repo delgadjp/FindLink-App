@@ -1,0 +1,2 @@
+C:/Users/HomerJavie/Downloads/FindLink-App/android/app/.cxx/RelWithDebInfo/4f3s223d/x86/CMakeFiles/edit_cache.dir
+C:/Users/HomerJavie/Downloads/FindLink-App/android/app/.cxx/RelWithDebInfo/4f3s223d/x86/CMakeFiles/rebuild_cache.dir

@@ -9,6 +9,28 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(docId)).data.role == 'admin'
       );
+      
+      // Sub-collections for FindMe feature
+      match /locations/{locationId} {
+        // Allow read if family sharing is enabled and user is trusted contact
+        allow read: if request.auth != null && (
+          // Owner can always read their own data
+          request.auth.uid == docId ||
+          // Trusted contact can read if family sharing is enabled, they are verified, and have location access
+          (get(/databases/$(database)/documents/users/$(docId)).data.familySharingEnabled == true &&
+           exists(/databases/$(database)/documents/users/$(docId)/trustedContacts/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/users/$(docId)/trustedContacts/$(request.auth.uid)).data.isVerified == true &&
+           get(/databases/$(database)/documents/users/$(docId)/trustedContacts/$(request.auth.uid)).data.canAccessLocation == true)
+        );
+        
+        // Only the location service can write location data
+        allow write: if request.auth != null && request.auth.uid == docId;
+      }
+      
+      match /trustedContacts/{contactId} {
+        // Owner can manage their trusted contacts
+        allow read, write: if request.auth != null && request.auth.uid == docId;
+      }
     }
 
     // Missing Persons: public read, only owners or admins can modify

@@ -10,6 +10,7 @@ import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:ui'; // Added import for ImageFilter
+import 'dart:async'; // Added for Timer
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -18,6 +19,13 @@ class FillUpFormScreen extends StatefulWidget {
 }
 
 class FillUpForm extends State<FillUpFormScreen> {
+  // Static const widgets for better performance
+  static const Widget _spacing10 = SizedBox(height: 10);
+  static const Widget _spacing16 = SizedBox(height: 16);
+  static const Widget _spacing20 = SizedBox(height: 20);
+  static const Widget _spacing8 = SizedBox(height: 8);
+  static const Widget _spacing5 = SizedBox(height: 5);
+
   bool hasOtherAddressReporting = false;
   bool hasOtherAddressVictim = false;
   bool isSubmitting = false;
@@ -35,15 +43,17 @@ class FillUpForm extends State<FillUpFormScreen> {
   
   // Add a ScrollController for the form
   final ScrollController _scrollController = ScrollController();
-  // Map to hold GlobalKeys for required fields
-  final Map<String, GlobalKey> _requiredFieldKeys = {};
-  // Helper to register a key for a required field
+  
+  // Pre-allocated GlobalKeys for better performance
+  final Map<String, GlobalKey> _requiredFieldKeys = <String, GlobalKey>{};
+  
+  // Optimized key management with lazy initialization
   GlobalKey _getOrCreateKey(String label) {
-    if (!_requiredFieldKeys.containsKey(label)) {
-      _requiredFieldKeys[label] = GlobalKey();
-    }
-    return _requiredFieldKeys[label]!;
+    return _requiredFieldKeys.putIfAbsent(label, () => GlobalKey());
   }
+  
+  // Debouncer for form state updates to prevent excessive rebuilds
+  Timer? _debounceTimer;
 
   // Auto scroll to first invalid field
   Future<void> _scrollToFirstInvalidField() async {
@@ -533,6 +543,50 @@ class FillUpForm extends State<FillUpFormScreen> {
       'victimCivilStatus': _civilStatusVictimController.text,
     };
   }
+
+  // Debounced version to reduce frequent updates
+  void _debouncedUpdateFormState() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      updateFormState();
+    });
+  }
+
+  // Batch multiple field updates to reduce setState calls
+  void _batchFieldUpdates(Map<String, dynamic> updates) {
+    setState(() {
+      updates.forEach((key, value) {
+        switch (key) {
+          case 'reportingRegion':
+            if (reportingPersonRegion != value) {
+              reportingPersonProvince = null;
+              reportingPersonMunicipality = null;
+              reportingPersonBarangay = null;
+            }
+            reportingPersonRegion = value;
+            break;
+          case 'reportingProvince':
+            if (reportingPersonProvince != value) {
+              reportingPersonMunicipality = null;
+              reportingPersonBarangay = null;
+            }
+            reportingPersonProvince = value;
+            break;
+          case 'reportingMunicipality':
+            if (reportingPersonMunicipality != value) {
+              reportingPersonBarangay = null;
+            }
+            reportingPersonMunicipality = value;
+            break;
+          case 'reportingBarangay':
+            reportingPersonBarangay = value;
+            break;
+          // Add more cases as needed
+        }
+      });
+      _debouncedUpdateFormState();
+    });
+  }
   
   // Handle field changes from FormRowInputs
   void onFieldChange(String key, dynamic value) {
@@ -651,7 +705,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           _qualifierVictimController.text = value;
           break;
       }
-      updateFormState();
+      _debouncedUpdateFormState();
     });
   }
   // Store original victim address fields for restoration when checkbox is unchecked
@@ -752,6 +806,9 @@ class FillUpForm extends State<FillUpFormScreen> {
     _dateTimeIncidentDController.dispose();
     _placeOfIncidentDController.dispose();
     _narrativeController.dispose();
+    
+    // Dispose timer
+    _debounceTimer?.cancel();
     
     super.dispose();
   }
@@ -1806,6 +1863,82 @@ class FillUpForm extends State<FillUpFormScreen> {
     return query.docs.isNotEmpty;
   }
 
+  // Cached field definitions for better performance
+  late final List<Map<String, dynamic>> _reportingPersonNameFields = [
+    {
+      'label': 'SURNAME',
+      'required': true,
+      'controller': _surnameReportingController,
+      'keyboardType': TextInputType.name,
+      'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+    },
+    {
+      'label': 'FIRST NAME',
+      'required': true,
+      'controller': _firstNameReportingController,
+      'keyboardType': TextInputType.name,
+      'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+    },
+    {
+      'label': 'MIDDLE NAME',
+      'required': true,
+      'controller': _middleNameReportingController,
+      'keyboardType': TextInputType.name,
+      'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+    },
+  ];
+
+  // Dynamic fields that depend on runtime values
+  List<Map<String, dynamic>> get _reportingPersonDetailsFields => [
+    {
+      'label': 'QUALIFIER',
+      'required': true,
+      'controller': _qualifierReportingController,
+      'dropdownItems': qualifierOptions,
+      'typeField': 'dropdown',
+      'onChanged': (value) => onFieldChange('qualifierReporting', value),
+      'key': _getOrCreateKey('QUALIFIER'),
+    },
+    {
+      'label': 'NICKNAME',
+      'required': true,
+      'controller': _nicknameReportingController,
+      'keyboardType': TextInputType.text,
+      'key': _getOrCreateKey('NICKNAME'),
+    },
+  ];
+
+  List<Map<String, dynamic>> get _reportingPersonPersonalFields => [
+    {
+      'label': 'CITIZENSHIP',
+      'required': true,
+      'controller': _citizenshipReportingController,
+      'dropdownItems': citizenshipOptions,
+      'section': 'reporting',
+      'key': _getOrCreateKey('CITIZENSHIP'),
+    },
+    {
+      'label': 'SEX/GENDER',
+      'required': true,
+      'controller': _sexGenderReportingController,
+      'dropdownItems': genderOptions,
+      'typeField': 'dropdown',
+      'key': _getOrCreateKey('SEX/GENDER'),
+      'onChanged': (value) {
+        setState(() {
+          _sexGenderReportingController.text = value ?? '';
+        });
+      },
+    },
+    {
+      'label': 'CIVIL STATUS',
+      'required': true,
+      'controller': _civilStatusReportingController,
+      'dropdownItems': civilStatusOptions,
+      'key': _getOrCreateKey('CIVIL STATUS'),
+    },
+  ];
+
   @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -1842,8 +1975,8 @@ class FillUpForm extends State<FillUpFormScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                      SizedBox(height: 20),
-                      SizedBox(height: 8),
+                      _spacing20,
+                      _spacing8,
                       Text(
                         "INCIDENT RECORD FORM",
                         textAlign: TextAlign.center,
@@ -1853,7 +1986,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                         color: Colors.black,
                         ),
                       ),
-                      SizedBox(height: 5),
+                      _spacing5,
                       Divider(
                         color: const Color.fromARGB(255, 214, 214, 214),
                         thickness: 1,
@@ -1861,7 +1994,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 16),
+                  _spacing16,
 
                   // Form Section
                   Form(
@@ -1875,95 +2008,27 @@ class FillUpForm extends State<FillUpFormScreen> {
                           backgroundColor: Color(0xFF1E215A),
                         ),
 
-                        SizedBox(height: 10),
+                        _spacing10,
 
                         KeyedSubtree(
                           key: _getOrCreateKey('SURNAME'),
                           child: FormRowInputs(
-                            fields: [
-                              {
-                                'label': 'SURNAME',
-                                'required': true,
-                                'controller': _surnameReportingController,
-                                'keyboardType': TextInputType.name,
-                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                              },
-                              {
-                                'label': 'FIRST NAME',
-                                'required': true,
-                                'controller': _firstNameReportingController,
-                                'keyboardType': TextInputType.name,
-                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                              },
-                              {
-                                'label': 'MIDDLE NAME',
-                                'required': true,
-                                'controller': _middleNameReportingController,
-                                'keyboardType': TextInputType.name,
-                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-                              },
-                            ],
+                            fields: _reportingPersonNameFields,
                             formState: formState,
                             onFieldChange: onFieldChange,
                           ),
                         ),
                         
-                        SizedBox(height: 10),
+                        _spacing10,
                           FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'QUALIFIER',
-                              'required': true,
-                              'controller': _qualifierReportingController,
-                              'dropdownItems': qualifierOptions,
-                              'typeField': 'dropdown',
-                              'onChanged': (value) => onFieldChange('qualifierReporting', value),
-                              'key': _getOrCreateKey('QUALIFIER'),
-                            },
-                            {
-                              'label': 'NICKNAME',
-                              'required': true,
-                              'controller': _nicknameReportingController,
-                              'keyboardType': TextInputType.text,
-                              'key': _getOrCreateKey('NICKNAME'),
-                            },
-                          ],
+                          fields: _reportingPersonDetailsFields,
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 10),
+                        _spacing10,
                           FormRowInputs(
-                          fields: [
-                            {
-                              'label': 'CITIZENSHIP',
-                              'required': true,
-                              'controller': _citizenshipReportingController,
-                              'dropdownItems': citizenshipOptions,
-                              'section': 'reporting',
-                              'key': _getOrCreateKey('CITIZENSHIP'),
-                            },
-                            {
-                              'label': 'SEX/GENDER',
-                              'required': true,
-                              'controller': _sexGenderReportingController,
-                              'dropdownItems': genderOptions,
-                              'typeField': 'dropdown',
-                              'key': _getOrCreateKey('SEX/GENDER'),
-                              'onChanged': (value) {
-                                setState(() {
-                                  _sexGenderReportingController.text = value ?? '';
-                                });
-                              },
-                            },
-                            {
-                              'label': 'CIVIL STATUS',
-                              'required': true,
-                              'controller': _civilStatusReportingController,
-                              'dropdownItems': civilStatusOptions,
-                              'key': _getOrCreateKey('CIVIL STATUS'),
-                            },
-                          ],
+                          fields: _reportingPersonPersonalFields,
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),

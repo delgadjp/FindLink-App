@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Add these permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -11,6 +12,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" />
     
     <application
+        tools:replace="android:label"
         android:label="findlink"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

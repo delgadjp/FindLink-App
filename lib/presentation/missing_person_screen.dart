@@ -1,5 +1,6 @@
 import '../core/app_export.dart';
 import '../core/network/missing_person_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MissingPersonScreen extends StatefulWidget {
   @override
@@ -12,6 +13,25 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   String sortBy = 'Recent';
   DateTime? startDate;
   DateTime? endDate;
+
+  // Test method to check database access
+  Future<List<MissingPerson>> _testMissingPersonsAccess() async {
+    try {
+      print('Testing missing persons database access...');
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('missingPersons')
+          .get()
+          .timeout(Duration(seconds: 10));
+      
+      print('Success: Retrieved ${snapshot.docs.length} documents');
+      return snapshot.docs
+          .map((doc) => MissingPerson.fromSnapshot(doc))
+          .toList();
+    } catch (e) {
+      print('Database access test failed: $e');
+      throw e;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,11 +99,41 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                 ),
               ),
               Expanded(
-                child: StreamBuilder<List<MissingPerson>>(
-                  stream: _missingPersonService.getMissingPersons(),
+                child: FutureBuilder<List<MissingPerson>>(
+                  future: _testMissingPersonsAccess(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      print('StreamBuilder error: ${snapshot.error}');
+                      print('FutureBuilder error: ${snapshot.error}');
+                      // Check if it's a permission error and show appropriate message
+                      if (snapshot.error.toString().contains('permission-denied')) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.lock, size: 64, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text(
+                                'Database Access Issue',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'There is a problem with the database rules.\nThe admin check is failing because user documents use custom IDs.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  // Force refresh
+                                  setState(() {});
+                                },
+                                child: Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
                       return Center(child: Text('Error: ${snapshot.error}'));
                     }
 

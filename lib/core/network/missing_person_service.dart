@@ -9,12 +9,33 @@ class MissingPersonService {
   final String collection = 'missingPersons';
 
   Stream<List<MissingPerson>> getMissingPersons() {
+    // Check if user is authenticated first
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      print('User not authenticated - returning empty stream');
+      return Stream.value(<MissingPerson>[]);
+    }
+    
+    print('User authenticated: ${currentUser.uid}');
+    
     return _firestore
         .collection(collection)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MissingPerson.fromSnapshot(doc))
-            .toList());
+        .map((snapshot) {
+          try {
+            print('Received ${snapshot.docs.length} missing person documents');
+            return snapshot.docs
+                .map((doc) => MissingPerson.fromSnapshot(doc))
+                .toList();
+          } catch (e) {
+            print('Error parsing missing persons: $e');
+            return <MissingPerson>[];
+          }
+        })
+        .handleError((error) {
+          print('Stream error in getMissingPersons: $error');
+          return <MissingPerson>[];
+        });
   }
   Future<MissingPerson?> getMissingPersonById(String alarmId) async {
     final doc = await _firestore

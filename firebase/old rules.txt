@@ -1,30 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {                  
-    
-    match /users/{userDocId} {
-          allow read: if true;
-          allow update, delete: if request.auth != null && (
-            resource.data.userId == request.auth.uid ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-          );
-          allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-        }
-
-
-    // Users-app collection: same logic as users, scoped to ownership
-    match /users-app/{userId} {
-      allow read: if request.auth != null;
+  match /databases/{database}/documents {
+  
+        match /users/{docId} {
+      allow read: if true;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.userId || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'privacyPolicyAccepted', 'privacyPolicyAcceptedAt', 'lastSignIn'
-        ])
+      allow update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(docId)).data.role == 'admin'
       );
-
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
     // Missing Persons: public read, only owners or admins can modify
@@ -52,31 +36,6 @@ service cloud.firestore {
             );
           }
 
-
-    // Reports-app: similar access control
-    match /reports-app/{reportId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    // IRF-test collection: secure to user or admin
-    match /irf-test/{docId} {
-      allow read, list: if request.auth != null && (
-        resource == null ||
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
     // Rules for incidents collection
     match /incidents/{incidentId} {
       allow read: if request.auth != null;
@@ -89,6 +48,10 @@ service cloud.firestore {
     match /sequences/{sequenceId} {
       allow read, write: if request.auth != null;
     }
+    
+           match /UnderInvestigation/{docId} {
+        allow read, write: if true;
+      }
 
     match /archivedCases/{docId} {
       // Allow read and create if the user is authenticated
