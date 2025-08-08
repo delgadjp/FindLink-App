@@ -25,20 +25,33 @@ class TrustedContactsService {
       final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Check if user with email exists
-      final userQuery = await _firestore
+      // Find current user for validation (we still need to ensure user exists)
+      final currentUserQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (currentUserQuery.docs.isEmpty) {
+        print('Current user document not found');
+        return false;
+      }
+
+      // Check if contact user exists and get their userId (auth UID)
+      final contactUserQuery = await _firestore
           .collection('users')
           .where('email', isEqualTo: email.toLowerCase())
           .get();
 
       String contactUserId = '';
-      if (userQuery.docs.isNotEmpty) {
-        contactUserId = userQuery.docs.first.id;
+      if (contactUserQuery.docs.isNotEmpty) {
+        final contactData = contactUserQuery.docs.first.data();
+        contactUserId = contactData['userId'] ?? ''; // Get the auth UID from userId field
       }
 
       final trustedContact = TrustedContact(
         id: _uuid.v4(),
-        userId: user.uid,
+        userId: user.uid, // Store the auth UID for identification
         contactUserId: contactUserId,
         name: name,
         email: email.toLowerCase(),
@@ -50,10 +63,9 @@ class TrustedContactsService {
         createdAt: DateTime.now(),
       );
 
+      // Store in findMeTrustedContacts collection (separate top-level collection)
       await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
           .doc(trustedContact.id)
           .set(trustedContact.toMap());
 
@@ -71,9 +83,8 @@ class TrustedContactsService {
       if (user == null) return [];
 
       final querySnapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
+          .where('userId', isEqualTo: user.uid)
           .orderBy('createdAt', descending: true)
           .get();
 
@@ -93,9 +104,7 @@ class TrustedContactsService {
       if (user == null) return false;
 
       await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
           .doc(contactId)
           .delete();
 
@@ -113,9 +122,7 @@ class TrustedContactsService {
       if (user == null) return false;
 
       await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
           .doc(contactId)
           .update({'isVerified': true});
 
@@ -137,14 +144,13 @@ class TrustedContactsService {
       if (user == null) return false;
 
       await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
           .doc(contactId)
           .update({
-            'canAccessLocation': canAccessLocation,
-            'canPerformRemoteActions': canPerformRemoteActions,
-          });
+        'canAccessLocation': canAccessLocation,
+        'canPerformRemoteActions': canPerformRemoteActions,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
 
       return true;
     } catch (e) {
@@ -159,10 +165,19 @@ class TrustedContactsService {
       final user = _auth.currentUser;
       if (user == null) return false;
 
+      // Find current user's custom document ID
+      final currentUserQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (currentUserQuery.docs.isEmpty) return false;
+
+      final currentUserData = currentUserQuery.docs.first.data();
+      
       // Check if user is admin
-      final currentUserDoc = await _firestore.collection('users').doc(user.uid).get();
-      final currentUserData = currentUserDoc.data();
-      if (currentUserData != null && currentUserData['role'] == 'admin') {
+      if (currentUserData['role'] == 'admin') {
         return true;
       }
 
@@ -171,16 +186,21 @@ class TrustedContactsService {
         return true;
       }
 
-      // Get the person's data to check family sharing settings
-      final personDoc = await _firestore.collection('users').doc(personUserId).get();
-      final personData = personDoc.data();
-      if (personData == null) return false;
+      // Find the person's document by their userId
+      final personQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: personUserId)
+          .limit(1)
+          .get();
+      
+      if (personQuery.docs.isEmpty) return false;
+
+      final personData = personQuery.docs.first.data();
 
       // Check if user is a verified trusted contact with location access
       final trustedContactQuery = await _firestore
-          .collection('users')
-          .doc(personUserId)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
+          .where('userId', isEqualTo: personUserId) // Target person's Auth UID
           .where('contactUserId', isEqualTo: user.uid)
           .where('isVerified', isEqualTo: true)
           .get();
@@ -216,16 +236,15 @@ class TrustedContactsService {
       for (var userDoc in allUsers.docs) {
         final userData = userDoc.data();
         
-        // Skip own account
-        if (userDoc.id == user.uid) continue;
+        // Skip own account (compare userId field, not document ID)
+        if (userData['userId'] == user.uid) continue;
         
         // Check if family sharing is enabled for this user
         if (userData['familySharingEnabled'] == true) {
           // Check if current user is a trusted contact with location access
           final trustedContactQuery = await _firestore
-              .collection('users')
-              .doc(userDoc.id)
-              .collection('trustedContacts')
+              .collection('findMeTrustedContacts')
+              .where('userId', isEqualTo: userData['userId']) // Use userId field from user document
               .where('contactUserId', isEqualTo: user.uid)
               .where('isVerified', isEqualTo: true)
               .where('canAccessLocation', isEqualTo: true)
@@ -235,7 +254,7 @@ class TrustedContactsService {
             final contactData = trustedContactQuery.docs.first.data();
             familyMembers.add(TrustedContact.fromMap({
               'id': trustedContactQuery.docs.first.id,
-              'userId': userDoc.id,
+              'userId': userData['userId'], // Use userId field, not document ID
               'contactUserId': user.uid,
               'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
               'email': userData['email'] ?? contactData['email'] ?? '',
@@ -273,9 +292,8 @@ class TrustedContactsService {
         if (userData['familySharingEnabled'] == true) {
           // Check if current user is a trusted contact with location access
           final trustedContactQuery = await _firestore
-              .collection('users')
-              .doc(userDoc.id)
-              .collection('trustedContacts')
+              .collection('findMeTrustedContacts')
+              .where('userId', isEqualTo: userData['userId']) // Use userId field from user document
               .where('contactUserId', isEqualTo: user.uid)
               .where('isVerified', isEqualTo: true)
               .where('canAccessLocation', isEqualTo: true)
@@ -283,7 +301,7 @@ class TrustedContactsService {
 
           if (trustedContactQuery.docs.isNotEmpty) {
             trackableUsers.add({
-              'userId': userDoc.id,
+              'userId': userData['userId'], // Use userId field, not document ID
               'name': userData['name'] ?? 'Unknown',
               'email': userData['email'] ?? '',
               'familySharingEnabled': userData['familySharingEnabled'] ?? false,

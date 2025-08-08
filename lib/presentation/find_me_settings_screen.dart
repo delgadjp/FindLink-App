@@ -48,13 +48,15 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        // Use document ID directly instead of querying by userId field
-        final userDoc = await _firestore
+        // Find user document by userId field (not by document ID)
+        final userQuery = await _firestore
             .collection('users')
-            .doc(user.uid)
+            .where('userId', isEqualTo: user.uid)
+            .limit(1)
             .get();
         
-        if (userDoc.exists) {
+        if (userQuery.docs.isNotEmpty) {
+          final userDoc = userQuery.docs.first;
           final userData = userDoc.data() as Map<String, dynamic>;
           
           setState(() {
@@ -108,6 +110,16 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
       final user = _auth.currentUser;
       if (user == null) return;
 
+      // Find user document by userId field to get the custom document ID
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isEmpty) return;
+      
+      // Use Auth UID directly for location history since we're using separate collection now
       final locations = await _locationService.getLocationHistory(user.uid, limit: 1);
       if (locations.isNotEmpty) {
         setState(() {
@@ -143,13 +155,24 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         throw Exception('No authenticated user found');
       }
 
-      // Query users collection by userId field to get the document reference
-      final userDocRef = _firestore.collection('users').doc(user.uid);
+      // Find user document by userId field
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
       
-      // Check if document exists, create if it doesn't
-      final userDoc = await userDocRef.get();
-      if (!userDoc.exists) {
-        // Create user document with basic data
+      DocumentReference userDocRef;
+      if (userQuery.docs.isNotEmpty) {
+        userDocRef = userQuery.docs.first.reference;
+      } else {
+        // Create new user document with custom ID format
+        final now = DateTime.now();
+        final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        String emailPrefix = (user.email ?? 'USER').split('@')[0].substring(0, 3).toUpperCase();
+        final customDocId = "USER_${datePart}_${emailPrefix}_001"; // Simplified for now
+        
+        userDocRef = _firestore.collection('users').doc(customDocId);
         await userDocRef.set({
           'userId': user.uid,
           'email': user.email,
@@ -412,8 +435,18 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // Use document ID directly
-      await _firestore.collection('users').doc(user.uid).update({setting: value});
+      // Find current user's custom document ID
+      final currentUserQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (currentUserQuery.docs.isEmpty) return;
+
+      final currentUserDocId = currentUserQuery.docs.first.id;
+
+      await _firestore.collection('users').doc(currentUserDocId).update({setting: value});
     } catch (e) {
       print('Error updating setting: $e');
       ScaffoldMessenger.of(context).showSnackBar(

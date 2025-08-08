@@ -69,11 +69,22 @@ class SimpleLocationService {
         return true;
       }
 
-      // Check if user has enabled FindMe feature
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      // Find user document by userId field
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isEmpty) {
+        print('User document not found');
+        return false;
+      }
+
+      final userDoc = userQuery.docs.first;
       final userData = userDoc.data();
       
-      if (userData == null || userData['findMeEnabled'] != true) {
+      if (userData['findMeEnabled'] != true) {
         print('FindMe feature not enabled for user');
         return false;
       }
@@ -81,8 +92,8 @@ class SimpleLocationService {
       print('Starting simple location tracking...');
       _isTracking = true;
       
-      // Update user's tracking status
-      await _firestore.collection('users').doc(user.uid).update({
+      // Update user's tracking status using the correct document reference
+      await userDoc.reference.update({
         'isTracking': true,
         'trackingStartedAt': FieldValue.serverTimestamp(),
       });
@@ -128,10 +139,19 @@ class SimpleLocationService {
       
       final user = _auth.currentUser;
       if (user != null) {
-        await _firestore.collection('users').doc(user.uid).update({
-          'isTracking': false,
-          'trackingStoppedAt': FieldValue.serverTimestamp(),
-        });
+        // Find user document by userId field
+        final userQuery = await _firestore
+            .collection('users')
+            .where('userId', isEqualTo: user.uid)
+            .limit(1)
+            .get();
+        
+        if (userQuery.docs.isNotEmpty) {
+          await userQuery.docs.first.reference.update({
+            'isTracking': false,
+            'trackingStoppedAt': FieldValue.serverTimestamp(),
+          });
+        }
       }
     } catch (e) {
       print('Error stopping location tracking: $e');
@@ -146,6 +166,25 @@ class SimpleLocationService {
     try {
       final user = _auth.currentUser;
       if (user == null || !_isTracking) return;
+
+      // Find user document by userId field to get the correct document ID
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isEmpty) {
+        print('User document not found for location update');
+        return;
+      }
+
+      // Check if FindMe is enabled
+      final userData = userQuery.docs.first.data();
+      if (userData['findMeEnabled'] != true) {
+        print('FindMe feature not enabled for user');
+        return;
+      }
 
       // Get current position with longer timeout and fallback
       Position position;
@@ -189,7 +228,7 @@ class SimpleLocationService {
       // Create location data
       final locationData = LocationData(
         id: _uuid.v4(),
-        userId: user.uid,
+        userId: user.uid, // Keep the auth UID for identification
         latitude: position.latitude,
         longitude: position.longitude,
         accuracy: position.accuracy,
@@ -197,16 +236,14 @@ class SimpleLocationService {
         address: address,
       );
 
-      // Save to Firestore
+      // Save to findMeLocations collection (separate top-level collection)
       await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('locations')
+          .collection('findMeLocations')
           .doc(locationData.id)
           .set(locationData.toMap());
 
       // Keep only last 100 locations (cleanup old data)
-      await _cleanupOldLocations(user.uid);
+      await _cleanupOldLocations(user.uid); // Pass auth UID for querying
       
       print('Location updated: ${position.latitude}, ${position.longitude}');
       
@@ -221,9 +258,8 @@ class SimpleLocationService {
   Future<void> _cleanupOldLocations(String userId) async {
     try {
       final query = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('locations')
+          .collection('findMeLocations')
+          .where('userId', isEqualTo: userId)
           .orderBy('timestamp', descending: true)
           .limit(101) // Get 101 to identify the 101st item
           .get();
@@ -233,9 +269,8 @@ class SimpleLocationService {
         final cutoffTimestamp = query.docs[99].data()['timestamp'];
         
         final oldDocs = await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('locations')
+            .collection('findMeLocations')
+            .where('userId', isEqualTo: userId)
             .where('timestamp', isLessThan: cutoffTimestamp)
             .get();
 
@@ -287,9 +322,8 @@ class SimpleLocationService {
       print('Getting location history for user: $userId with limit: $limit');
       
       Query query = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('locations')
+          .collection('findMeLocations')
+          .where('userId', isEqualTo: userId)
           .orderBy('timestamp', descending: true);
       
       if (limit != null) {
@@ -327,20 +361,41 @@ class SimpleLocationService {
 
   /// Enable FindMe feature for user
   Future<void> enableFindMe(String userId) async {
-    await _firestore.collection('users').doc(userId).update({
-      'findMeEnabled': true,
-      'findMeEnabledAt': FieldValue.serverTimestamp(),
-    });
+    // Find user document by userId field
+    final userQuery = await _firestore
+        .collection('users')
+        .where('userId', isEqualTo: userId)
+        .limit(1)
+        .get();
+    
+    if (userQuery.docs.isNotEmpty) {
+      final userDocId = userQuery.docs.first.id;
+      await _firestore.collection('users').doc(userDocId).update({
+        'findMeEnabled': true,
+        'findMeEnabledAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   /// Disable FindMe feature for user
   Future<void> disableFindMe(String userId) async {
     try {
       await stopTracking();
-      await _firestore.collection('users').doc(userId).update({
-        'findMeEnabled': false,
-        'findMeDisabledAt': FieldValue.serverTimestamp(),
-      });
+      
+      // Find user document by userId field
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: userId)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isNotEmpty) {
+        final userDocId = userQuery.docs.first.id;
+        await _firestore.collection('users').doc(userDocId).update({
+          'findMeEnabled': false,
+          'findMeDisabledAt': FieldValue.serverTimestamp(),
+        });
+      }
     } catch (e) {
       print('Error disabling FindMe: $e');
       rethrow;
