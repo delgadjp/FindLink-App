@@ -118,7 +118,6 @@ class FindMeInfoScreen extends StatelessWidget {
             Text('• Family members can see your location continuously'),
             Text('• No need to be reported missing for family access'),
             Text('• You control individual permissions per contact'),
-            Text('• Remote actions (like sound alerts) if permitted'),
           ],
         ),
       ),

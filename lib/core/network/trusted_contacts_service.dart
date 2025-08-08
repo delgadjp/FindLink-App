@@ -12,6 +12,40 @@ class TrustedContactsService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Uuid _uuid = Uuid();
 
+  /// Generate a formal document ID format for trusted contacts: TC_YYYYMMDD_XXX_HHMMSS (where XXX is user prefix and HHMMSS is time)
+  Future<String> _generateTrustedContactDocumentId(String userId) async {
+    try {
+      // Find the user document to get their custom document ID format
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: userId)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isNotEmpty) {
+        final userDocId = userQuery.docs.first.id; // e.g., "USER_20250808_HOM_001"
+        
+        // Extract the prefix part (e.g., "HOM" from "USER_20250808_HOM_001")
+        final parts = userDocId.split('_');
+        final userPrefix = parts.length >= 3 ? parts[2] : 'USR';
+        
+        // Create trusted contact document ID with current date and time
+        final now = DateTime.now();
+        final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        final timePart = "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
+        
+        return "TC_${datePart}_${userPrefix}_${timePart}";
+      } else {
+        // Fallback to using UUID if user document not found
+        return _uuid.v4();
+      }
+    } catch (e) {
+      print('Error generating trusted contact document ID: $e');
+      // Fallback to UUID
+      return _uuid.v4();
+    }
+  }
+
   /// Add a trusted contact
   Future<bool> addTrustedContact({
     required String name,
@@ -19,7 +53,6 @@ class TrustedContactsService {
     required String phone,
     required String relationship,
     bool canAccessLocation = false,
-    bool canPerformRemoteActions = false,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -49,8 +82,11 @@ class TrustedContactsService {
         contactUserId = contactData['userId'] ?? ''; // Get the auth UID from userId field
       }
 
+      // Generate custom document ID
+      final contactDocId = await _generateTrustedContactDocumentId(user.uid);
+
       final trustedContact = TrustedContact(
-        id: _uuid.v4(),
+        id: contactDocId, // Use the custom document ID
         userId: user.uid, // Store the auth UID for identification
         contactUserId: contactUserId,
         name: name,
@@ -59,15 +95,18 @@ class TrustedContactsService {
         relationship: relationship,
         isVerified: contactUserId.isNotEmpty, // Auto-verify if user exists
         canAccessLocation: canAccessLocation,
-        canPerformRemoteActions: canPerformRemoteActions,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.now(), // This will be converted to Firestore Timestamp
       );
 
-      // Store in findMeTrustedContacts collection (separate top-level collection)
+      // Store in findMeTrustedContacts collection with custom document ID
+      final contactData = trustedContact.toMap();
+      // Override createdAt with server timestamp for consistency
+      contactData['createdAt'] = FieldValue.serverTimestamp();
+      
       await _firestore
           .collection('findMeTrustedContacts')
-          .doc(trustedContact.id)
-          .set(trustedContact.toMap());
+          .doc(contactDocId)
+          .set(contactData);
 
       return true;
     } catch (e) {
@@ -82,15 +121,20 @@ class TrustedContactsService {
       final user = _auth.currentUser;
       if (user == null) return [];
 
+      // Use simpler query without orderBy to avoid index requirement
       final querySnapshot = await _firestore
           .collection('findMeTrustedContacts')
           .where('userId', isEqualTo: user.uid)
-          .orderBy('createdAt', descending: true)
           .get();
 
-      return querySnapshot.docs
+      final contacts = querySnapshot.docs
           .map((doc) => TrustedContact.fromSnapshot(doc))
           .toList();
+
+      // Sort by createdAt in the app (newest first)
+      contacts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return contacts;
     } catch (e) {
       print('Error getting trusted contacts: $e');
       return [];
@@ -136,8 +180,7 @@ class TrustedContactsService {
   /// Update trusted contact permissions
   Future<bool> updateTrustedContactPermissions(
     String contactId, 
-    bool canAccessLocation, 
-    bool canPerformRemoteActions
+    bool canAccessLocation
   ) async {
     try {
       final user = _auth.currentUser;
@@ -148,8 +191,7 @@ class TrustedContactsService {
           .doc(contactId)
           .update({
         'canAccessLocation': canAccessLocation,
-        'canPerformRemoteActions': canPerformRemoteActions,
-        'lastUpdated': FieldValue.serverTimestamp(),
+        'lastUpdated': FieldValue.serverTimestamp(), // Use Firestore server timestamp
       });
 
       return true;
@@ -197,20 +239,20 @@ class TrustedContactsService {
 
       final personData = personQuery.docs.first.data();
 
-      // Check if user is a verified trusted contact with location access
+      // Check if current user has this person as a trusted contact with location access
+      // AND the person has family sharing enabled
       final trustedContactQuery = await _firestore
           .collection('findMeTrustedContacts')
-          .where('userId', isEqualTo: personUserId) // Target person's Auth UID
-          .where('contactUserId', isEqualTo: user.uid)
+          .where('userId', isEqualTo: user.uid) // Current user owns this relationship
+          .where('contactUserId', isEqualTo: personUserId) // Target person is the contact
           .where('isVerified', isEqualTo: true)
+          .where('canAccessLocation', isEqualTo: true)
           .get();
 
       if (trustedContactQuery.docs.isNotEmpty) {
-        final contactData = trustedContactQuery.docs.first.data();
-        
-        // If family sharing is enabled and contact has location permission
-        if (personData['familySharingEnabled'] == true && 
-            contactData['canAccessLocation'] == true) {
+        // If current user has the person as trusted contact with location access,
+        // and the person has family sharing enabled
+        if (personData['familySharingEnabled'] == true) {
           return true;
         }
       }
@@ -230,41 +272,45 @@ class TrustedContactsService {
 
       List<TrustedContact> familyMembers = [];
 
-      // Get all users where current user is a trusted contact with location access
-      final allUsers = await _firestore.collection('users').get();
-      
-      for (var userDoc in allUsers.docs) {
-        final userData = userDoc.data();
-        
-        // Skip own account (compare userId field, not document ID)
-        if (userData['userId'] == user.uid) continue;
-        
-        // Check if family sharing is enabled for this user
-        if (userData['familySharingEnabled'] == true) {
-          // Check if current user is a trusted contact with location access
-          final trustedContactQuery = await _firestore
-              .collection('findMeTrustedContacts')
-              .where('userId', isEqualTo: userData['userId']) // Use userId field from user document
-              .where('contactUserId', isEqualTo: user.uid)
-              .where('isVerified', isEqualTo: true)
-              .where('canAccessLocation', isEqualTo: true)
-              .get();
+      // First, get all trusted contacts where current user is the owner (people who trust the current user)
+      final myTrustedContacts = await _firestore
+          .collection('findMeTrustedContacts')
+          .where('userId', isEqualTo: user.uid)
+          .where('isVerified', isEqualTo: true)
+          .where('canAccessLocation', isEqualTo: true)
+          .get();
 
-          if (trustedContactQuery.docs.isNotEmpty) {
-            final contactData = trustedContactQuery.docs.first.data();
-            familyMembers.add(TrustedContact.fromMap({
-              'id': trustedContactQuery.docs.first.id,
-              'userId': userData['userId'], // Use userId field, not document ID
-              'contactUserId': user.uid,
-              'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
-              'email': userData['email'] ?? contactData['email'] ?? '',
-              'phone': contactData['phone'] ?? '',
-              'relationship': contactData['relationship'] ?? 'Family',
-              'isVerified': contactData['isVerified'] ?? false,
-              'canAccessLocation': contactData['canAccessLocation'] ?? false,
-              'canPerformRemoteActions': contactData['canPerformRemoteActions'] ?? false,
-              'createdAt': contactData['createdAt'] ?? 0,
-            }));
+      // For each trusted contact, check if they have family sharing enabled
+      for (var contactDoc in myTrustedContacts.docs) {
+        final contactData = contactDoc.data();
+        final contactUserId = contactData['contactUserId'];
+        
+        if (contactUserId != null && contactUserId.isNotEmpty) {
+          // Find the user document for this trusted contact
+          final userQuery = await _firestore
+              .collection('users')
+              .where('userId', isEqualTo: contactUserId)
+              .limit(1)
+              .get();
+          
+          if (userQuery.docs.isNotEmpty) {
+            final userData = userQuery.docs.first.data();
+            
+            // Check if this user has family sharing enabled
+            if (userData['familySharingEnabled'] == true) {
+              familyMembers.add(TrustedContact.fromMap({
+                'id': contactDoc.id,
+                'userId': user.uid, // Current user is the owner of this trusted contact relationship
+                'contactUserId': contactUserId,
+                'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
+                'email': userData['email'] ?? contactData['email'] ?? '',
+                'phone': contactData['phone'] ?? '',
+                'relationship': contactData['relationship'] ?? 'Family',
+                'isVerified': contactData['isVerified'] ?? false,
+                'canAccessLocation': contactData['canAccessLocation'] ?? false,
+                'createdAt': contactData['createdAt'] ?? 0,
+              }));
+            }
           }
         }
       }
@@ -284,29 +330,40 @@ class TrustedContactsService {
 
       List<Map<String, dynamic>> trackableUsers = [];
 
-      // Get family members where current user is a trusted contact and family sharing is enabled
-      final allUsers = await _firestore.collection('users').get();
-      
-      for (var userDoc in allUsers.docs) {
-        final userData = userDoc.data();
-        if (userData['familySharingEnabled'] == true) {
-          // Check if current user is a trusted contact with location access
-          final trustedContactQuery = await _firestore
-              .collection('findMeTrustedContacts')
-              .where('userId', isEqualTo: userData['userId']) // Use userId field from user document
-              .where('contactUserId', isEqualTo: user.uid)
-              .where('isVerified', isEqualTo: true)
-              .where('canAccessLocation', isEqualTo: true)
-              .get();
+      // Get all trusted contacts where current user is the owner (people who trust the current user)
+      final myTrustedContacts = await _firestore
+          .collection('findMeTrustedContacts')
+          .where('userId', isEqualTo: user.uid)
+          .where('isVerified', isEqualTo: true)
+          .where('canAccessLocation', isEqualTo: true)
+          .get();
 
-          if (trustedContactQuery.docs.isNotEmpty) {
-            trackableUsers.add({
-              'userId': userData['userId'], // Use userId field, not document ID
-              'name': userData['name'] ?? 'Unknown',
-              'email': userData['email'] ?? '',
-              'familySharingEnabled': userData['familySharingEnabled'] ?? false,
-              'lastKnownLocation': userData['lastKnownLocation'],
-            });
+      // For each trusted contact, check if they have family sharing enabled
+      for (var contactDoc in myTrustedContacts.docs) {
+        final contactData = contactDoc.data();
+        final contactUserId = contactData['contactUserId'];
+        
+        if (contactUserId != null && contactUserId.isNotEmpty) {
+          // Find the user document for this trusted contact
+          final userQuery = await _firestore
+              .collection('users')
+              .where('userId', isEqualTo: contactUserId)
+              .limit(1)
+              .get();
+          
+          if (userQuery.docs.isNotEmpty) {
+            final userData = userQuery.docs.first.data();
+            
+            // Check if this user has family sharing enabled
+            if (userData['familySharingEnabled'] == true) {
+              trackableUsers.add({
+                'userId': contactUserId, // Use the contact's userId
+                'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
+                'email': userData['email'] ?? contactData['email'] ?? '',
+                'familySharingEnabled': userData['familySharingEnabled'] ?? false,
+                'lastKnownLocation': userData['lastKnownLocation'],
+              });
+            }
           }
         }
       }

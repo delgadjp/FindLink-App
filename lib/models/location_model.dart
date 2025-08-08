@@ -92,8 +92,7 @@ class TrustedContact {
   final String phone;
   final String relationship;
   final bool isVerified;
-  final bool canAccessLocation; // NEW: Permission for family location sharing
-  final bool canPerformRemoteActions; // NEW: Permission for remote actions
+  final bool canAccessLocation; // Permission for family location sharing
   final DateTime createdAt;
 
   TrustedContact({
@@ -106,7 +105,6 @@ class TrustedContact {
     required this.relationship,
     this.isVerified = false,
     this.canAccessLocation = false, // Default false, user must explicitly grant
-    this.canPerformRemoteActions = false, // Default false, user must explicitly grant
     required this.createdAt,
   });
 
@@ -121,12 +119,25 @@ class TrustedContact {
       'relationship': relationship,
       'isVerified': isVerified,
       'canAccessLocation': canAccessLocation,
-      'canPerformRemoteActions': canPerformRemoteActions,
-      'createdAt': createdAt.millisecondsSinceEpoch,
+      'createdAt': Timestamp.fromDate(createdAt), // Convert to Firestore Timestamp
     };
   }
 
   factory TrustedContact.fromMap(Map<String, dynamic> map) {
+    // Handle different createdAt formats (Firestore Timestamp vs milliseconds)
+    DateTime createdAt;
+    final createdAtValue = map['createdAt'];
+    if (createdAtValue is Timestamp) {
+      createdAt = createdAtValue.toDate();
+    } else if (createdAtValue is int) {
+      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
+    } else if (createdAtValue is Map && createdAtValue['seconds'] != null) {
+      // Handle server timestamp format
+      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue['seconds'] * 1000);
+    } else {
+      createdAt = DateTime.now(); // Fallback
+    }
+    
     return TrustedContact(
       id: map['id'] ?? '',
       userId: map['userId'] ?? '',
@@ -137,8 +148,7 @@ class TrustedContact {
       relationship: map['relationship'] ?? '',
       isVerified: map['isVerified'] ?? false,
       canAccessLocation: map['canAccessLocation'] ?? false,
-      canPerformRemoteActions: map['canPerformRemoteActions'] ?? false,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
+      createdAt: createdAt,
     );
   }
 
@@ -158,7 +168,6 @@ class TrustedContact {
     String? relationship,
     bool? isVerified,
     bool? canAccessLocation,
-    bool? canPerformRemoteActions,
     DateTime? createdAt,
   }) {
     return TrustedContact(
@@ -171,7 +180,6 @@ class TrustedContact {
       relationship: relationship ?? this.relationship,
       isVerified: isVerified ?? this.isVerified,
       canAccessLocation: canAccessLocation ?? this.canAccessLocation,
-      canPerformRemoteActions: canPerformRemoteActions ?? this.canPerformRemoteActions,
       createdAt: createdAt ?? this.createdAt,
     );
   }

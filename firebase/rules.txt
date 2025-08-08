@@ -10,14 +10,16 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(docId)).data.role == 'admin'
       );
     }
-
+    
     // FindMe location tracking - separate top-level collection
     match /findMeLocations/{locationId} {
+    	allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     
     // FindMe trusted contacts - separate top-level collection
     match /findMeTrustedContacts/{contactId} {
+			allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
@@ -73,6 +75,31 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && (
         (resource.data.userId == request.auth.uid) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    match /photos/{photoId} {
+      allow read: if true; // Public read access
+      allow create: if request.auth != null; // Only authenticated users can upload
+      allow update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || // Only the owner can modify
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Admin access
+      );
+    }
+    
+    match /liftingform/{docId} {
+      // Allow read access to all authenticated users
+      allow read: if request.auth != null;
+
+      // Allow create access only for authenticated users
+      allow create: if request.auth != null;
+
+      // Allow update and delete access only for:
+      // - The owner of the document (matches userId in the document)
+      // - OR users with the 'admin' role
+      allow update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || // Owner of the document
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Admin access
       );
     }
   }

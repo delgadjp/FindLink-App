@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../core/app_export.dart';
 import '../models/location_model.dart';
+import '../core/network/trusted_contacts_service.dart';
 import 'dart:async';
 
 class LiveLocationTrackingScreen extends StatefulWidget {
@@ -22,8 +22,7 @@ class LiveLocationTrackingScreen extends StatefulWidget {
 
 class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final SimpleLocationService _locationService = SimpleLocationService();
+  final TrustedContactsService _trustedContactsService = TrustedContactsService();
   
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
@@ -38,14 +37,52 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   String _lastSeenStatus = 'Checking...';
   bool _showLocationHistory = false;
   bool _followLocation = true;
+  bool _hasPermission = false;
 
   @override
   void initState() {
     super.initState();
     print('LiveLocationTrackingScreen initialized for user: ${widget.personId}');
-    _startLocationTracking();
-    _loadLocationHistory();
-    _startStatusUpdates();
+    _checkPermissionAndStartTracking();
+  }
+
+  Future<void> _checkPermissionAndStartTracking() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _lastSeenStatus = 'Checking access permissions...';
+      });
+
+      // Check if current user can access location data for this person
+      final hasAccess = await _trustedContactsService.canAccessLocationData(widget.personId);
+      
+      setState(() {
+        _hasPermission = hasAccess;
+      });
+
+      if (hasAccess) {
+        print('Permission granted, starting location tracking');
+        setState(() {
+          _lastSeenStatus = 'Loading location data...';
+        });
+        _startLocationTracking();
+        _loadLocationHistory();
+        _startStatusUpdates();
+      } else {
+        print('Permission denied for accessing ${widget.personId} location data');
+        setState(() {
+          _isLoading = false;
+          _lastSeenStatus = 'No permission to access location data';
+        });
+      }
+    } catch (e) {
+      print('Error checking permissions: $e');
+      setState(() {
+        _isLoading = false;
+        _hasPermission = false;
+        _lastSeenStatus = 'Error checking permissions: $e';
+      });
+    }
   }
 
   @override
@@ -56,51 +93,92 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   }
 
   void _startLocationTracking() {
+    if (!_hasPermission) {
+      print('Cannot start location tracking: No permission');
+      return;
+    }
+
     print('Starting location tracking for user: ${widget.personId}');
     
-    // Listen to real-time location updates
-    _locationSubscription = _firestore
-        .collection('users')
-        .doc(widget.personId)
-        .collection('locations')
-        .orderBy('timestamp', descending: true)
-        .limit(1)
-        .snapshots()
-        .listen((snapshot) {
-      try {
-        print('Received location snapshot: ${snapshot.docs.length} documents');
-        
-        if (snapshot.docs.isNotEmpty) {
-          final locationDoc = snapshot.docs.first;
-          print('Location document data: ${locationDoc.data()}');
-          
-          final location = LocationData.fromSnapshot(locationDoc);
-          print('Parsed location: ${location.latitude}, ${location.longitude} at ${location.timestamp}');
-          
-          _updateCurrentLocation(location);
-        } else {
-          print('No location documents found in snapshot');
-          setState(() {
-            _isLoading = false;
-            _lastSeenStatus = 'No location data found';
-          });
-        }
-      } catch (e) {
-        print('Error processing location data: $e');
-        setState(() {
-          _isLoading = false;
-          _lastSeenStatus = 'Error loading location: $e';
-        });
-      }
-    }, onError: (error) {
-      print('Error in location stream: $error');
-      setState(() {
-        _isLoading = false;
-        _lastSeenStatus = 'Stream error: $error';
-      });
+    // Instead of directly querying another user's location data (which security rules prevent),
+    // we'll create a periodic check that validates permissions and gets the latest shared location
+    _startPeriodicLocationCheck();
+  }
+
+  void _startPeriodicLocationCheck() {
+    // Check for location updates every 30 seconds
+    _statusUpdateTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
+      await _checkAndUpdateLocation();
     });
     
-    print('Location tracking stream initialized');
+    // Also do an immediate check
+    _checkAndUpdateLocation();
+  }
+
+  Future<void> _checkAndUpdateLocation() async {
+    try {
+      // First verify we still have permission
+      final stillHasAccess = await _trustedContactsService.canAccessLocationData(widget.personId);
+      if (!stillHasAccess) {
+        print('Permission revoked during location tracking');
+        setState(() {
+          _hasPermission = false;
+          _lastSeenStatus = 'Permission revoked';
+        });
+        _locationSubscription?.cancel();
+        _statusUpdateTimer?.cancel();
+        return;
+      }
+
+      // Get the user's last known location from their user document
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: widget.personId)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data();
+        final lastKnownLocation = userData['lastKnownLocation'];
+        
+        if (lastKnownLocation != null && lastKnownLocation is Map<String, dynamic>) {
+          // Create a LocationData object from the user's last known location
+          try {
+            final locationData = LocationData(
+              id: 'shared_${DateTime.now().millisecondsSinceEpoch}',
+              userId: widget.personId,
+              latitude: (lastKnownLocation['latitude'] as num).toDouble(),
+              longitude: (lastKnownLocation['longitude'] as num).toDouble(),
+              timestamp: lastKnownLocation['timestamp'] != null 
+                  ? (lastKnownLocation['timestamp'] as Timestamp).toDate()
+                  : DateTime.now(),
+              accuracy: lastKnownLocation['accuracy']?.toDouble(),
+              address: lastKnownLocation['address'],
+            );
+            
+            print('Got shared location: ${locationData.latitude}, ${locationData.longitude}');
+            _updateCurrentLocation(locationData);
+          } catch (e) {
+            print('Error parsing shared location data: $e');
+          }
+        } else {
+          print('No shared location data found in user document');
+          setState(() {
+            _lastSeenStatus = 'No location data shared';
+          });
+        }
+      } else {
+        print('User document not found');
+        setState(() {
+          _lastSeenStatus = 'User not found';
+        });
+      }
+    } catch (e) {
+      print('Error checking shared location: $e');
+      setState(() {
+        _lastSeenStatus = 'Error getting location: $e';
+      });
+    }
   }
 
   void _updateCurrentLocation(LocationData location) {
@@ -201,27 +279,40 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   }
 
   Future<void> _loadLocationHistory() async {
+    if (!_hasPermission) {
+      print('Cannot load location history: No permission');
+      setState(() {
+        _isLoading = false;
+        _lastSeenStatus = 'No permission to access location data';
+      });
+      return;
+    }
+
     try {
       print('Loading location history for user: ${widget.personId}');
-      final history = await _locationService.getLocationHistory(widget.personId, limit: 50);
-      print('Loaded ${history.length} location records');
       
+      // Instead of using the SimpleLocationService which queries directly,
+      // we'll check if we have permission first through trusted contacts service
+      final canAccess = await _trustedContactsService.canAccessLocationData(widget.personId);
+      if (!canAccess) {
+        print('Permission check failed during location history load');
+        setState(() {
+          _isLoading = false;
+          _hasPermission = false;
+          _lastSeenStatus = 'Permission revoked or expired';
+        });
+        return;
+      }
+
+      // Since we have permission, we can try to get location data
+      // For now, we'll rely on the real-time stream, but you could implement
+      // a server-side function or admin-only query for historical data
       setState(() {
-        _locationHistory = history;
         _isLoading = false;
+        _lastSeenStatus = 'Waiting for location updates...';
       });
       
-      if (history.isNotEmpty) {
-        print('Latest location: ${history.first.latitude}, ${history.first.longitude} at ${history.first.timestamp}');
-        if (_currentLocation == null) {
-          _updateCurrentLocation(history.first);
-        }
-      } else {
-        print('No location history found');
-        setState(() {
-          _lastSeenStatus = 'No location history found';
-        });
-      }
+      print('Location history loading completed (using real-time stream)');
     } catch (e) {
       print('Error loading location history: $e');
       setState(() {
@@ -257,29 +348,6 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
     }
   }
 
-  Future<void> _sendRemoteAction(String action) async {
-    try {
-      await _firestore
-          .collection('users')
-          .doc(widget.personId)
-          .collection('remote_actions')
-          .add({
-        'action': action,
-        'requestedBy': _auth.currentUser?.uid,
-        'requestedAt': FieldValue.serverTimestamp(),
-        'status': 'pending',
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$action request sent to device')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending request: $e')),
-      );
-    }
-  }
-
   void _showLocationDetails() {
     if (_currentLocation == null) return;
 
@@ -305,31 +373,17 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
               _buildDetailRow('Address', _currentLocation!.address!),
             _buildDetailRow('Updated', _formatDateTime(_currentLocation!.timestamp)),
             SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _sendRemoteAction('play_sound');
-                    },
-                    icon: Icon(Icons.volume_up),
-                    label: Text('Play Sound'),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // Open in maps app
-                      // _openInMaps(_currentLocation!);
-                    },
-                    icon: Icon(Icons.directions),
-                    label: Text('Directions'),
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Open in maps app or show directions
+                  // _openInMaps(_currentLocation!);
+                },
+                icon: Icon(Icons.directions),
+                label: Text('Get Directions'),
+              ),
             ),
           ],
         ),
@@ -390,6 +444,11 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: () async {
+              if (!_hasPermission) {
+                await _checkPermissionAndStartTracking();
+                return;
+              }
+              
               print('Refresh button tapped');
               setState(() {
                 _isLoading = true;
@@ -397,8 +456,9 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
               });
               
               try {
-                // Cancel existing subscription and restart
+                // Cancel existing timers and restart
                 _locationSubscription?.cancel();
+                _statusUpdateTimer?.cancel();
                 
                 // Clear current data
                 setState(() {
@@ -441,7 +501,39 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                 ],
               ),
             )
-          : _currentLocation == null
+          : !_hasPermission
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.block, size: 64, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        'Access Denied',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'You don\'t have permission to view ${widget.personName}\'s location.',
+                        style: TextStyle(color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'You need to be added as a trusted contact with location access.',
+                        style: TextStyle(color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _checkPermissionAndStartTracking(),
+                        icon: Icon(Icons.refresh),
+                        label: Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : _currentLocation == null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -461,6 +553,11 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                       SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () async {
+                          if (!_hasPermission) {
+                            await _checkPermissionAndStartTracking();
+                            return;
+                          }
+                          
                           print('Refresh Location button tapped');
                           setState(() {
                             _isLoading = true;
@@ -483,6 +580,11 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                       SizedBox(height: 8),
                       TextButton(
                         onPressed: () async {
+                          if (!_hasPermission) {
+                            await _checkPermissionAndStartTracking();
+                            return;
+                          }
+                          
                           print('Retry Loading button tapped');
                           setState(() {
                             _isLoading = true;
@@ -492,6 +594,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                           try {
                             // Cancel and restart everything
                             _locationSubscription?.cancel();
+                            _statusUpdateTimer?.cancel();
                             await _loadLocationHistory();
                             _startLocationTracking();
                           } catch (e) {
@@ -568,64 +671,33 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Card(
-                              child: InkWell(
-                                onTap: () => setState(() {
-                                  _showLocationHistory = !_showLocationHistory;
-                                  _updateLocationTrail();
-                                }),
-                                child: Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        _showLocationHistory ? Icons.timeline : Icons.timeline_outlined,
-                                        color: _showLocationHistory ? Colors.blue : Colors.grey,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        _showLocationHistory ? 'Hide Trail' : 'Show Trail',
-                                        style: TextStyle(
-                                          color: _showLocationHistory ? Colors.blue : Colors.grey,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
+                      Card(
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _showLocationHistory = !_showLocationHistory;
+                            _updateLocationTrail();
+                          }),
+                          child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _showLocationHistory ? Icons.timeline : Icons.timeline_outlined,
+                                  color: _showLocationHistory ? Colors.blue : Colors.grey,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  _showLocationHistory ? 'Hide Trail' : 'Show Trail',
+                                  style: TextStyle(
+                                    color: _showLocationHistory ? Colors.blue : Colors.grey,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Card(
-                              child: InkWell(
-                                onTap: () => _sendRemoteAction('play_sound'),
-                                child: Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.volume_up, color: Colors.blue),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Play Sound',
-                                        style: TextStyle(
-                                          color: Colors.blue,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),

@@ -21,7 +21,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   bool _findMeEnabled = false;
   bool _isTracking = false;
   bool _loading = true;
-  bool _allowRemoteActions = true;
   bool _shareWithContacts = true;
   bool _familySharingEnabled = false;
   bool _highAccuracyMode = false;
@@ -62,7 +61,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
           setState(() {
             _findMeEnabled = userData['findMeEnabled'] ?? false;
             _isTracking = userData['isTracking'] ?? false;
-            _allowRemoteActions = userData['allowRemoteActions'] ?? true;
             _shareWithContacts = userData['shareWithContacts'] ?? true;
             _familySharingEnabled = userData['familySharingEnabled'] ?? false;
             _highAccuracyMode = userData['highAccuracyMode'] ?? false;
@@ -73,7 +71,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
           setState(() {
             _findMeEnabled = false;
             _isTracking = false;
-            _allowRemoteActions = true;
             _shareWithContacts = true;
             _familySharingEnabled = false;
             _highAccuracyMode = false;
@@ -218,7 +215,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
           await userDocRef.update({
             'findMeEnabled': true,
             'findMeEnabledAt': FieldValue.serverTimestamp(),
-            'allowRemoteActions': _allowRemoteActions,
             'shareWithContacts': _shareWithContacts,
             'highAccuracyMode': _highAccuracyMode,
           });
@@ -276,7 +272,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
               await userDocRef.update({
                 'findMeEnabled': true,
                 'findMeEnabledAt': FieldValue.serverTimestamp(),
-                'allowRemoteActions': _allowRemoteActions,
                 'shareWithContacts': _shareWithContacts,
                 'highAccuracyMode': _highAccuracyMode,
               });
@@ -457,36 +452,22 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
   Future<void> _updateContactPermission(String contactId, String permission, bool value) async {
     try {
-      // Get current contact to preserve other permissions
+      // Get current contact index
       final contactIndex = _trustedContacts.indexWhere((c) => c.id == contactId);
       if (contactIndex == -1) return;
       
-      final contact = _trustedContacts[contactIndex];
-      
-      // Update permissions while preserving the other one
-      bool newCanAccessLocation = contact.canAccessLocation;
-      bool newCanPerformRemoteActions = contact.canPerformRemoteActions;
-      
+      // Update permissions - only handle canAccessLocation now
       if (permission == 'canAccessLocation') {
-        newCanAccessLocation = value;
-      } else if (permission == 'canPerformRemoteActions') {
-        newCanPerformRemoteActions = value;
-      }
-      
-      await _trustedContactsService.updateTrustedContactPermissions(
-        contactId, 
-        newCanAccessLocation, 
-        newCanPerformRemoteActions
-      );
-      
-      // Update local state
-      setState(() {
-        if (permission == 'canAccessLocation') {
+        await _trustedContactsService.updateTrustedContactPermissions(
+          contactId, 
+          value
+        );
+        
+        // Update local state
+        setState(() {
           _trustedContacts[contactIndex] = _trustedContacts[contactIndex].copyWith(canAccessLocation: value);
-        } else if (permission == 'canPerformRemoteActions') {
-          _trustedContacts[contactIndex] = _trustedContacts[contactIndex].copyWith(canPerformRemoteActions: value);
-        }
-      });
+        });
+      }
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Permission updated successfully')),
@@ -806,15 +787,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                       ),
                       SizedBox(height: 16),
                       SwitchListTile(
-                        title: Text('Allow Remote Actions'),
-                        subtitle: Text('Let trusted contacts play sounds and perform device actions'),
-                        value: _allowRemoteActions,
-                        onChanged: (value) {
-                          setState(() => _allowRemoteActions = value);
-                          _updateSetting('allowRemoteActions', value);
-                        },
-                      ),
-                      SwitchListTile(
                         title: Text('Share with Trusted Contacts'),
                         subtitle: Text('Allow trusted contacts to view your location when family sharing is enabled'),
                         value: _shareWithContacts,
@@ -910,16 +882,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                                         title: Text('Location Access', style: TextStyle(fontSize: 12)),
                                         value: contact.canAccessLocation,
                                         onChanged: (value) => _updateContactPermission(contact.id, 'canAccessLocation', value ?? false),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: CheckboxListTile(
-                                        dense: true,
-                                        contentPadding: EdgeInsets.zero,
-                                        controlAffinity: ListTileControlAffinity.leading,
-                                        title: Text('Remote Actions', style: TextStyle(fontSize: 12)),
-                                        value: contact.canPerformRemoteActions,
-                                        onChanged: (value) => _updateContactPermission(contact.id, 'canPerformRemoteActions', value ?? false),
                                       ),
                                     ),
                                   ],
@@ -1033,7 +995,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                     SizedBox(height: 8),
                     Text('• All location data is encrypted and secured'),
                     Text('• Real-time tracking only when FindMe is enabled'),
-                    Text('• Remote actions require trusted contact verification'),
                     Text('• Family sharing provides continuous location access'),
                     Text('• Individual permissions can be granted per contact'),
                     Text('• Location history is kept for maximum 30 days'),

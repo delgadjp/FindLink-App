@@ -98,8 +98,8 @@ class SimpleLocationService {
         'trackingStartedAt': FieldValue.serverTimestamp(),
       });
 
-      // Start periodic location updates every 30 seconds
-      _locationTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
+      // Start periodic location updates every 5 minutes (300 seconds)
+      _locationTimer = Timer.periodic(Duration(minutes: 5), (timer) async {
         try {
           if (!_isTracking) {
             timer.cancel();
@@ -158,6 +158,40 @@ class SimpleLocationService {
       // Still set tracking to false even if stop failed
       _isTracking = false;
       rethrow;
+    }
+  }
+
+  /// Generate a formal document ID format for locations: LOC_YYYYMMDD_XXX_HHMMSS (where XXX is user prefix and HHMMSS is time)
+  Future<String> _generateLocationDocumentId(String userId) async {
+    try {
+      // Find the user document to get their custom document ID format
+      final userQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: userId)
+          .limit(1)
+          .get();
+      
+      if (userQuery.docs.isNotEmpty) {
+        final userDocId = userQuery.docs.first.id; // e.g., "USER_20250808_HOM_001"
+        
+        // Extract the prefix part (e.g., "HOM" from "USER_20250808_HOM_001")
+        final parts = userDocId.split('_');
+        final userPrefix = parts.length >= 3 ? parts[2] : 'USR';
+        
+        // Create location document ID with current date and time
+        final now = DateTime.now();
+        final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        final timePart = "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
+        
+        return "LOC_${datePart}_${userPrefix}_${timePart}";
+      } else {
+        // Fallback to using UUID if user document not found
+        return _uuid.v4();
+      }
+    } catch (e) {
+      print('Error generating location document ID: $e');
+      // Fallback to UUID
+      return _uuid.v4();
     }
   }
 
@@ -225,9 +259,10 @@ class SimpleLocationService {
         // Continue without address
       }
 
-      // Create location data
+      // Create location data with custom document ID
+      final locationDocId = await _generateLocationDocumentId(user.uid);
       final locationData = LocationData(
-        id: _uuid.v4(),
+        id: locationDocId, // Use the custom document ID
         userId: user.uid, // Keep the auth UID for identification
         latitude: position.latitude,
         longitude: position.longitude,
@@ -236,11 +271,23 @@ class SimpleLocationService {
         address: address,
       );
 
-      // Save to findMeLocations collection (separate top-level collection)
+      // Save to findMeLocations collection with custom document ID
       await _firestore
           .collection('findMeLocations')
-          .doc(locationData.id)
+          .doc(locationDocId)
           .set(locationData.toMap());
+
+      // Also update the user's lastKnownLocation field for trusted contacts to access
+      await userQuery.docs.first.reference.update({
+        'lastKnownLocation': {
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'accuracy': position.accuracy,
+          'timestamp': FieldValue.serverTimestamp(),
+          'address': address,
+        },
+        'lastLocationUpdate': FieldValue.serverTimestamp(),
+      });
 
       // Keep only last 100 locations (cleanup old data)
       await _cleanupOldLocations(user.uid); // Pass auth UID for querying
@@ -257,29 +304,54 @@ class SimpleLocationService {
   /// Clean up old location data to prevent excessive storage
   Future<void> _cleanupOldLocations(String userId) async {
     try {
+      // Get all locations for this user, sorted by timestamp (newest first)
       final query = await _firestore
           .collection('findMeLocations')
           .where('userId', isEqualTo: userId)
-          .orderBy('timestamp', descending: true)
-          .limit(101) // Get 101 to identify the 101st item
           .get();
 
       if (query.docs.length > 100) {
-        // Delete documents older than the 100th most recent
-        final cutoffTimestamp = query.docs[99].data()['timestamp'];
+        // Convert to list and sort by timestamp
+        final locations = query.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'doc': doc,
+            'timestamp': data['timestamp'],
+          };
+        }).toList();
         
-        final oldDocs = await _firestore
-            .collection('findMeLocations')
-            .where('userId', isEqualTo: userId)
-            .where('timestamp', isLessThan: cutoffTimestamp)
-            .get();
-
-        // Delete old documents in batches
-        final batch = _firestore.batch();
-        for (var doc in oldDocs.docs) {
-          batch.delete(doc.reference);
+        // Sort by timestamp (newest first)
+        locations.sort((a, b) {
+          final aTimestamp = a['timestamp'];
+          final bTimestamp = b['timestamp'];
+          
+          DateTime aTime = DateTime(1970);
+          DateTime bTime = DateTime(1970);
+          
+          if (aTimestamp is Timestamp) {
+            aTime = aTimestamp.toDate();
+          }
+          if (bTimestamp is Timestamp) {
+            bTime = bTimestamp.toDate();
+          }
+          
+          return bTime.compareTo(aTime);
+        });
+        
+        // Keep only the newest 100, delete the rest
+        if (locations.length > 100) {
+          final docsToDelete = locations.sublist(100);
+          
+          // Delete old documents in batches
+          final batch = _firestore.batch();
+          for (var item in docsToDelete) {
+            final doc = item['doc'] as DocumentSnapshot;
+            batch.delete(doc.reference);
+          }
+          await batch.commit();
+          
+          print('Cleaned up ${docsToDelete.length} old location records');
         }
-        await batch.commit();
       }
     } catch (e) {
       print('Error cleaning up old locations: $e');
@@ -321,15 +393,11 @@ class SimpleLocationService {
     try {
       print('Getting location history for user: $userId with limit: $limit');
       
+      // Use simpler query without orderBy to avoid index requirement
       Query query = _firestore
           .collection('findMeLocations')
-          .where('userId', isEqualTo: userId)
-          .orderBy('timestamp', descending: true);
+          .where('userId', isEqualTo: userId);
       
-      if (limit != null) {
-        query = query.limit(limit);
-      }
-
       final querySnapshot = await query.get();
       print('Location history query returned ${querySnapshot.docs.length} documents');
       
@@ -351,7 +419,15 @@ class SimpleLocationService {
         }
       }
       
-      print('Successfully parsed ${locations.length} locations out of ${querySnapshot.docs.length} documents');
+      // Sort by timestamp in the app (newest first)
+      locations.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      
+      // Apply limit after sorting if specified
+      if (limit != null && locations.length > limit) {
+        locations.removeRange(limit, locations.length);
+      }
+      
+      print('Successfully parsed and sorted ${locations.length} locations out of ${querySnapshot.docs.length} documents');
       return locations;
     } catch (e) {
       print('Error getting location history for user $userId: $e');

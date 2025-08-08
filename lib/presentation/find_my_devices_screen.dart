@@ -29,15 +29,17 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // Load current user's device
-      final userDoc = await _firestore
+      // Find current user's document by userId field (not by document ID)
+      final userQuery = await _firestore
           .collection('users')
-          .doc(user.uid)
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
           .get();
 
       List<Map<String, dynamic>> devices = [];
 
-      if (userDoc.exists) {
+      if (userQuery.docs.isNotEmpty) {
+        final userDoc = userQuery.docs.first;
         final userData = userDoc.data() as Map<String, dynamic>;
         
         // Get latest location
@@ -66,9 +68,8 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
 
       // Load trusted contacts who have shared their location
       final trustedContactsQuery = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('trustedContacts')
+          .collection('findMeTrustedContacts')
+          .where('userId', isEqualTo: user.uid)
           .where('canAccessLocation', isEqualTo: true)
           .where('isVerified', isEqualTo: true)
           .get();
@@ -78,14 +79,15 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
         final contactUserId = contactData['contactUserId'];
 
         try {
-          // Get contact's user data
-          final contactUserDoc = await _firestore
+          // Get contact's user data by their userId field
+          final contactUserQuery = await _firestore
               .collection('users')
-              .doc(contactUserId)
+              .where('userId', isEqualTo: contactUserId)
+              .limit(1)
               .get();
 
-          if (contactUserDoc.exists) {
-            final contactUserData = contactUserDoc.data() as Map<String, dynamic>;
+          if (contactUserQuery.docs.isNotEmpty) {
+            final contactUserData = contactUserQuery.docs.first.data();
             
             // Only show if family sharing is enabled
             if (contactUserData['familySharingEnabled'] == true) {
@@ -188,29 +190,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
     }
   }
 
-  Future<void> _sendRemoteAction(String deviceId, String action) async {
-    try {
-      await _firestore
-          .collection('users')
-          .doc(deviceId)
-          .collection('remote_actions')
-          .add({
-        'action': action,
-        'requestedBy': _auth.currentUser?.uid,
-        'requestedAt': FieldValue.serverTimestamp(),
-        'status': 'pending',
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$action request sent to device')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending request: $e')),
-      );
-    }
-  }
-
   void _showDeviceActions(Map<String, dynamic> device) {
     showModalBottomSheet(
       context: context,
@@ -262,38 +241,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                 },
               ),
               
-              if (device['isCurrentDevice']) ...[
-                ListTile(
-                  leading: Icon(Icons.volume_up, color: Colors.orange),
-                  title: Text('Play Sound'),
-                  subtitle: Text('Make device play a loud sound'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _sendRemoteAction(device['id'], 'play_sound');
-                  },
-                ),
-                
-                ListTile(
-                  leading: Icon(Icons.lock, color: Colors.red),
-                  title: Text('Mark as Lost'),
-                  subtitle: Text('Enable lost mode and lock device'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showLostModeDialog(device);
-                  },
-                ),
-              ] else ...[
-                ListTile(
-                  leading: Icon(Icons.volume_up, color: Colors.orange),
-                  title: Text('Request Sound'),
-                  subtitle: Text('Ask contact to play device sound'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _sendRemoteAction(device['id'], 'play_sound');
-                  },
-                ),
-              ],
-              
               ListTile(
                 leading: Icon(Icons.directions, color: Colors.green),
                 title: Text('Get Directions'),
@@ -314,89 +261,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
         ),
       ),
     );
-  }
-
-  void _showLostModeDialog(Map<String, dynamic> device) {
-    final messageController = TextEditingController();
-    final phoneController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Mark as Lost'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Your device will be locked and display a custom message. You can still track its location.',
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: messageController,
-                decoration: InputDecoration(
-                  labelText: 'Message to display',
-                  hintText: 'This device is lost. Please call...',
-                ),
-                maxLines: 2,
-              ),
-              SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                decoration: InputDecoration(
-                  labelText: 'Contact phone number',
-                  hintText: '+63 9XX XXX XXXX',
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _enableLostMode(
-                device['id'],
-                messageController.text,
-                phoneController.text,
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Enable Lost Mode'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _enableLostMode(String deviceId, String message, String phone) async {
-    try {
-      await _firestore.collection('users').doc(deviceId).update({
-        'lostMode': {
-          'enabled': true,
-          'message': message,
-          'contactPhone': phone,
-          'enabledAt': FieldValue.serverTimestamp(),
-          'enabledBy': _auth.currentUser?.uid,
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lost mode enabled'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error enabling lost mode: $e')),
-      );
-    }
   }
 
   @override
