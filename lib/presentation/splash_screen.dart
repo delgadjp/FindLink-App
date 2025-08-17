@@ -1,4 +1,5 @@
 import '../core/app_export.dart';
+import '../core/services/auto_location_service.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -6,6 +7,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final AutoLocationService _autoLocationService = AutoLocationService();
+
   @override
   void initState() {
     super.initState();
@@ -16,8 +19,12 @@ class _SplashScreenState extends State<SplashScreen> {
             stream: AuthService().authStateChanges,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
+                // User is authenticated, initialize location service
+                _autoLocationService.autoInitializeLocationService();
                 return HomeScreen();
               } else {
+                // User is not authenticated, reset location service
+                _autoLocationService.reset();
                 return LoginPage();
               }
             },

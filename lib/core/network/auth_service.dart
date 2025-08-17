@@ -5,12 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import '../services/auto_location_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   // final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final AutoLocationService _autoLocationService = AutoLocationService();
 
   // Modified Login function to update last sign-in time
   Future<void> loginUser({
@@ -27,6 +29,9 @@ class AuthService {
       // Update last sign-in time
       if (userCredential.user != null) {
         await updateLastSignIn(userCredential.user!.uid);
+        
+        // Auto-initialize location service if Find Me is enabled
+        _autoLocationService.autoInitializeLocationService();
       }
 
       Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
@@ -410,6 +415,9 @@ class AuthService {
   // Sign out function
   Future<void> signOutUser(BuildContext context) async {
     try {
+      // Reset auto location service state
+      _autoLocationService.reset();
+      
       // Sign out from Firebase only
       await _auth.signOut();
       Navigator.pushReplacementNamed(context, '/login'); // Replace with your login route

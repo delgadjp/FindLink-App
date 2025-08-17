@@ -271,11 +271,35 @@ class SimpleLocationService {
         address: address,
       );
 
+      print('Saving location for user ${user.uid}: ${position.latitude}, ${position.longitude}');
+      print('Location document ID: $locationDocId');
+      print('Location data userId field: ${user.uid}');
+
       // Save to findMeLocations collection with custom document ID
       await _firestore
           .collection('findMeLocations')
           .doc(locationDocId)
           .set(locationData.toMap());
+
+      // Verify the saved data by reading it back
+      final savedDoc = await _firestore
+          .collection('findMeLocations')
+          .doc(locationDocId)
+          .get();
+      
+      if (savedDoc.exists) {
+        final savedData = savedDoc.data();
+        print('✅ Location saved and verified:');
+        print('   Doc ID: ${savedDoc.id}');
+        print('   UserId in document: ${savedData?['userId']}');
+        print('   Coordinates: ${savedData?['latitude']}, ${savedData?['longitude']}');
+        
+        if (savedData?['userId'] != user.uid) {
+          print('❌ CRITICAL ERROR: Saved location userId does not match current user!');
+        }
+      } else {
+        print('❌ ERROR: Failed to save location document');
+      }
 
       // Also update the user's lastKnownLocation field for trusted contacts to access
       await userQuery.docs.first.reference.update({
@@ -391,7 +415,9 @@ class SimpleLocationService {
   /// Get location history for a user
   Future<List<LocationData>> getLocationHistory(String userId, {int? limit}) async {
     try {
-      print('Getting location history for user: $userId with limit: $limit');
+      print('=== GET LOCATION HISTORY DEBUG START ===');
+      print('Requested userId: $userId');
+      print('Requested limit: $limit');
       
       // Use simpler query without orderBy to avoid index requirement
       Query query = _firestore
@@ -399,19 +425,38 @@ class SimpleLocationService {
           .where('userId', isEqualTo: userId);
       
       final querySnapshot = await query.get();
-      print('Location history query returned ${querySnapshot.docs.length} documents');
+      print('Raw query returned ${querySnapshot.docs.length} documents');
       
       if (querySnapshot.docs.isEmpty) {
         print('No location documents found for user: $userId');
+        
+        // Debug: Let's see what location documents exist in the collection
+        print('DEBUG: Checking all location documents...');
+        final allDocsQuery = await _firestore.collection('findMeLocations').limit(10).get();
+        print('Total location documents in collection: ${allDocsQuery.docs.length}');
+        for (var doc in allDocsQuery.docs) {
+          final data = doc.data();
+          print('  Doc ID: ${doc.id}, UserId: ${data['userId']}, Lat: ${data['latitude']}, Lng: ${data['longitude']}');
+        }
+        
         return [];
       }
       
       final locations = <LocationData>[];
       for (var doc in querySnapshot.docs) {
         try {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            print('Processing location document ${doc.id}:');
+            print('  - Document userId: ${data['userId']}');
+            print('  - Document latitude: ${data['latitude']}');
+            print('  - Document longitude: ${data['longitude']}');
+            print('  - Document address: ${data['address']}');
+          }
+          
           final location = LocationData.fromSnapshot(doc);
           locations.add(location);
-          print('Successfully parsed location: ${location.latitude}, ${location.longitude} at ${location.timestamp}');
+          print('  - Successfully parsed location at ${location.timestamp}');
         } catch (e) {
           print('Error parsing location document ${doc.id}: $e');
           print('Document data: ${doc.data()}');
@@ -428,6 +473,12 @@ class SimpleLocationService {
       }
       
       print('Successfully parsed and sorted ${locations.length} locations out of ${querySnapshot.docs.length} documents');
+      if (locations.isNotEmpty) {
+        final latest = locations.first;
+        print('Latest location: ${latest.latitude}, ${latest.longitude} for userId: ${latest.userId}');
+      }
+      print('=== GET LOCATION HISTORY DEBUG END ===');
+      
       return locations;
     } catch (e) {
       print('Error getting location history for user $userId: $e');
@@ -480,9 +531,11 @@ class SimpleLocationService {
 
   /// Reset location service state
   void resetState() {
+    print('SimpleLocationService: Resetting state...');
     _isTracking = false;
     _locationTimer?.cancel();
     _locationTimer = null;
+    print('SimpleLocationService: State reset completed');
   }
 
   /// Check if location services are available

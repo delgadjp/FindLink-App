@@ -80,6 +80,16 @@ class TrustedContactsService {
       if (contactUserQuery.docs.isNotEmpty) {
         final contactData = contactUserQuery.docs.first.data();
         contactUserId = contactData['userId'] ?? ''; // Get the auth UID from userId field
+        
+        // CRITICAL VALIDATION: Ensure we're not adding current user as their own trusted contact
+        if (contactUserId == user.uid) {
+          print('Error: Cannot add yourself as a trusted contact');
+          return false;
+        }
+        
+        print('Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
+      } else {
+        print('Contact user not found for email: $email');
       }
 
       // Generate custom document ID
@@ -103,11 +113,20 @@ class TrustedContactsService {
       // Override createdAt with server timestamp for consistency
       contactData['createdAt'] = FieldValue.serverTimestamp();
       
+      print('Storing trusted contact:');
+      print('  Document ID: $contactDocId');
+      print('  UserId (owner): ${user.uid}');
+      print('  ContactUserId (target): $contactUserId');
+      print('  Name: $name');
+      print('  Email: $email');
+      print('  Can Access Location: $canAccessLocation');
+      
       await _firestore
           .collection('findMeTrustedContacts')
           .doc(contactDocId)
           .set(contactData);
 
+      print('Trusted contact stored successfully');
       return true;
     } catch (e) {
       print('Error adding trusted contact: $e');

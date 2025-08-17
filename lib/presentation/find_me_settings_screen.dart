@@ -5,6 +5,7 @@ import 'dart:async';
 import '../core/app_export.dart';
 import '../core/network/trusted_contacts_service.dart';
 import '../core/network/simple_location_service.dart';
+import '../core/services/auto_location_service.dart';
 import '../models/location_model.dart';
 
 class FindMeSettingsScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TrustedContactsService _trustedContactsService = TrustedContactsService();
   final SimpleLocationService _locationService = SimpleLocationService();
+  final AutoLocationService _autoLocationService = AutoLocationService();
 
   bool _findMeEnabled = false;
   bool _isTracking = false;
@@ -36,6 +38,16 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     _loadTrustedContacts();
     _loadDeviceStatus();
     _loadLastKnownLocation();
+    
+    // Ensure auto-initialization has completed
+    _ensureAutoInitialization();
+  }
+
+  Future<void> _ensureAutoInitialization() async {
+    // If auto-initialization hasn't been completed, try to do it now
+    if (!_autoLocationService.hasInitialized) {
+      await _autoLocationService.autoInitializeLocationService();
+    }
   }
 
   @override
@@ -56,7 +68,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         
         if (userQuery.docs.isNotEmpty) {
           final userDoc = userQuery.docs.first;
-          final userData = userDoc.data() as Map<String, dynamic>;
+          final userData = userDoc.data();
           
           setState(() {
             _findMeEnabled = userData['findMeEnabled'] ?? false;
@@ -715,6 +727,36 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                           ),
                         ],
                       ),
+                      if (!_isTracking) ...[
+                        SizedBox(height: 12),
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Location tracking will auto-start. If not working, try toggling Enhanced FindMe off and on.',
+                                  style: TextStyle(fontSize: 13, color: Colors.orange.shade700),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  await _autoLocationService.forceReinitialization();
+                                  await _loadSettings();
+                                  await _loadDeviceStatus();
+                                },
+                                child: Text('Retry', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
