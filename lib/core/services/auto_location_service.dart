@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../network/simple_location_service.dart';
-import 'background_location_service.dart';
 
 /// Service to automatically initialize and start location tracking
 /// when the app launches if Find Me is already enabled for the user
@@ -13,7 +12,6 @@ class AutoLocationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final SimpleLocationService _locationService = SimpleLocationService();
-  final BackgroundLocationService _backgroundLocationService = BackgroundLocationService();
 
   bool _hasInitialized = false;
 
@@ -55,59 +53,34 @@ class AutoLocationService {
       print('AutoLocationService: FindMe enabled: $findMeEnabled, Currently tracking: $isCurrentlyTracking, Service tracking: ${locationService.isTracking}');
 
       if (findMeEnabled) {
-        // Initialize both location services
+        // Initialize simple location service
         await locationService.initializeLocationService();
-        await _backgroundLocationService.initializeBackgroundLocationService();
         
         // Check if we need to start or restart tracking
-        if (!locationService.isTracking && !_backgroundLocationService.isTracking) {
-          print('AutoLocationService: Location service not tracking - starting background location tracking');
+        if (!locationService.isTracking) {
+          print('AutoLocationService: Location service not tracking - starting simple location tracking');
           
           // Reset state first to ensure clean start
           locationService.resetState();
-          _backgroundLocationService.resetState();
           
-          // Try to start background location tracking (preferred)
+          // Start simple location tracking
           try {
-            final backgroundTrackingStarted = await _backgroundLocationService.startBackgroundTracking();
-            if (backgroundTrackingStarted) {
-              print('AutoLocationService: Background location tracking started successfully');
+            final trackingStarted = await locationService.startTracking();
+            if (trackingStarted) {
+              print('AutoLocationService: Simple location tracking started successfully');
               
               // Update database to reflect current tracking state
               await userQuery.docs.first.reference.update({
                 'isTracking': true,
-                'backgroundTrackingEnabled': true,
+                'backgroundTrackingEnabled': false,
                 'trackingStartedAt': FieldValue.serverTimestamp(),
                 'autoInitializedAt': FieldValue.serverTimestamp(),
               });
             } else {
-              print('AutoLocationService: Background tracking failed, trying simple tracking');
-              // Fallback to simple tracking
-              final trackingStarted = await locationService.startTracking();
-              if (trackingStarted) {
-                print('AutoLocationService: Simple location tracking started successfully');
-                
-                await userQuery.docs.first.reference.update({
-                  'isTracking': true,
-                  'backgroundTrackingEnabled': false,
-                  'trackingStartedAt': FieldValue.serverTimestamp(),
-                  'autoInitializedAt': FieldValue.serverTimestamp(),
-                });
-              } else {
-                print('AutoLocationService: Failed to start any location tracking');
-              }
+              print('AutoLocationService: Failed to start location tracking');
             }
           } catch (e) {
-            print('AutoLocationService: Error starting background location tracking: $e');
-            // Fallback to simple tracking
-            try {
-              final trackingStarted = await locationService.startTracking();
-              if (trackingStarted) {
-                print('AutoLocationService: Fallback to simple location tracking successful');
-              }
-            } catch (fallbackError) {
-              print('AutoLocationService: Fallback tracking also failed: $fallbackError');
-            }
+            print('AutoLocationService: Error starting location tracking: $e');
           }
         } else {
           print('AutoLocationService: Location service already tracking');
@@ -135,9 +108,8 @@ class AutoLocationService {
   /// Call this when user logs out
   void reset() {
     _hasInitialized = false;
-    // Also reset both location services state
+    // Reset location service state
     _locationService.resetState();
-    _backgroundLocationService.resetState();
     print('AutoLocationService: Reset initialization state');
   }
 

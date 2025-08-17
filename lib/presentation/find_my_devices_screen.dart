@@ -475,28 +475,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                   );
                 },
               ),
-              
-              _buildActionTile(
-                icon: Icons.directions,
-                iconColor: Colors.green,
-                title: 'Get Directions',
-                subtitle: 'Navigate to last known location',
-                onTap: () {
-                  Navigator.pop(context);
-                  // Implement directions functionality
-                },
-              ),
-              
-              _buildActionTile(
-                icon: Icons.notifications,
-                iconColor: Colors.orange,
-                title: 'Send Notification',
-                subtitle: 'Send a ping to this device',
-                onTap: () {
-                  Navigator.pop(context);
-                  // Implement notification functionality
-                },
-              ),
             ] else ...[
               _buildActionTile(
                 icon: Icons.info_outline,

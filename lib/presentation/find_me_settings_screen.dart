@@ -6,7 +6,6 @@ import '../core/app_export.dart';
 import '../core/network/trusted_contacts_service.dart';
 import '../core/network/simple_location_service.dart';
 import '../core/services/auto_location_service.dart';
-import '../core/services/background_location_service.dart';
 import '../models/location_model.dart';
 
 class FindMeSettingsScreen extends StatefulWidget {
@@ -20,7 +19,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   final TrustedContactsService _trustedContactsService = TrustedContactsService();
   final SimpleLocationService _locationService = SimpleLocationService();
   final AutoLocationService _autoLocationService = AutoLocationService();
-  final BackgroundLocationService _backgroundLocationService = BackgroundLocationService();
 
   bool _findMeEnabled = false;
   bool _isTracking = false;
@@ -181,7 +179,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
         try {
           await _locationService.initializeLocationService();
-          await _backgroundLocationService.initializeBackgroundLocationService();
           
           // Enable FindMe feature
           await userDocRef.update({
@@ -191,28 +188,18 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             'highAccuracyMode': _highAccuracyMode,
           });
 
-          // Enable FindMe in services
+          // Enable FindMe in location service
           await _locationService.enableFindMe(user.uid);
-          await _backgroundLocationService.enableFindMeBackground(user.uid);
           
-          // Try to start background location tracking (preferred)
+          // Start simple location tracking
           bool trackingStarted = false;
           try {
-            trackingStarted = await _backgroundLocationService.startBackgroundTracking();
+            trackingStarted = await _locationService.startTracking();
             if (trackingStarted) {
-              print('Background location tracking started successfully');
+              print('Simple location tracking started successfully');
             }
           } catch (e) {
-            print('Background tracking failed, trying simple tracking: $e');
-            // Fallback to simple tracking
-            try {
-              trackingStarted = await _locationService.startTracking();
-              if (trackingStarted) {
-                print('Simple location tracking started successfully');
-              }
-            } catch (fallbackError) {
-              print('Simple tracking also failed: $fallbackError');
-            }
+            print('Location tracking failed: $e');
           }
 
           // Close loading dialog safely
@@ -261,7 +248,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
               });
 
               await _locationService.enableFindMe(user.uid);
-              await _backgroundLocationService.enableFindMeBackground(user.uid);
 
               if (mounted) {
                 setState(() {
@@ -301,9 +287,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
           });
 
           await _locationService.stopTracking();
-          await _backgroundLocationService.stopBackgroundTracking();
           await _locationService.disableFindMe(user.uid);
-          await _backgroundLocationService.disableFindMeBackground(user.uid);
 
           if (mounted) {
             setState(() {

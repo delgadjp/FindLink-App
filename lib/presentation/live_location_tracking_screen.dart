@@ -373,18 +373,6 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
               _buildDetailRow('Address', _currentLocation!.address!),
             _buildDetailRow('Updated', _formatDateTime(_currentLocation!.timestamp)),
             SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Open in maps app or show directions
-                  // _openInMaps(_currentLocation!);
-                },
-                icon: Icon(Icons.directions),
-                label: Text('Get Directions'),
-              ),
-            ),
           ],
         ),
       ),
@@ -413,7 +401,12 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   }
 
   String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    int hour = dateTime.hour;
+    String amPm = hour >= 12 ? 'PM' : 'AM';
+    if (hour > 12) hour -= 12;
+    if (hour == 0) hour = 12;
+    
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${hour}:${dateTime.minute.toString().padLeft(2, '0')} $amPm';
   }
 
   @override
