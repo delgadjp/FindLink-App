@@ -6,6 +6,7 @@ import '../core/app_export.dart';
 import '../core/network/trusted_contacts_service.dart';
 import '../core/network/simple_location_service.dart';
 import '../core/services/auto_location_service.dart';
+import '../core/services/background_location_service.dart';
 import '../models/location_model.dart';
 
 class FindMeSettingsScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   final TrustedContactsService _trustedContactsService = TrustedContactsService();
   final SimpleLocationService _locationService = SimpleLocationService();
   final AutoLocationService _autoLocationService = AutoLocationService();
+  final BackgroundLocationService _backgroundLocationService = BackgroundLocationService();
 
   bool _findMeEnabled = false;
   bool _isTracking = false;
@@ -103,9 +105,20 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
   Future<void> _loadDeviceStatus() async {
     try {
-      // Simulate device status check
+      // Check both simple and background tracking status
+      final isSimpleTracking = _locationService.isTracking;
+      final isBackgroundTracking = _backgroundLocationService.isTracking;
+      
       setState(() {
-        _deviceStatus = _isTracking ? 'Online - Tracking Active' : 'Online - Tracking Inactive';
+        if (isBackgroundTracking) {
+          _deviceStatus = 'Online - Background Tracking Active';
+        } else if (isSimpleTracking) {
+          _deviceStatus = 'Online - Basic Tracking Active';
+        } else if (_isTracking) {
+          _deviceStatus = 'Online - Tracking Setup';
+        } else {
+          _deviceStatus = 'Online - Tracking Inactive';
+        }
       });
     } catch (e) {
       setState(() {
@@ -222,6 +235,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
         try {
           await _locationService.initializeLocationService();
+          await _backgroundLocationService.initializeBackgroundLocationService();
           
           // Enable FindMe feature
           await userDocRef.update({
@@ -231,15 +245,28 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             'highAccuracyMode': _highAccuracyMode,
           });
 
-          // Enable FindMe in service
+          // Enable FindMe in services
           await _locationService.enableFindMe(user.uid);
+          await _backgroundLocationService.enableFindMeBackground(user.uid);
           
-          // Try to start location tracking (non-blocking)
+          // Try to start background location tracking (preferred)
           bool trackingStarted = false;
           try {
-            trackingStarted = await _locationService.startTracking();
+            trackingStarted = await _backgroundLocationService.startBackgroundTracking();
+            if (trackingStarted) {
+              print('Background location tracking started successfully');
+            }
           } catch (e) {
-            print('Warning: Could not start location tracking immediately: $e');
+            print('Background tracking failed, trying simple tracking: $e');
+            // Fallback to simple tracking
+            try {
+              trackingStarted = await _locationService.startTracking();
+              if (trackingStarted) {
+                print('Simple location tracking started successfully');
+              }
+            } catch (fallbackError) {
+              print('Simple tracking also failed: $fallbackError');
+            }
           }
 
           // Close loading dialog safely
@@ -252,7 +279,11 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             setState(() {
               _findMeEnabled = true;
               _isTracking = trackingStarted;
-              _deviceStatus = trackingStarted ? 'Online - Tracking Active' : 'Online - Tracking Setup';
+              _deviceStatus = trackingStarted 
+                  ? (_backgroundLocationService.isTracking 
+                     ? 'Online - Background Tracking Active' 
+                     : 'Online - Basic Tracking Active')
+                  : 'Online - Tracking Setup';
             });
 
             ScaffoldMessenger.of(context).showSnackBar(
@@ -289,6 +320,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
               });
 
               await _locationService.enableFindMe(user.uid);
+              await _backgroundLocationService.enableFindMeBackground(user.uid);
 
               if (mounted) {
                 setState(() {
@@ -325,9 +357,13 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             'findMeEnabled': false,
             'findMeDisabledAt': FieldValue.serverTimestamp(),
             'isTracking': false,
+            'backgroundTrackingEnabled': false,
           });
 
+          await _locationService.stopTracking();
+          await _backgroundLocationService.stopBackgroundTracking();
           await _locationService.disableFindMe(user.uid);
+          await _backgroundLocationService.disableFindMeBackground(user.uid);
 
           if (mounted) {
             setState(() {
@@ -392,7 +428,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 12),
-                Text('• Continuous background location tracking'),
+                Text('• True background location tracking (continues when app is closed)'),
                 Text('• Real-time location sharing with family members'),
                 Text('• Remote device actions (play sound, etc.)'),
                 Text('• Sharing your location with designated trusted contacts'),
@@ -403,7 +439,8 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   'Enhanced Features:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Text('• Live location tracking similar to Find My Device'),
+                Text('• Live location tracking even when app is closed'),
+                Text('• Battery-efficient motion-based tracking'),
                 Text('• Remote sound alerts and device management'),
                 Text('• Battery and network status monitoring'),
                 Text('• Offline location history'),
@@ -1036,7 +1073,8 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                     ),
                     SizedBox(height: 8),
                     Text('• All location data is encrypted and secured'),
-                    Text('• Real-time tracking only when FindMe is enabled'),
+                    Text('• Background tracking works even when app is closed'),
+                    Text('• Motion-based tracking conserves battery life'),
                     Text('• Family sharing provides continuous location access'),
                     Text('• Individual permissions can be granted per contact'),
                     Text('• Location history is kept for maximum 30 days'),
