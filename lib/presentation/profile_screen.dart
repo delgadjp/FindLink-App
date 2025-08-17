@@ -1169,7 +1169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 },
                                 icon: Icon(Icons.devices, size: 24),
                                 label: Text(
-                                  'Find My Devices',
+                                  'Find My Family',
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                                 ),
                                 style: ElevatedButton.styleFrom(

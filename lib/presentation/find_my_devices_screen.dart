@@ -61,17 +61,7 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
           print('Error getting current user location: $e');
         }
 
-        devices.add({
-          'id': user.uid,
-          'name': userData['name'] ?? 'My Device',
-          'deviceType': 'phone',
-          'isOnline': userData['isTracking'] ?? false,
-          'findMeEnabled': userData['findMeEnabled'] ?? false,
-          'lastLocation': lastLocation,
-          'isCurrentDevice': true,
-          'batteryLevel': 85, // Simulated
-          'networkStatus': 'Connected',
-        });
+        // Skip adding current user's device - we only want to show trusted contacts' devices
       }
 
       // Load trusted contacts who have shared their location
@@ -378,50 +368,100 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
         return Icons.smartphone;
       case 'tablet':
         return Icons.tablet;
-      case 'shared':
+      case 'family':
         return Icons.person_pin_circle;
+      case 'shared':
+        return Icons.share_location;
       default:
-        return Icons.device_unknown;
+        return Icons.person_pin_circle;
     }
   }
 
   void _showDeviceActions(Map<String, dynamic> device) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+            
+            // Device header
             Row(
               children: [
-                Icon(_getDeviceIcon(device['deviceType'])),
-                SizedBox(width: 12),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF0D47A1).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _getDeviceIcon(device['deviceType']),
+                    color: Color(0xFF0D47A1),
+                    size: 28,
+                  ),
+                ),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         device['name'],
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0D47A1),
+                        ),
                       ),
-                      Text(
-                        _getDeviceStatus(device),
-                        style: TextStyle(color: _getStatusColor(device)),
+                      SizedBox(height: 4),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(device).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getDeviceStatus(device),
+                          style: TextStyle(
+                            color: _getStatusColor(device),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             
             if (device['findMeEnabled']) ...[
-              ListTile(
-                leading: Icon(Icons.location_on, color: Colors.blue),
-                title: Text('View on Map'),
-                subtitle: Text('See current location and tracking history'),
+              _buildActionTile(
+                icon: Icons.location_on,
+                iconColor: Color(0xFF0D47A1),
+                title: 'View on Map',
+                subtitle: 'See current location and tracking history',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -436,24 +476,87 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                 },
               ),
               
-              ListTile(
-                leading: Icon(Icons.directions, color: Colors.green),
-                title: Text('Get Directions'),
-                subtitle: Text('Navigate to last known location'),
+              _buildActionTile(
+                icon: Icons.directions,
+                iconColor: Colors.green,
+                title: 'Get Directions',
+                subtitle: 'Navigate to last known location',
                 onTap: () {
                   Navigator.pop(context);
                   // Implement directions functionality
                 },
               ),
+              
+              _buildActionTile(
+                icon: Icons.notifications,
+                iconColor: Colors.orange,
+                title: 'Send Notification',
+                subtitle: 'Send a ping to this device',
+                onTap: () {
+                  Navigator.pop(context);
+                  // Implement notification functionality
+                },
+              ),
             ] else ...[
-              ListTile(
-                leading: Icon(Icons.info, color: Colors.grey),
-                title: Text('FindMe Not Enabled'),
-                subtitle: Text('This device has not enabled FindMe feature'),
+              _buildActionTile(
+                icon: Icons.info_outline,
+                iconColor: Colors.grey,
+                title: 'FindMe Not Enabled',
+                subtitle: 'This device has not enabled FindMe feature',
+                onTap: null,
               ),
             ],
+            
+            SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        tileColor: onTap != null ? iconColor.withOpacity(0.05) : Colors.grey.withOpacity(0.05),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: onTap != null ? Colors.black87 : Colors.grey,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: onTap != null ? Colors.grey[600] : Colors.grey[400],
+          ),
+        ),
+        trailing: onTap != null
+            ? Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey)
+            : null,
+        onTap: onTap,
       ),
     );
   }
@@ -462,137 +565,239 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Find My Devices'),
-        backgroundColor: Color.fromARGB(255, 18, 32, 47),
+        elevation: 0,
+        title: Text(
+          'Find My Family',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Color(0xFF0D47A1),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadDevices,
           ),
         ],
       ),
-      body: _loading
-          ? Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadDevices,
-              child: _devices.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.devices, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No Devices Found',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0D47A1), Colors.blue.shade100],
+            stops: [0.0, 50],
+          ),
+        ),
+        child: _loading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadDevices,
+                child: _devices.isEmpty
+                    ? Center(
+                        child: Container(
+                          margin: EdgeInsets.all(32),
+                          padding: EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                spreadRadius: 2,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'Enable FindMe to see your devices here',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: _devices.length,
-                      itemBuilder: (context, index) {
-                        final device = _devices[index];
-                        final lastLocation = device['lastLocation'] as LocationData?;
-                        
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.all(16),
-                            leading: Stack(
-                              children: [
-                                Icon(
-                                  _getDeviceIcon(device['deviceType']),
-                                  size: 32,
-                                  color: Colors.grey[700],
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.devices_other,
+                                size: 64,
+                                color: Color(0xFF0D47A1),
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No Devices Found',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0D47A1),
                                 ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(device),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 2),
-                                    ),
-                                  ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Add trusted contacts with FindMe enabled\nto see their devices here',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: _devices.length,
+                        itemBuilder: (context, index) {
+                          final device = _devices[index];
+                          final lastLocation = device['lastLocation'] as LocationData?;
+                          
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  spreadRadius: 1,
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
                                 ),
                               ],
                             ),
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    device['name'],
-                                    style: TextStyle(fontWeight: FontWeight.bold),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(16),
+                              leading: Stack(
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF0D47A1).withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _getDeviceIcon(device['deviceType']),
+                                      size: 28,
+                                      color: Color(0xFF0D47A1),
+                                    ),
                                   ),
-                                ),
-                                if (device['isCurrentDevice'])
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        color: _getStatusColor(device),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      device['name'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Color(0xFF0D47A1),
+                                      ),
+                                    ),
+                                  ),
                                   Container(
                                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue,
+                                      color: Color(0xFF0D47A1).withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      'This Device',
+                                      device['relationship'] ?? 'Family',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFF0D47A1),
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                              ],
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(height: 4),
-                                Text(
-                                  _getDeviceStatus(device),
-                                  style: TextStyle(color: _getStatusColor(device)),
-                                ),
-                                if (lastLocation?.address != null) ...[
-                                  SizedBox(height: 4),
-                                  Text(
-                                    lastLocation!.address!,
-                                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
                                 ],
-                                if (device['batteryLevel'] != null) ...[
-                                  SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.battery_std, size: 16, color: Colors.grey),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${device['batteryLevel']}%',
-                                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: 8),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(device).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      _getDeviceStatus(device),
+                                      style: TextStyle(
+                                        color: _getStatusColor(device),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                    ],
+                                    ),
                                   ),
+                                  if (lastLocation?.address != null) ...[
+                                    SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_on,
+                                          size: 16,
+                                          color: Colors.grey[600],
+                                        ),
+                                        SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            lastLocation!.address!,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
+                              trailing: Container(
+                                decoration: BoxDecoration(
+                                  color: device['findMeEnabled']
+                                      ? Color(0xFF0D47A1).withOpacity(0.1)
+                                      : Colors.grey.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  icon: Icon(
+                                    device['findMeEnabled']
+                                        ? Icons.more_vert
+                                        : Icons.location_disabled,
+                                    color: device['findMeEnabled']
+                                        ? Color(0xFF0D47A1)
+                                        : Colors.grey,
+                                  ),
+                                  onPressed: () => _showDeviceActions(device),
+                                ),
+                              ),
                             ),
-                            trailing: device['findMeEnabled']
-                                ? Icon(Icons.more_vert)
-                                : Icon(Icons.location_disabled, color: Colors.grey),
-                            onTap: () => _showDeviceActions(device),
-                          ),
-                        );
-                      },
-                    ),
-            ),
+                          );
+                        },
+                      ),
+              ),
+      ),
     );
   }
 }
