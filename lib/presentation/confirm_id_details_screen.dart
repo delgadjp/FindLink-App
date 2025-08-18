@@ -3,6 +3,7 @@ import 'dart:convert';
 import '/core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import '../widgets/step_indicator.dart';
 
 class ConfirmIDDetailsScreen extends StatefulWidget {
   final File idImage;
@@ -1139,6 +1140,12 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                                     ),
                                   ),
                                   SizedBox(height: 18),
+
+                                  if (widget.isFromRegistration) ...[
+                                    StepIndicator(currentStep: 3),
+                                    SizedBox(height: 20),
+                                  ],
+
                                   // Validation status
                                   if (widget.isFromRegistration) ...[
                                     Container(
@@ -1200,6 +1207,8 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                                     ),
                                     SizedBox(height: 18),
                                   ],
+
+                                  
                                   // ID Image
                                   Align(
                                     alignment: Alignment.centerLeft,

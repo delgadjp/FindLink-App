@@ -1,5 +1,6 @@
 import '/core/app_export.dart';
 import 'dart:io';
+import '../widgets/step_indicator.dart';
 
 class IDValidationScreen extends StatefulWidget {
   // Add parameters for registration data and flow control
@@ -293,6 +294,11 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                             ),
                           ),
                         ),
+
+                        if (widget.isFromRegistration) ...[
+                          StepIndicator(currentStep: 2),
+                          SizedBox(height: 24),
+                        ],
                         
                         // ID Validation Form
                         Column(

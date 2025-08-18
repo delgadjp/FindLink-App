@@ -1,4 +1,5 @@
 import '/core/app_export.dart';
+import '../widgets/step_indicator.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/gestures.dart';
 
@@ -293,6 +294,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     child: Column(
                       children: [
+                        
                         // Logo above the form title
                         Image.asset(
                           ImageConstant.logoFinal,
@@ -315,6 +317,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ),
                         ),
+
+                        // Step Indicator (Step 1 of 3)
+                        StepIndicator(currentStep: 1),
+                        SizedBox(height: 24),
                         
                         Form(
                           key: _formKey,
