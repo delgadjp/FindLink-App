@@ -13,12 +13,6 @@ class FillUpFormScreen extends StatefulWidget {
 }
 
 class FillUpForm extends State<FillUpFormScreen> {
-  // Static const widgets for better performance
-  static const Widget _spacing10 = SizedBox(height: 10);
-  static const Widget _spacing16 = SizedBox(height: 16);
-  static const Widget _spacing20 = SizedBox(height: 20);
-  static const Widget _spacing8 = SizedBox(height: 8);
-  static const Widget _spacing5 = SizedBox(height: 5);
 
   bool hasOtherAddressReporting = false;
   bool hasOtherAddressVictim = false;
@@ -1933,76 +1927,153 @@ class FillUpForm extends State<FillUpFormScreen> {
     },
   ];
 
-  @override  Widget build(BuildContext context) {
+  @override  
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
+        elevation: 2,
         title: Text(
           "Incident Record Form",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: Colors.white,
+            fontSize: 18,
+          ),
         ),
         backgroundColor: Color(0xFF0D47A1),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
       ),
       body: isCheckingPrivacyStatus 
-        ? Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-          controller: _scrollController,
-          padding: EdgeInsets.all(16),
-          child: Center(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: 900),
-              padding: EdgeInsets.all(16),   
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color.fromARGB(255, 255, 255, 255)),
-                boxShadow: [BoxShadow(blurRadius: 6, color: Colors.black.withOpacity(0.1))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                      _spacing20,
-                      _spacing8,
-                      Text(
-                        "INCIDENT RECORD FORM",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        ),
-                      ),
-                      _spacing5,
-                      Divider(
-                        color: const Color.fromARGB(255, 214, 214, 214),
-                        thickness: 1,
-                      ),
-                      ],
-                    ),
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0D47A1)),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Loading form...',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 16,
                   ),
-                  _spacing16,
+                ),
+              ],
+            ),
+          )
+        : Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFF8F9FF),
+                  Color(0xFFE3F2FD),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: 900),
+                  child: Card(
+                    elevation: 8,
+                    shadowColor: Colors.black26,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      padding: EdgeInsets.all(24),   
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header Section
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.description,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  "INCIDENT RECORD FORM",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Missing Person Report",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white70,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          SizedBox(height: 24),
 
-                  // Form Section
-                  Form(
+                          // Form Section
+                          Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [          
                         // Section title using the new component
-                        SectionTitle(
-                          title: 'REPORTING PERSON',
-                          backgroundColor: Color(0xFF1E215A),
+                        Container(
+                          margin: EdgeInsets.only(bottom: 16),
+                          child: SectionTitle(
+                            title: 'REPORTING PERSON',
+                            backgroundColor: Color(0xFF1E215A),
+                          ),
                         ),
 
-                        _spacing10,
+                        // Name subsection
+                        SubsectionTitle(
+                          title: 'NAME',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.person,
+                        ),
+
+                        SizedBox(height: 12),
 
                         KeyedSubtree(
                           key: _getOrCreateKey('SURNAME'),
@@ -2013,14 +2084,24 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                         ),
                         
-                        _spacing10,
+                        SizedBox(height: 16),
                           FormRowInputs(
                           fields: _reportingPersonDetailsFields,
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
                         
-                        _spacing10,
+                        SizedBox(height: 16),
+
+                        // Personal Information subsection
+                        SubsectionTitle(
+                          title: 'PERSONAL INFORMATION',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.info,
+                        ),
+
+                        SizedBox(height: 12),
+
                           FormRowInputs(
                           fields: _reportingPersonPersonalFields,
                           formState: formState,
@@ -2073,7 +2154,16 @@ class FillUpForm extends State<FillUpFormScreen> {
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
-                          SizedBox(height: 10),                        FormRowInputs(
+                          SizedBox(height: 16),
+
+                        // Contact Information subsection
+                        SubsectionTitle(
+                          title: 'CONTACT INFORMATION',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.contact_phone,
+                        ),
+
+                        SizedBox(height: 12),                        FormRowInputs(
                           fields: [
                             {
                               'label': 'HOME PHONE',
@@ -2097,7 +2187,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 10),
+                        SizedBox(height: 16),
+
+                        // Address subsection
+                        SubsectionTitle(
+                          title: 'ADDRESS',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.location_on,
+                        ),
+
+                        SizedBox(height: 12),
+
                           FormRowInputs(
                           fields: [
                             {
@@ -2262,7 +2362,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                         ],
 
-                        SizedBox(height: 10),
+                        SizedBox(height: 16),
+
+                        // Additional Information subsection
+                        SubsectionTitle(
+                          title: 'ADDITIONAL INFORMATION',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.school,
+                        ),
+
+                        SizedBox(height: 12),
+
                                     FormRowInputs(
                           fields: [
                             {
@@ -2315,12 +2425,24 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
 
-                        SectionTitle(
-                          title: "MISSING PERSON'S DATA",
-                          backgroundColor: Color(0xFF1E215A),
+                        Container(
+                          margin: EdgeInsets.only(top: 24, bottom: 16),
+                          child: SectionTitle(
+                            title: "MISSING PERSON'S DATA",
+                            backgroundColor: Color(0xFF1E215A),
+                          ),
                         ),
-                        
-                        SizedBox(height: 10),                        FormRowInputs(
+
+                        // Name subsection
+                        SubsectionTitle(
+                          title: 'NAME',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.person_search,
+                        ),
+
+                        SizedBox(height: 12),
+
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'SURNAME',
@@ -2381,7 +2503,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                         ),
                         
-                        SizedBox(height: 10),
+                        SizedBox(height: 16),
+
+                        // Personal Information subsection
+                        SubsectionTitle(
+                          title: 'PERSONAL INFORMATION',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.info,
+                        ),
+
+                        SizedBox(height: 12),
+
                           FormRowInputs(
                           fields: [
                             {
@@ -2464,7 +2596,18 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 10),                        FormRowInputs(
+                        SizedBox(height: 16),
+
+                        // Contact Information subsection
+                        SubsectionTitle(
+                          title: 'CONTACT INFORMATION',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.contact_phone,
+                        ),
+
+                        SizedBox(height: 12),
+
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'HOME PHONE',
@@ -2502,7 +2645,17 @@ class FillUpForm extends State<FillUpFormScreen> {
                           },
                         ),
                         
-                        SizedBox(height: 10),
+                        SizedBox(height: 16),
+
+                        // Address subsection
+                        SubsectionTitle(
+                          title: 'ADDRESS',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.location_on,
+                        ),
+
+                        SizedBox(height: 12),
+
                           FormRowInputs(
                           fields: [
                             {
@@ -2665,7 +2818,18 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                           
                           SizedBox(height: 10),
-                        ],                        FormRowInputs(
+                        ],
+
+                        // Additional Information subsection
+                        SubsectionTitle(
+                          title: 'ADDITIONAL INFORMATION',
+                          backgroundColor: Color(0xFF4A6CF7),
+                          icon: Icons.school,
+                        ),
+
+                        SizedBox(height: 12),
+
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
@@ -2716,12 +2880,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
 
-                        SectionTitle(
-                          title: 'NARRATIVE OF INCIDENT',
-                          backgroundColor: Color(0xFF1E215A),
+                        Container(
+                          margin: EdgeInsets.only(top: 24, bottom: 16),
+                          child: SectionTitle(
+                            title: 'NARRATIVE OF INCIDENT',
+                            backgroundColor: Color(0xFF1E215A),
+                          ),
                         ),
-                        
-                        SizedBox(height: 10),
                         
                         // Type of Incident, Date/Time of Incident, Place of Incident moved here
                         FormRowInputs(
@@ -2901,15 +3066,18 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                         ),
                         
-                        SizedBox(height: 20),
+                        SizedBox(height: 24),
                       ],
                     ),
                   ),
-                ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
       bottomNavigationBar: SubmitButton(
         formKey: _formKey,
         onSubmit: () async {
@@ -2924,7 +3092,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   }
 }
 
-// Modified SubmitButton to show loading state
+// Enhanced SubmitButton with improved UI
 class SubmitButton extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final Function()? onSubmit;
@@ -2940,34 +3108,93 @@ class SubmitButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      color: Colors.white,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF0D47A1),
-          padding: EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 8,
+            offset: Offset(0, -2),
           ),
-        ),
-        onPressed: isSubmitting ? null : onSubmit,
-        child: isSubmitting 
-          ? SizedBox(
-              height: 20, 
-              width: 20, 
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              )
-            )
-          : Text(
-              'SUBMIT',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+        ],
+      ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isSubmitting 
+              ? [Colors.grey[400]!, Colors.grey[500]!]
+              : [Color(0xFF0D47A1), Color(0xFF1565C0)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: isSubmitting 
+                ? Colors.grey.withOpacity(0.3)
+                : Color(0xFF0D47A1).withOpacity(0.3),
+              blurRadius: 8,
+              offset: Offset(0, 4),
             ),
+          ],
+        ),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: isSubmitting ? null : onSubmit,
+          child: isSubmitting 
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: 20, 
+                    width: 20, 
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    )
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'SUBMITTING...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.send,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'SUBMIT REPORT',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+        ),
       ),
     );
   }

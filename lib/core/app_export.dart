@@ -20,6 +20,7 @@ export 'package:findlink/widgets/grid_item.dart';
 export 'package:findlink/widgets/profile_avatar.dart';
 export 'package:findlink/widgets/form/custom_address_dropdowns.dart';
 export 'package:findlink/widgets/form/form_components.dart';
+export 'package:findlink/widgets/form/subsection_title.dart';
 
 export 'package:findlink/presentation/home_screen.dart';
 export 'package:findlink/presentation/missing_person_screen.dart';
