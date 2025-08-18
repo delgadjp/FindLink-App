@@ -5,7 +5,7 @@ import 'dart:async';
 import '../core/app_export.dart';
 import '../core/network/trusted_contacts_service.dart';
 import '../core/network/simple_location_service.dart';
-import '../core/services/auto_location_service.dart';
+import '../core/network/auto_location_service.dart';
 import '../models/location_model.dart';
 
 class FindMeSettingsScreen extends StatefulWidget {

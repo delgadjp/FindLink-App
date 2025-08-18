@@ -3,7 +3,7 @@ import '../core/app_export.dart';
 import 'package:findlink/presentation/fill_up_form_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../core/services/auto_location_service.dart';
+import '../core/network/auto_location_service.dart';
 
 class HomeScreen extends StatefulWidget {
   @override

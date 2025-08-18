@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
-import '../services/auto_location_service.dart';
+import 'auto_location_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
