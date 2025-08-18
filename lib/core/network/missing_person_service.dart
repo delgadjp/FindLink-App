@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import '../../models/missing_person_model.dart';
+import '/core/app_export.dart';
 
 class MissingPersonService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

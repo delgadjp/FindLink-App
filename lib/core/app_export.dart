@@ -42,6 +42,10 @@ export 'package:findlink/core/network/auth_service.dart';
 export 'package:findlink/core/network/tip_service.dart';
 export 'package:findlink/core/network/simple_location_service.dart';
 export 'package:findlink/core/network/trusted_contacts_service.dart';
+export 'package:findlink/core/network/auto_location_service.dart';
+export 'package:findlink/core/network/missing_person_service.dart';
+export 'package:findlink/core/network/irf_service.dart';
 
 export '/models/missing_person_model.dart';
 export '/models/location_model.dart';
+export '/models/irf_model.dart';

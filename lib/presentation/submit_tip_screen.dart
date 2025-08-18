@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'dart:convert';
 import 'dart:io';
 export 'dart:typed_data';

@@ -1,15 +1,9 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 import 'package:intl/intl.dart';
-import '../core/network/irf_service.dart';
-import '../models/irf_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:typed_data';
-import 'dart:ui'; // Added import for ImageFilter
 import 'dart:async'; // Added for Timer
 
 class FillUpFormScreen extends StatefulWidget {

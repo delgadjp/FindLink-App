@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'image_viewer_screen.dart';
 
 class CaseDetailsScreen extends StatefulWidget {

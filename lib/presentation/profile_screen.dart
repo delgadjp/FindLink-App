@@ -1,13 +1,9 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:findlink/presentation/find_me_info_screen.dart';
-import 'package:findlink/presentation/find_me_settings_screen.dart';
-import 'package:findlink/presentation/find_my_devices_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override

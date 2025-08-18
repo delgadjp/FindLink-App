@@ -1,9 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../core/app_export.dart';
-import '../models/location_model.dart';
-import '../core/network/trusted_contacts_service.dart';
+import '/core/app_export.dart';
 import 'dart:async';
 
 class LiveLocationTrackingScreen extends StatefulWidget {

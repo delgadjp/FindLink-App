@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'package:findlink/presentation/fill_up_form_screen.dart';
 import 'package:findlink/presentation/profile_screen.dart';
 

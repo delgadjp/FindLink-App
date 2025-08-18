@@ -1,5 +1,4 @@
-import '../core/app_export.dart';
-import '../core/network/auto_location_service.dart';
+import '/core/app_export.dart';
 
 class SplashScreen extends StatefulWidget {
   @override

@@ -1,7 +1,6 @@
 
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:url_launcher/url_launcher_string.dart';  // Add this import for older API
 import 'package:permission_handler/permission_handler.dart';
 
 class FAQScreen extends StatefulWidget {

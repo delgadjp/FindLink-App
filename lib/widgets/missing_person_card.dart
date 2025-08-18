@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 
 class MissingPersonCard extends StatefulWidget {
   final MissingPerson person;

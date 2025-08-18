@@ -1,8 +1,5 @@
-import '../core/app_export.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import '/core/app_export.dart';
 import 'dart:io';
-import 'package:findlink/presentation/confirm_id_details_screen.dart';
 
 class IDValidationScreen extends StatefulWidget {
   // Add parameters for registration data and flow control

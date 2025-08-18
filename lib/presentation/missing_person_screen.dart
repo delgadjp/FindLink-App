@@ -1,5 +1,4 @@
-import '../core/app_export.dart';
-import '../core/network/missing_person_service.dart';
+import '/core/app_export.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MissingPersonScreen extends StatefulWidget {

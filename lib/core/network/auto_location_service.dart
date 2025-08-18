@@ -1,6 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'simple_location_service.dart';
+import '/core/app_export.dart';
 
 /// Service to automatically initialize and start location tracking
 /// when the app launches if Find Me is already enabled for the user

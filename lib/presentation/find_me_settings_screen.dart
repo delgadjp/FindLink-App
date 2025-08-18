@@ -1,12 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
-import '../core/app_export.dart';
-import '../core/network/trusted_contacts_service.dart';
-import '../core/network/simple_location_service.dart';
-import '../core/network/auto_location_service.dart';
-import '../models/location_model.dart';
+import '/core/app_export.dart';
+
 
 class FindMeSettingsScreen extends StatefulWidget {
   @override

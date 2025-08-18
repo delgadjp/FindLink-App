@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:uuid/uuid.dart';
 import '/core/app_export.dart';
 
 /// A simpler location service that uses only Geolocator

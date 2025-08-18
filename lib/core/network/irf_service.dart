@@ -1,13 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import '../../models/irf_model.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart';
+import '/core/app_export.dart';
 
 class IRFService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
