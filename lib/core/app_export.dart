@@ -36,6 +36,7 @@ export 'package:findlink/presentation/forgot_password_page.dart';
 export 'package:findlink/presentation/splash_screen.dart';
 export 'package:findlink/presentation/find_me_settings_screen.dart';
 export 'package:findlink/presentation/find_me_info_screen.dart';
+export 'package:findlink/presentation/evidence_submission_screen.dart';
 
 export 'package:findlink/presentation/utils/modal_utils.dart';
 

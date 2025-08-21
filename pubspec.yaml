@@ -26,6 +26,7 @@ dependencies:
   photo_view: ^0.14.0
   url_launcher: ^6.3.1
   geocoding: ^2.1.0 # Added geocoding package for address lookup
+  signature: ^5.4.1
   
   cupertino_icons: ^1.0.8
   firebase_core: ^3.10.1

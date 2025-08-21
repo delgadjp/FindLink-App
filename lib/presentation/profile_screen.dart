@@ -4,6 +4,7 @@ import '/core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'evidence_submission_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -31,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     {'stage': 'Under Review', 'status': 'Pending'},
     {'stage': 'Case Verified', 'status': 'Pending'},
     {'stage': 'In Progress', 'status': 'Pending'},
+    {'stage': 'Evidence Submitted', 'status': 'Pending'},
     {'stage': 'Unresolved Case', 'status': 'Pending'},
     {'stage': 'Resolved Case', 'status': 'Pending'},
   ];
@@ -40,9 +42,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'Under Review': 2,
     'Case Verified': 3,
     'In Progress': 4,
-    'Unresolved Case': 5,
-    'Resolved Case': 6,
-    'Resolved': 6, // Map 'Resolved' to 'Resolved Case' step
+    'Evidence Submitted': 5,
+    'Unresolved Case': 6,
+    'Resolved Case': 7,
+    'Resolved': 7, // Map 'Resolved' to 'Resolved Case' step
   };
 
   @override
@@ -1252,6 +1255,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         statusColor = Colors.orange;
         statusIcon = Icons.sync;
         break;
+      case 'Evidence Submitted':
+        statusColor = Colors.teal;
+        statusIcon = Icons.upload_file;
+        break;
       case 'Resolved Case':
       case 'Resolved':
         statusColor = Colors.green;
@@ -1470,6 +1477,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+            
+            // Upload Evidence button (only show when status is "In Progress")
+            if (caseData['status'] == 'In Progress') ...[
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EvidenceSubmissionScreen(
+                          caseId: caseData['id'],
+                          caseNumber: caseData['caseNumber'],
+                          caseName: caseData['name'],
+                        ),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.upload_file, size: 18),
+                  label: Text(
+                    'Upload Evidence',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -13,8 +13,14 @@ service cloud.firestore {
     
     // FindMe location tracking - separate top-level collection
     match /findMeLocations/{locationId} {
+      // Allow users to read/write their own location data
     	allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // Allow trusted contacts to read location data if they have permission
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/findMeTrustedContacts/$(request.auth.uid + '_' + resource.data.userId)) &&
+        get(/databases/$(database)/documents/findMeTrustedContacts/$(request.auth.uid + '_' + resource.data.userId)).data.hasLocationAccess == true;
     }
     
     // FindMe trusted contacts - separate top-level collection
@@ -23,16 +29,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Missing Persons: public read, only owners or admins can modify
-    match /missingPersons/{docId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && (
-        (resource.data.userId != null && request.auth.uid == resource.data.userId) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
+  match /missingPersons/{docId} {
+  allow read: if true;
+  allow create: if request.auth != null;
+  allow update, delete: if request.auth != null;
+}
               // Reports: public read, only creators or admins can write
           match /reports/{reportId} {
             // Allow anyone to read
@@ -86,6 +87,17 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Admin access
       );
     }
+    
+      // CaseEvidence: public read, only owners or admins can modify
+    match /CaseEvidence/{docId} {
+      allow read: if true; // Public read, or use: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (
+        (resource.data.userId == request.auth.uid) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
     
     match /liftingform/{docId} {
       // Allow read access to all authenticated users

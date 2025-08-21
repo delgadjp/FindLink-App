@@ -1,10 +1,13 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 import 'package:intl/intl.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:async'; // Added for Timer
+import 'dart:typed_data';
+import 'dart:ui'; // Added import for ImageFilter
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -12,8 +15,18 @@ class FillUpFormScreen extends StatefulWidget {
   FillUpForm createState() => FillUpForm();
 }
 
-class FillUpForm extends State<FillUpFormScreen> {
+// Add ValidationStatus enum for image validation
+enum ValidationStatus {
+  none,
+  processing,
+  error,
+  warning,
+  noHuman,
+  humanDetected,
+  success
+}
 
+class FillUpForm extends State<FillUpFormScreen> {
   bool hasOtherAddressReporting = false;
   bool hasOtherAddressVictim = false;
   bool isSubmitting = false;
@@ -28,20 +41,22 @@ class FillUpForm extends State<FillUpFormScreen> {
   File? _imageFile;
   Uint8List? _webImage;
   final picker = ImagePicker();
+  ValidationStatus _validationStatus = ValidationStatus.none;
+  String _validationMessage = '';
+  String _validationConfidence = '0.0';
+  bool _isProcessingImage = false;
   
   // Add a ScrollController for the form
   final ScrollController _scrollController = ScrollController();
-  
-  // Pre-allocated GlobalKeys for better performance
-  final Map<String, GlobalKey> _requiredFieldKeys = <String, GlobalKey>{};
-  
-  // Optimized key management with lazy initialization
+  // Map to hold GlobalKeys for required fields
+  final Map<String, GlobalKey> _requiredFieldKeys = {};
+  // Helper to register a key for a required field
   GlobalKey _getOrCreateKey(String label) {
-    return _requiredFieldKeys.putIfAbsent(label, () => GlobalKey());
+    if (!_requiredFieldKeys.containsKey(label)) {
+      _requiredFieldKeys[label] = GlobalKey();
+    }
+    return _requiredFieldKeys[label]!;
   }
-  
-  // Debouncer for form state updates to prevent excessive rebuilds
-  Timer? _debounceTimer;
 
   // Auto scroll to first invalid field
   Future<void> _scrollToFirstInvalidField() async {
@@ -145,6 +160,8 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Image picking and validation
   Future<void> _pickImage(ImageSource source) async {
     try {
+      setState(() => _isProcessingImage = true);
+      
       final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
         dynamic imageData;
@@ -164,10 +181,14 @@ class FillUpForm extends State<FillUpFormScreen> {
           
           setState(() {
             if (!validationResult['isValid']) {
-              // Error occurred during validation - remove image
+              _validationMessage = 'Error validating image: ${validationResult['message']}';
+              _validationStatus = ValidationStatus.error;
             } else if (!validationResult['containsHuman']) {
               _imageFile = null;
               _webImage = null;
+              _validationMessage = 'No person detected in the image. Image has been removed.';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.noHuman;
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -176,12 +197,15 @@ class FillUpForm extends State<FillUpFormScreen> {
                 ),
               );
             } else {
-              // Person detected - validation successful
+              _validationMessage = 'Person detected in image!';
+              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationStatus = ValidationStatus.humanDetected;
             }
           });
         } catch (e) {
           setState(() {
-            // Image validation error occurred
+            _validationMessage = 'Image validation error: ${e.toString()}';
+            _validationStatus = ValidationStatus.warning;
           });
         }
       }
@@ -190,10 +214,13 @@ class FillUpForm extends State<FillUpFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error accessing image: ${e.toString()}')),
       );
+    } finally {
+      setState(() => _isProcessingImage = false);
     }
   }
   
   // Reference to Firestore
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -354,7 +381,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           .limit(1)
           .get();
       if (userQuery.docs.isNotEmpty) {
-        final userData = userQuery.docs.first.data();
+        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
           _firstNameReportingController.text = userData['firstName'] ?? '';          
@@ -531,50 +558,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       'victimCivilStatus': _civilStatusVictimController.text,
     };
   }
-
-  // Debounced version to reduce frequent updates
-  void _debouncedUpdateFormState() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      updateFormState();
-    });
-  }
-
-  // Batch multiple field updates to reduce setState calls
-  void _batchFieldUpdates(Map<String, dynamic> updates) {
-    setState(() {
-      updates.forEach((key, value) {
-        switch (key) {
-          case 'reportingRegion':
-            if (reportingPersonRegion != value) {
-              reportingPersonProvince = null;
-              reportingPersonMunicipality = null;
-              reportingPersonBarangay = null;
-            }
-            reportingPersonRegion = value;
-            break;
-          case 'reportingProvince':
-            if (reportingPersonProvince != value) {
-              reportingPersonMunicipality = null;
-              reportingPersonBarangay = null;
-            }
-            reportingPersonProvince = value;
-            break;
-          case 'reportingMunicipality':
-            if (reportingPersonMunicipality != value) {
-              reportingPersonBarangay = null;
-            }
-            reportingPersonMunicipality = value;
-            break;
-          case 'reportingBarangay':
-            reportingPersonBarangay = value;
-            break;
-          // Add more cases as needed
-        }
-      });
-      _debouncedUpdateFormState();
-    });
-  }
   
   // Handle field changes from FormRowInputs
   void onFieldChange(String key, dynamic value) {
@@ -693,7 +676,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           _qualifierVictimController.text = value;
           break;
       }
-      _debouncedUpdateFormState();
+      updateFormState();
     });
   }
   // Store original victim address fields for restoration when checkbox is unchecked
@@ -794,9 +777,6 @@ class FillUpForm extends State<FillUpFormScreen> {
     _dateTimeIncidentDController.dispose();
     _placeOfIncidentDController.dispose();
     _narrativeController.dispose();
-    
-    // Dispose timer
-    _debounceTimer?.cancel();
     
     super.dispose();
   }
@@ -1851,259 +1831,171 @@ class FillUpForm extends State<FillUpFormScreen> {
     return query.docs.isNotEmpty;
   }
 
-  // Cached field definitions for better performance
-  late final List<Map<String, dynamic>> _reportingPersonNameFields = [
-    {
-      'label': 'SURNAME',
-      'required': true,
-      'controller': _surnameReportingController,
-      'keyboardType': TextInputType.name,
-      'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-    },
-    {
-      'label': 'FIRST NAME',
-      'required': true,
-      'controller': _firstNameReportingController,
-      'keyboardType': TextInputType.name,
-      'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-    },
-    {
-      'label': 'MIDDLE NAME',
-      'required': true,
-      'controller': _middleNameReportingController,
-      'keyboardType': TextInputType.name,
-      'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
-    },
-  ];
-
-  // Dynamic fields that depend on runtime values
-  List<Map<String, dynamic>> get _reportingPersonDetailsFields => [
-    {
-      'label': 'QUALIFIER',
-      'required': true,
-      'controller': _qualifierReportingController,
-      'dropdownItems': qualifierOptions,
-      'typeField': 'dropdown',
-      'onChanged': (value) => onFieldChange('qualifierReporting', value),
-      'key': _getOrCreateKey('QUALIFIER'),
-    },
-    {
-      'label': 'NICKNAME',
-      'required': true,
-      'controller': _nicknameReportingController,
-      'keyboardType': TextInputType.text,
-      'key': _getOrCreateKey('NICKNAME'),
-    },
-  ];
-
-  List<Map<String, dynamic>> get _reportingPersonPersonalFields => [
-    {
-      'label': 'CITIZENSHIP',
-      'required': true,
-      'controller': _citizenshipReportingController,
-      'dropdownItems': citizenshipOptions,
-      'section': 'reporting',
-      'key': _getOrCreateKey('CITIZENSHIP'),
-    },
-    {
-      'label': 'SEX/GENDER',
-      'required': true,
-      'controller': _sexGenderReportingController,
-      'dropdownItems': genderOptions,
-      'typeField': 'dropdown',
-      'key': _getOrCreateKey('SEX/GENDER'),
-      'onChanged': (value) {
-        setState(() {
-          _sexGenderReportingController.text = value ?? '';
-        });
-      },
-    },
-    {
-      'label': 'CIVIL STATUS',
-      'required': true,
-      'controller': _civilStatusReportingController,
-      'dropdownItems': civilStatusOptions,
-      'key': _getOrCreateKey('CIVIL STATUS'),
-    },
-  ];
-
-  @override  
-  Widget build(BuildContext context) {
+  @override  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        elevation: 2,
+        elevation: 0,
         title: Text(
           "Incident Record Form",
-          style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            color: Colors.white,
-            fontSize: 18,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Color(0xFF0D47A1),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
         ),
       ),
       body: isCheckingPrivacyStatus 
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0D47A1)),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Loading form...',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          )
-        : Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFF8F9FF),
-                  Color(0xFFE3F2FD),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+        ? Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.all(16),
+          child: Center(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 900),
+              padding: EdgeInsets.all(16),   
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color.fromARGB(255, 255, 255, 255)),
+                boxShadow: [BoxShadow(blurRadius: 6, color: Colors.black.withOpacity(0.1))],
               ),
-            ),
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Container(
-                  constraints: BoxConstraints(maxWidth: 900),
-                  child: Card(
-                    elevation: 8,
-                    shadowColor: Colors.black26,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Container(
-                      padding: EdgeInsets.all(24),   
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                      SizedBox(height: 20),
+                      SizedBox(height: 8),
+                      Text(
+                        "INCIDENT RECORD FORM",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header Section
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.description,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  "INCIDENT RECORD FORM",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "Missing Person Report",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: 24),
+                      SizedBox(height: 5),
+                      Divider(
+                        color: const Color.fromARGB(255, 214, 214, 214),
+                        thickness: 1,
+                      ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
 
-                          // Form Section
-                          Form(
+                  // Form Section
+                  Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [          
                         // Section title using the new component
-                        Container(
-                          margin: EdgeInsets.only(bottom: 16),
-                          child: SectionTitle(
-                            title: 'REPORTING PERSON',
-                            backgroundColor: Color(0xFF1E215A),
-                          ),
+                        SectionTitle(
+                          title: 'REPORTING PERSON',
+                          backgroundColor: Color(0xFF1E215A),
                         ),
 
-                        // Name subsection
+                        SizedBox(height: 10),
+
                         SubsectionTitle(
-                          title: 'NAME',
-                          backgroundColor: Color(0xFF4A6CF7),
+                          title: 'Personal Information',
                           icon: Icons.person,
                         ),
 
-                        SizedBox(height: 12),
+                        SizedBox(height: 10),
 
                         KeyedSubtree(
                           key: _getOrCreateKey('SURNAME'),
                           child: FormRowInputs(
-                            fields: _reportingPersonNameFields,
+                            fields: [
+                              {
+                                'label': 'SURNAME',
+                                'required': true,
+                                'controller': _surnameReportingController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                              {
+                                'label': 'FIRST NAME',
+                                'required': true,
+                                'controller': _firstNameReportingController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                              {
+                                'label': 'MIDDLE NAME',
+                                'required': true,
+                                'controller': _middleNameReportingController,
+                                'keyboardType': TextInputType.name,
+                                'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                              },
+                            ],
                             formState: formState,
                             onFieldChange: onFieldChange,
                           ),
                         ),
                         
-                        SizedBox(height: 16),
+                        SizedBox(height: 10),
                           FormRowInputs(
-                          fields: _reportingPersonDetailsFields,
+                          fields: [
+                            {
+                              'label': 'QUALIFIER',
+                              'required': true,
+                              'controller': _qualifierReportingController,
+                              'dropdownItems': qualifierOptions,
+                              'typeField': 'dropdown',
+                              'onChanged': (value) => onFieldChange('qualifierReporting', value),
+                              'key': _getOrCreateKey('QUALIFIER'),
+                            },
+                            {
+                              'label': 'NICKNAME',
+                              'required': true,
+                              'controller': _nicknameReportingController,
+                              'keyboardType': TextInputType.text,
+                              'key': _getOrCreateKey('NICKNAME'),
+                            },
+                          ],
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 16),
-
-                        // Personal Information subsection
-                        SubsectionTitle(
-                          title: 'PERSONAL INFORMATION',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.info,
-                        ),
-
-                        SizedBox(height: 12),
-
+                        SizedBox(height: 10),
                           FormRowInputs(
-                          fields: _reportingPersonPersonalFields,
+                          fields: [
+                            {
+                              'label': 'CITIZENSHIP',
+                              'required': true,
+                              'controller': _citizenshipReportingController,
+                              'dropdownItems': citizenshipOptions,
+                              'section': 'reporting',
+                              'key': _getOrCreateKey('CITIZENSHIP'),
+                            },
+                            {
+                              'label': 'SEX/GENDER',
+                              'required': true,
+                              'controller': _sexGenderReportingController,
+                              'dropdownItems': genderOptions,
+                              'typeField': 'dropdown',
+                              'key': _getOrCreateKey('SEX/GENDER'),
+                              'onChanged': (value) {
+                                setState(() {
+                                  _sexGenderReportingController.text = value ?? '';
+                                });
+                              },
+                            },
+                            {
+                              'label': 'CIVIL STATUS',
+                              'required': true,
+                              'controller': _civilStatusReportingController,
+                              'dropdownItems': civilStatusOptions,
+                              'key': _getOrCreateKey('CIVIL STATUS'),
+                            },
+                          ],
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
@@ -2154,16 +2046,16 @@ class FillUpForm extends State<FillUpFormScreen> {
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
-                          SizedBox(height: 16),
-
-                        // Contact Information subsection
+                          SizedBox(height: 10),                        
+                        
                         SubsectionTitle(
-                          title: 'CONTACT INFORMATION',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.contact_phone,
+                          title: 'Contact Information',
+                          icon: Icons.phone,
                         ),
 
-                        SizedBox(height: 12),                        FormRowInputs(
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'HOME PHONE',
@@ -2187,18 +2079,16 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 16),
-
-                        // Address subsection
+                        SizedBox(height: 10),
+                        
                         SubsectionTitle(
-                          title: 'ADDRESS',
-                          backgroundColor: Color(0xFF4A6CF7),
+                          title: 'Address Information',
                           icon: Icons.location_on,
                         ),
 
-                        SizedBox(height: 12),
-
-                          FormRowInputs(
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
@@ -2362,17 +2252,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           SizedBox(height: 10),
                         ],
 
-                        SizedBox(height: 16),
-
-                        // Additional Information subsection
-                        SubsectionTitle(
-                          title: 'ADDITIONAL INFORMATION',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.school,
-                        ),
-
-                        SizedBox(height: 12),
-
+                        SizedBox(height: 10),
                                     FormRowInputs(
                           fields: [
                             {
@@ -2425,23 +2305,20 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
 
-                        Container(
-                          margin: EdgeInsets.only(top: 24, bottom: 16),
-                          child: SectionTitle(
-                            title: "MISSING PERSON'S DATA",
-                            backgroundColor: Color(0xFF1E215A),
-                          ),
+                        SectionTitle(
+                          title: "MISSING PERSON'S DATA",
+                          backgroundColor: Color(0xFF1E215A),
                         ),
-
-                        // Name subsection
+                        
+                        SizedBox(height: 10),
+                        
                         SubsectionTitle(
-                          title: 'NAME',
-                          backgroundColor: Color(0xFF4A6CF7),
+                          title: 'Personal Information',
                           icon: Icons.person_search,
                         ),
 
-                        SizedBox(height: 12),
-
+                        SizedBox(height: 10),
+                        
                         FormRowInputs(
                           fields: [
                             {
@@ -2503,17 +2380,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                         ),
                         
-                        SizedBox(height: 16),
-
-                        // Personal Information subsection
-                        SubsectionTitle(
-                          title: 'PERSONAL INFORMATION',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.info,
-                        ),
-
-                        SizedBox(height: 12),
-
+                        SizedBox(height: 10),
                           FormRowInputs(
                           fields: [
                             {
@@ -2596,17 +2463,15 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 16),
-
-                        // Contact Information subsection
+                        SizedBox(height: 10),
+                        
                         SubsectionTitle(
-                          title: 'CONTACT INFORMATION',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.contact_phone,
+                          title: 'Contact Information',
+                          icon: Icons.phone,
                         ),
 
-                        SizedBox(height: 12),
-
+                        SizedBox(height: 10),
+                        
                         FormRowInputs(
                           fields: [
                             {
@@ -2629,6 +2494,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
+                        
+                        SubsectionTitle(
+                          title: 'Address Information',
+                          icon: Icons.location_on,
+                        ),
+
+                        SizedBox(height: 10),
+                        
                         // Checkbox for copying address from reporting person
                         CheckboxListTile(
                           title: Text("Same address as reporting person?", style: TextStyle(fontSize: 15, color: Colors.black)),
@@ -2645,17 +2518,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           },
                         ),
                         
-                        SizedBox(height: 16),
-
-                        // Address subsection
-                        SubsectionTitle(
-                          title: 'ADDRESS',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.location_on,
-                        ),
-
-                        SizedBox(height: 12),
-
+                        SizedBox(height: 10),
                           FormRowInputs(
                           fields: [
                             {
@@ -2818,18 +2681,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                           
                           SizedBox(height: 10),
-                        ],
-
-                        // Additional Information subsection
-                        SubsectionTitle(
-                          title: 'ADDITIONAL INFORMATION',
-                          backgroundColor: Color(0xFF4A6CF7),
-                          icon: Icons.school,
-                        ),
-
-                        SizedBox(height: 12),
-
-                        FormRowInputs(
+                        ],                        FormRowInputs(
                           fields: [
                             {
                               'label': 'HIGHEST EDUCATION ATTAINMENT',
@@ -2880,13 +2732,19 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
 
-                        Container(
-                          margin: EdgeInsets.only(top: 24, bottom: 16),
-                          child: SectionTitle(
-                            title: 'NARRATIVE OF INCIDENT',
-                            backgroundColor: Color(0xFF1E215A),
-                          ),
+                        SectionTitle(
+                          title: 'NARRATIVE OF INCIDENT',
+                          backgroundColor: Color(0xFF1E215A),
                         ),
+                        
+                        SizedBox(height: 10),
+                        
+                        SubsectionTitle(
+                          title: 'Incident Details',
+                          icon: Icons.info_outline,
+                        ),
+
+                        SizedBox(height: 10),
                         
                         // Type of Incident, Date/Time of Incident, Place of Incident moved here
                         FormRowInputs(
@@ -2939,6 +2797,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
+                        SizedBox(height: 10),
+                        
+                        SubsectionTitle(
+                          title: 'Narrative Description',
+                          icon: Icons.description,
+                        ),
+
                         SizedBox(height: 10),
                         
                         KeyedSubtree(
@@ -3066,18 +2931,15 @@ class FillUpForm extends State<FillUpFormScreen> {
                           ),
                         ),
                         
-                        SizedBox(height: 24),
+                        SizedBox(height: 20),
                       ],
                     ),
                   ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                ],
               ),
             ),
           ),
+        ),
       bottomNavigationBar: SubmitButton(
         formKey: _formKey,
         onSubmit: () async {
@@ -3092,7 +2954,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   }
 }
 
-// Enhanced SubmitButton with improved UI
+// Modified SubmitButton to show loading state
 class SubmitButton extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final Function()? onSubmit;
@@ -3108,95 +2970,35 @@ class SubmitButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 8,
-            offset: Offset(0, -2),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      color: Colors.white,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF0D47A1),
+          padding: EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-        ],
-      ),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isSubmitting 
-              ? [Colors.grey[400]!, Colors.grey[500]!]
-              : [Color(0xFF0D47A1), Color(0xFF1565C0)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: isSubmitting 
-                ? Colors.grey.withOpacity(0.3)
-                : Color(0xFF0D47A1).withOpacity(0.3),
-              blurRadius: 8,
-              offset: Offset(0, 4),
-            ),
-          ],
         ),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            padding: EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onPressed: isSubmitting ? null : onSubmit,
-          child: isSubmitting 
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 20, 
-                    width: 20, 
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    )
-                  ),
-                  SizedBox(width: 12),
-                  Text(
-                    'SUBMITTING...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
+        onPressed: isSubmitting ? null : onSubmit,
+        child: isSubmitting 
+          ? SizedBox(
+              height: 20, 
+              width: 20, 
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
               )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.send,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'SUBMIT REPORT',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
+            )
+          : Text(
+              'SUBMIT',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-        ),
+            ),
       ),
     );
   }
 }
-
