@@ -32,6 +32,19 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _termsAccepted = false; // Add Terms of Service checkbox state
   final _formKey = GlobalKey<FormState>();
 
+  // ScrollController for auto-scrolling to validation errors
+  final ScrollController _scrollController = ScrollController();
+  
+  // GlobalKeys for form fields to track their positions
+  final GlobalKey _firstNameKey = GlobalKey();
+  final GlobalKey _middleNameKey = GlobalKey();
+  final GlobalKey _lastNameKey = GlobalKey();
+  final GlobalKey _dateOfBirthKey = GlobalKey();
+  final GlobalKey _emailKey = GlobalKey();
+  final GlobalKey _phoneKey = GlobalKey();
+  final GlobalKey _passwordKey = GlobalKey();
+  final GlobalKey _confirmPasswordKey = GlobalKey();
+
   // Philippines country code
   final String countryCode = '+63';
   
@@ -211,43 +224,96 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // Method to validate form and proceed to ID validation
-  void _validateAndProceedToIDValidation() {
-    if (_formKey.currentState!.validate()) {
-      if (selectedDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please select your date of birth'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+  // Method to scroll to the first validation error
+  void _scrollToFirstError() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Check which field has validation errors and scroll to the first one
+      if (firstNameController.text.isEmpty) {
+        _scrollToWidget(_firstNameKey);
+      } else if (middleNameController.text.isEmpty) {
+        _scrollToWidget(_middleNameKey);
+      } else if (lastNameController.text.isEmpty) {
+        _scrollToWidget(_lastNameKey);
+      } else if (selectedDate == null) {
+        _scrollToWidget(_dateOfBirthKey);
+      } else if (emailController.text.isEmpty || !_validateEmail(emailController.text)) {
+        _scrollToWidget(_emailKey);
+      } else if (phoneNumberController.text.isEmpty || !_validatePhoneNumber(phoneNumberController.text)) {
+        _scrollToWidget(_phoneKey);
+      } else if (passwordController.text.isEmpty || passwordController.text.length < 8) {
+        _scrollToWidget(_passwordKey);
+      } else if (confirmPasswordController.text.isEmpty || confirmPasswordController.text != passwordController.text) {
+        _scrollToWidget(_confirmPasswordKey);
       }
+    });
+  }
+
+  // Helper method to scroll to a specific widget
+  void _scrollToWidget(GlobalKey key) {
+    if (key.currentContext != null) {
+      final RenderBox renderBox = key.currentContext!.findRenderObject() as RenderBox;
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenHeight = MediaQuery.of(context).size.height;
       
-      // Create a map with user registration data to pass to ID validation
-      Map<String, dynamic> registrationData = {
-        'email': emailController.text.trim(),
-        'password': passwordController.text,
-        'firstName': firstNameController.text.trim(),
-        'middleName': middleNameController.text.trim(),
-        'lastName': lastNameController.text.trim(),
-        'dateOfBirth': selectedDate,
-        'age': age,
-        'gender': selectedGender,
-        'phoneNumber': fullPhoneNumber,
-      };
+      // Calculate scroll offset to center the field on screen
+      final targetOffset = _scrollController.offset + position.dy - (screenHeight * 0.3);
       
-      // Navigate to ID validation with registration data
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => IDValidationScreen(
-            registrationData: registrationData,
-            isFromRegistration: true,
-          ),
-        ),
+      _scrollController.animateTo(
+        targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        duration: Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
       );
     }
+  }
+
+  // Method to validate form and proceed to ID validation
+  void _validateAndProceedToIDValidation() {
+    if (!_formKey.currentState!.validate()) {
+      // If validation fails, scroll to the first error
+      _scrollToFirstError();
+      return;
+    }
+    
+    if (selectedDate == null) {
+      _scrollToWidget(_dateOfBirthKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select your date of birth'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    // Create a map with user registration data to pass to ID validation
+    Map<String, dynamic> registrationData = {
+      'email': emailController.text.trim(),
+      'password': passwordController.text,
+      'firstName': firstNameController.text.trim(),
+      'middleName': middleNameController.text.trim(),
+      'lastName': lastNameController.text.trim(),
+      'dateOfBirth': selectedDate,
+      'age': age,
+      'gender': selectedGender,
+      'phoneNumber': fullPhoneNumber,
+    };
+    
+    // Navigate to ID validation with registration data
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => IDValidationScreen(
+          registrationData: registrationData,
+          isFromRegistration: true,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -269,6 +335,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
+            controller: _scrollController,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -333,75 +400,84 @@ class _RegisterPageState extends State<RegisterPage> {
                               // First Name
                               _buildInputLabel('First Name'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: firstNameController,
-                                style: TextStyle(color: Colors.black),
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your first name',
-                                  prefixIcon: Icons.person_outline,
-                                  isValid: _isFirstNameValid,
+                              Container(
+                                key: _firstNameKey,
+                                child: TextFormField(
+                                  controller: firstNameController,
+                                  style: TextStyle(color: Colors.black),
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your first name',
+                                    prefixIcon: Icons.person_outline,
+                                    isValid: _isFirstNameValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isFirstNameValid = value.isNotEmpty;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your first name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isFirstNameValid = value.isNotEmpty;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your first name';
-                                  }
-                                  return null;
-                                },
                               ),
                               SizedBox(height: 15),
 
                               // Middle Name
                               _buildInputLabel('Middle Name'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: middleNameController,
-                                style: TextStyle(color: Colors.black),
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your middle name',
-                                  prefixIcon: Icons.person_outline,
-                                  isValid: _isMiddleNameValid,
+                              Container(
+                                key: _middleNameKey,
+                                child: TextFormField(
+                                  controller: middleNameController,
+                                  style: TextStyle(color: Colors.black),
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your middle name',
+                                    prefixIcon: Icons.person_outline,
+                                    isValid: _isMiddleNameValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isMiddleNameValid = value.isNotEmpty;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your middle name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isMiddleNameValid = value.isNotEmpty;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your middle name';
-                                  }
-                                  return null;
-                                },
                               ),
                               SizedBox(height: 15),
 
                               // Last Name
                               _buildInputLabel('Last Name'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: lastNameController,
-                                style: TextStyle(color: Colors.black),
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your last name',
-                                  prefixIcon: Icons.person_outline,
-                                  isValid: _isLastNameValid,
+                              Container(
+                                key: _lastNameKey,
+                                child: TextFormField(
+                                  controller: lastNameController,
+                                  style: TextStyle(color: Colors.black),
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your last name',
+                                    prefixIcon: Icons.person_outline,
+                                    isValid: _isLastNameValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isLastNameValid = value.isNotEmpty;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your last name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isLastNameValid = value.isNotEmpty;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your last name';
-                                  }
-                                  return null;
-                                },
                               ),
                               SizedBox(height: 15),
 
@@ -417,22 +493,23 @@ class _RegisterPageState extends State<RegisterPage> {
                                         _buildInputLabel('Date of Birth'),
                                         SizedBox(height: 5),
                                         InkWell(
+                                          key: _dateOfBirthKey,
                                           onTap: () => _selectDate(context),
                                           child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: Colors.grey.shade300),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.calendar_today, color: Color(0xFF53C0FF), size: 20),
-                                                SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    selectedDate == null ? 'Select date' : 
-                                                    DateFormat('MM/dd/yyyy').format(selectedDate!),
+                                              padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(color: Colors.grey.shade300),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.calendar_today, color: Color(0xFF53C0FF), size: 20),
+                                                  SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      selectedDate == null ? 'Select date' : 
+                                                      DateFormat('MM/dd/yyyy').format(selectedDate!),
                                                     style: TextStyle(
                                                       color: selectedDate == null ? Colors.grey : Colors.black,
                                                     ),
@@ -526,29 +603,32 @@ class _RegisterPageState extends State<RegisterPage> {
                               // Email address
                               _buildInputLabel('Email Address'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: emailController,
-                                style: TextStyle(color: Colors.black),
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your email',
-                                  prefixIcon: Icons.email_outlined,
-                                  isValid: _isEmailValid,
-                                ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isEmailValid = value.isEmpty || _validateEmail(value);
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your email address';
-                                  }
-                                  if (!_validateEmail(value)) {
-                                    return 'Please enter a valid email address';
-                                  }
+                              Container(
+                                key: _emailKey,
+                                child: TextFormField(
+                                  controller: emailController,
+                                  style: TextStyle(color: Colors.black),
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your email',
+                                    prefixIcon: Icons.email_outlined,
+                                    isValid: _isEmailValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isEmailValid = value.isEmpty || _validateEmail(value);
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your email address';
+                                    }
+                                    if (!_validateEmail(value)) {
+                                      return 'Please enter a valid email address';
+                                    }
                                   return null;
                                 },
+                                ),
                               ),
                               SizedBox(height: 15),
 
@@ -556,6 +636,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               _buildInputLabel('Phone Number'),
                               SizedBox(height: 5),
                               Container(
+                                key: _phoneKey,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(10),
@@ -642,11 +723,13 @@ class _RegisterPageState extends State<RegisterPage> {
                               // Password
                               _buildInputLabel('Password'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: passwordController,
-                                style: TextStyle(color: Colors.black),
-                                obscureText: _obscurePassword,
-                                decoration: _buildInputDecoration(
+                              Container(
+                                key: _passwordKey,
+                                child: TextFormField(
+                                  controller: passwordController,
+                                  style: TextStyle(color: Colors.black),
+                                  obscureText: _obscurePassword,
+                                  decoration: _buildInputDecoration(
                                   hintText: 'Enter your password',
                                   prefixIcon: Icons.lock_outline,
                                   isValid: _isPasswordValid,
@@ -685,6 +768,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   }
                                   return null;
                                 },
+                                ),
                               ),
                               _buildPasswordStrengthIndicator(passwordController.text),
                               SizedBox(height: 15),
@@ -692,11 +776,13 @@ class _RegisterPageState extends State<RegisterPage> {
                               // Confirm Password
                               _buildInputLabel('Confirm Password'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: confirmPasswordController,
-                                style: TextStyle(color: Colors.black),
-                                obscureText: _obscureConfirmPassword,
-                                decoration: _buildInputDecoration(
+                              Container(
+                                key: _confirmPasswordKey,
+                                child: TextFormField(
+                                  controller: confirmPasswordController,
+                                  style: TextStyle(color: Colors.black),
+                                  obscureText: _obscureConfirmPassword,
+                                  decoration: _buildInputDecoration(
                                   hintText: 'Confirm your password',
                                   prefixIcon: Icons.lock_outline,
                                   suffixIcon: IconButton(
@@ -720,6 +806,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   }
                                   return null;
                                 },
+                                ),
                               ),
                               SizedBox(height: 15),                              // Terms of Service checkbox
                               Row(
@@ -793,7 +880,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     ),
                                   ),
                                   child: Text(
-                                    'SIGN UP',
+                                    'CREATE ACCOUNT',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
