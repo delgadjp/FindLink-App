@@ -12,31 +12,39 @@ class _FAQScreenState extends State<FAQScreen> {
   final List<Map<String, String>> faqs = [
     {
       "question": "How do I report a missing person?",
-      "answer": "To report a missing person, use the 'FILL UP FILE' option on the home screen. Complete the Incident Report Form (IRF) with all the relevant details about the missing person, including when and where they were last seen, physical description, and any other information that might help in locating them."
+      "answer": "To report a missing person, tap 'INCIDENT RECORD FORM' on the home screen. Fill out the detailed form with all required information about the missing person, including personal details, physical description, last known location, and upload a recent photo. Your report will be sent to the PNP for review and processing."
     },
     {
-      "question": "How do I track a case?",
-      "answer": "You can track your case through the 'TRACK THE CASE' option on the home screen. Enter your case number and other required details to check the status and updates on the ongoing investigation."
+      "question": "How do I track my case?",
+      "answer": "Go to your 'PROFILE' screen and view your submitted cases. You can see the status of each case, from 'Reported' to 'Under Investigation' to 'Resolved'. Each case shows progress steps and you can view the generated PDF of your report."
     },
     {
-      "question": "Can I submit a tip anonymously?",
-      "answer": "Yes, you can submit tips anonymously through our platform. Your identity will be kept confidential, allowing you to provide information without concerns about privacy or safety."
+      "question": "How do I view missing persons in my area?",
+      "answer": "Tap 'VIEW MISSING PERSON' on the home screen to see all reported missing persons. You can search by name, filter by date, and sort by most recent cases. Each listing shows the person's photo, description, and last known location."
     },
     {
-      "question": "What is FindLink?",
-      "answer": "FindLink is a platform designed to connect citizens with law enforcement agencies to report missing persons and suspicious activities. Our goal is to streamline the reporting process and help reunite missing individuals with their families."
+      "question": "Can I report a sighting of a missing person?",
+      "answer": "Yes! When viewing a missing person's details, tap 'Report a Sighting' to submit information about where and when you saw them. Include as much detail as possible about the location, time, and circumstances of the sighting."
     },
     {
-      "question": "What information should I provide when reporting a missing person?",
-      "answer": "You should provide as much detail as possible, including: full name, age, physical description (height, weight, hair color, eye color), distinctive features (tattoos, scars), clothing last worn, time and location last seen, recent photo, and any known medical conditions."
+      "question": "What is the FindMe feature?",
+      "answer": "FindMe is a location tracking feature that allows family members to share their real-time location with trusted contacts. When enabled, your location is tracked in the background and can be accessed by designated family members or authorities if you're reported missing."
     },
     {
-      "question": "How soon can I report someone as missing?",
-      "answer": "You can report someone as missing as soon as you have reason to believe they are missing. There is no need to wait 24 hours or any specific period before filing a report."
+      "question": "How do I enable family location sharing?",
+      "answer": "Go to your Profile, tap 'FindMe Settings', and enable the feature. You can add trusted contacts, enable family sharing, and control who has access to your location. Family members with access can view your real-time location through the 'Find My Devices' feature."
+    },
+    {
+      "question": "What information is required when reporting a missing person?",
+      "answer": "You'll need to provide: personal details (name, age, gender, address), physical description (height, weight, hair/eye color), clothing last worn, circumstances of disappearance, last known location and time, recent photo, and your relationship to the missing person as the complainant."
     },
     {
       "question": "Is there a fee for using FindLink services?",
-      "answer": "No, all FindLink services are provided free of charge. Our platform is designed to help the community and there are no fees associated with reporting missing persons or using any of our features."
+      "answer": "No, all FindLink services are completely free. The app is designed to help the community and law enforcement work together to locate missing persons at no cost to users."
+    },
+    {
+      "question": "How does FindLink work with the PNP?",
+      "answer": "FindLink collaborates directly with the Philippine National Police (PNP). Your incident reports are sent to PNP administrators who can create official Missing Person Alarm Sheets (MPAS) and coordinate search efforts. This ensures your report reaches the proper authorities quickly."
     },
   ];
 

@@ -316,10 +316,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
       return 'FindMe Disabled';
     }
     
-    if (device['isOnline']) {
-      return 'Online';
-    }
-    
     final lastLocation = device['lastLocation'] as LocationData?;
     if (lastLocation != null) {
       final difference = DateTime.now().difference(lastLocation.timestamp);
@@ -340,10 +336,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
   Color _getStatusColor(Map<String, dynamic> device) {
     if (!device['findMeEnabled']) {
       return Colors.grey;
-    }
-    
-    if (device['isOnline']) {
-      return Colors.green;
     }
     
     final lastLocation = device['lastLocation'] as LocationData?;

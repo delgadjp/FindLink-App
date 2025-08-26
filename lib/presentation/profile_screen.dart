@@ -607,7 +607,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _signOut() async {
-    await AuthService().signOutUser(context);
+    final bool? shouldLogOut = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          titlePadding: EdgeInsets.fromLTRB(24, 24, 24, 8),
+          contentPadding: EdgeInsets.fromLTRB(24, 0, 24, 0),
+          backgroundColor: Colors.white,
+          elevation: 5,
+          title: Column(
+            children: [
+              Icon(
+                Icons.logout,
+                color: Color(0xFF0D47A1),
+                size: 48,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Log Out',
+                style: TextStyle(
+                  color: Color(0xFF0D47A1),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: 16),
+                Text(
+                  'Are you sure you want to log out of your account?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 24),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey.shade700,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              child: Text(
+                'CANCEL',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF0D47A1),
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text(
+                'LOG OUT',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+          actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+        );
+      },
+    );
+
+    if (shouldLogOut == true) {
+      await AuthService().signOutUser(context);
+    }
   }
 
   // Function to get verification status color

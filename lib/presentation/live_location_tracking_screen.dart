@@ -23,8 +23,6 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
-  List<LocationData> _locationHistory = [];
   LocationData? _currentLocation;
   StreamSubscription<QuerySnapshot>? _locationSubscription;
   Timer? _statusUpdateTimer;
@@ -32,7 +30,6 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   bool _isLoading = true;
   bool _isPersonOnline = false;
   String _lastSeenStatus = 'Checking...';
-  bool _showLocationHistory = false;
   bool _followLocation = true;
   bool _hasPermission = false;
 
@@ -181,24 +178,28 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   void _updateCurrentLocation(LocationData location) {
     setState(() {
       _currentLocation = location;
-      _isPersonOnline = DateTime.now().difference(location.timestamp).inMinutes < 5;
-      _lastSeenStatus = _isPersonOnline 
-          ? 'Online now'
-          : 'Last seen ${_formatTimeAgo(location.timestamp)}';
+      _isPersonOnline = _isLocationOnline(location);
+      _lastSeenStatus = _getLocationStatus(location);
       _isLoading = false;
     });
 
     _updateMapLocation(location);
-    
-    // Add to location history
-    if (_locationHistory.isEmpty || _locationHistory.first.id != location.id) {
-      setState(() {
-        _locationHistory.insert(0, location);
-        if (_locationHistory.length > 100) {
-          _locationHistory = _locationHistory.take(100).toList();
-        }
-      });
-      _updateLocationTrail();
+  }
+
+  bool _isLocationOnline(LocationData location) {
+    return DateTime.now().difference(location.timestamp).inMinutes < 5;
+  }
+
+  String _getLocationStatus(LocationData location) {
+    final difference = DateTime.now().difference(location.timestamp);
+    if (difference.inMinutes < 5) {
+      return 'Online';
+    } else if (difference.inMinutes < 60) {
+      return 'Last seen ${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return 'Last seen ${difference.inHours}h ago';
+    } else {
+      return 'Last seen ${difference.inDays}d ago';
     }
   }
 
@@ -228,50 +229,6 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
           CameraPosition(target: position, zoom: 16),
         ),
       );
-    }
-  }
-
-  void _updateLocationTrail() {
-    if (_showLocationHistory && _locationHistory.length > 1) {
-      List<LatLng> points = _locationHistory
-          .map((loc) => LatLng(loc.latitude, loc.longitude))
-          .toList();
-
-      setState(() {
-        _polylines.clear();
-        _polylines.add(
-          Polyline(
-            polylineId: PolylineId('location_trail'),
-            points: points,
-            color: Colors.blue,
-            width: 3,
-            patterns: [PatternItem.dash(20), PatternItem.gap(10)],
-          ),
-        );
-
-        // Add markers for significant locations
-        for (int i = 1; i < _locationHistory.length && i < 10; i++) {
-          final loc = _locationHistory[i];
-          _markers.add(
-            Marker(
-              markerId: MarkerId('history_$i'),
-              position: LatLng(loc.latitude, loc.longitude),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-              alpha: 0.7,
-              infoWindow: InfoWindow(
-                title: 'Previous location',
-                snippet: _formatTimeAgo(loc.timestamp),
-              ),
-            ),
-          );
-        }
-      });
-    } else {
-      setState(() {
-        _polylines.clear();
-        // Remove history markers, keep only current location
-        _markers.removeWhere((marker) => marker.markerId.value.startsWith('history_'));
-      });
     }
   }
 
@@ -323,26 +280,11 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
     _statusUpdateTimer = Timer.periodic(Duration(minutes: 1), (timer) {
       if (_currentLocation != null) {
         setState(() {
-          _isPersonOnline = DateTime.now().difference(_currentLocation!.timestamp).inMinutes < 5;
-          _lastSeenStatus = _isPersonOnline 
-              ? 'Online now'
-              : 'Last seen ${_formatTimeAgo(_currentLocation!.timestamp)}';
+          _isPersonOnline = _isLocationOnline(_currentLocation!);
+          _lastSeenStatus = _getLocationStatus(_currentLocation!);
         });
       }
     });
-  }
-
-  String _formatTimeAgo(DateTime dateTime) {
-    final difference = DateTime.now().difference(dateTime);
-    if (difference.inMinutes < 1) {
-      return 'just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
   }
 
   void _showLocationDetails() {
@@ -453,9 +395,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                 // Clear current data
                 setState(() {
                   _currentLocation = null;
-                  _locationHistory = [];
                   _markers.clear();
-                  _polylines.clear();
                 });
                 
                 // Reload everything
@@ -610,7 +550,6 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                     zoom: 16,
                   ),
                   markers: _markers,
-                  polylines: _polylines,
                   onMapCreated: (GoogleMapController controller) {
                     _mapController = controller;
                     if (_currentLocation != null) {
@@ -653,44 +592,12 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                   ),
                 ),
 
-                // Control buttons
+                // Control buttons can be added here if needed
                 Positioned(
                   bottom: 16,
                   left: 16,
                   right: 16,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Card(
-                        child: InkWell(
-                          onTap: () => setState(() {
-                            _showLocationHistory = !_showLocationHistory;
-                            _updateLocationTrail();
-                          }),
-                          child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  _showLocationHistory ? Icons.timeline : Icons.timeline_outlined,
-                                  color: _showLocationHistory ? Colors.blue : Colors.grey,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  _showLocationHistory ? 'Hide Trail' : 'Show Trail',
-                                  style: TextStyle(
-                                    color: _showLocationHistory ? Colors.blue : Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: SizedBox.shrink(), // Empty space for now
                 ),
               ],
             ),

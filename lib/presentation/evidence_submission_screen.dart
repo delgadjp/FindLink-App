@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:signature/signature.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 import '/core/app_export.dart';
 
 class EvidenceSubmissionScreen extends StatefulWidget {
@@ -34,6 +35,13 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   String _validationConfidence = '0.0';
   final GlobalKey _validationSectionKey = GlobalKey();
   
+  // Global keys for auto-scrolling to error fields
+  final GlobalKey _missingPersonNameKey = GlobalKey();
+  final GlobalKey _photoEvidenceKey = GlobalKey();
+  final GlobalKey _statementKey = GlobalKey();
+  final GlobalKey _signatureKey = GlobalKey();
+  final ScrollController _scrollController = ScrollController();
+  
   // Signature controller
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 2,
@@ -47,7 +55,32 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
     _missingPersonNameController.dispose();
     _statementController.dispose();
     _signatureController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // Function to scroll to a specific field when there's an error
+  void _scrollToErrorField(GlobalKey fieldKey, String errorMessage) {
+    _showErrorSnackBar(errorMessage);
+    
+    // Use a slight delay to ensure the snackbar is shown first
+    Future.delayed(Duration(milliseconds: 100), () {
+      // Find the render object and scroll to it
+      final RenderObject? renderObject = fieldKey.currentContext?.findRenderObject();
+      if (renderObject != null) {
+        final RenderBox renderBox = renderObject as RenderBox;
+        final position = renderBox.localToGlobal(Offset.zero);
+        
+        // Calculate scroll position with offset to center the field in view
+        final scrollPosition = _scrollController.offset + position.dy - 150;
+        
+        _scrollController.animateTo(
+          scrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   // Generate a formal document ID format: EVD-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
@@ -210,6 +243,16 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
     }
   }
 
+  // Helper method to validate text input
+  bool _isValidTextInput(String text) {
+    return text.isNotEmpty && text.trim().isNotEmpty;
+  }
+
+  // Helper method to check if text contains only whitespace
+  bool _isOnlyWhitespace(String text) {
+    return text.isNotEmpty && text.trim().isEmpty;
+  }
+
   void _removeImage(int index) {
     setState(() {
       _selectedImages.removeAt(index);
@@ -231,7 +274,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
   Future<void> _saveSignature() async {
     if (_signatureController.isEmpty) {
-      _showErrorSnackBar('Please provide a signature first');
+      _scrollToErrorField(_signatureKey, 'Please provide a signature first');
       return;
     }
 
@@ -245,24 +288,37 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   }
 
   Future<void> _submitEvidence() async {
-    // Validation
-    if (_missingPersonNameController.text.trim().isEmpty) {
-      _showErrorSnackBar('Missing person name is required');
+    // Validation with auto-scroll to error fields
+    final missingPersonName = _missingPersonNameController.text;
+    final statement = _statementController.text;
+    
+    // Check missing person name - empty or only whitespace
+    if (!_isValidTextInput(missingPersonName)) {
+      if (missingPersonName.isEmpty) {
+        _scrollToErrorField(_missingPersonNameKey, 'Missing person name is required');
+      } else if (_isOnlyWhitespace(missingPersonName)) {
+        _scrollToErrorField(_missingPersonNameKey, 'Missing person name cannot contain only spaces');
+      }
       return;
     }
     
     if (_selectedImages.isEmpty) {
-      _showErrorSnackBar('Photo evidence is required');
+      _scrollToErrorField(_photoEvidenceKey, 'Photo evidence is required');
       return;
     }
     
-    if (_statementController.text.trim().isEmpty) {
-      _showErrorSnackBar('Statement of reunion is required');
+    // Check statement - empty or only whitespace
+    if (!_isValidTextInput(statement)) {
+      if (statement.isEmpty) {
+        _scrollToErrorField(_statementKey, 'Statement of reunion is required');
+      } else if (_isOnlyWhitespace(statement)) {
+        _scrollToErrorField(_statementKey, 'Statement cannot contain only spaces');
+      }
       return;
     }
     
     if (_signatureImage == null) {
-      _showErrorSnackBar('E-Signature is required');
+      _scrollToErrorField(_signatureKey, 'E-Signature is required');
       return;
     }
 
@@ -613,6 +669,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,6 +722,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
                 // Missing Person Name Section with improved styling
                 Container(
+                  key: _missingPersonNameKey,
                   margin: EdgeInsets.only(bottom: 20),
                   child: Card(
                     elevation: 8,
@@ -741,9 +799,14 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                               child: TextField(
                                 controller: _missingPersonNameController,
                                 style: TextStyle(fontSize: 16, color: Colors.black),
+                                inputFormatters: [
+                                  NoOnlyWhitespaceFormatter(),
+                                ],
                                 decoration: InputDecoration(
                                   hintText: 'Enter missing person\'s full name',
                                   hintStyle: TextStyle(color: Colors.grey.shade500),
+                                  helperText: 'Name cannot be empty or contain only spaces',
+                                  helperStyle: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                   filled: true,
                                   fillColor: Colors.white,
                                   border: OutlineInputBorder(
@@ -767,6 +830,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
                 // Upload Photo Evidence Section with improved styling
                 Container(
+                  key: _photoEvidenceKey,
                   margin: EdgeInsets.only(bottom: 20),
                   child: Card(
                     elevation: 8,
@@ -1002,6 +1066,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
                 // Statement of Reunion Section with improved styling
                 Container(
+                  key: _statementKey,
                   margin: EdgeInsets.only(bottom: 20),
                   child: Card(
                     elevation: 8,
@@ -1079,9 +1144,14 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                 controller: _statementController,
                                 maxLines: 6,
                                 style: TextStyle(fontSize: 16, height: 1.5, color: Colors.black),
+                                inputFormatters: [
+                                  NoOnlyWhitespaceFormatter(),
+                                ],
                                 decoration: InputDecoration(
                                   hintText: 'Describe the circumstances of the reunion...',
                                   hintStyle: TextStyle(color: Colors.grey.shade500),
+                                  helperText: 'Statement cannot be empty or contain only spaces',
+                                  helperStyle: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                   filled: true,
                                   fillColor: Colors.white,
                                   border: OutlineInputBorder(
@@ -1105,6 +1175,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
                 // E-Signature Section with improved styling
                 Container(
+                  key: _signatureKey,
                   margin: EdgeInsets.only(bottom: 32),
                   child: Card(
                     elevation: 8,
@@ -1456,5 +1527,20 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         ),
       ),
     );
+  }
+}
+
+// Custom text input formatter to prevent only whitespace
+class NoOnlyWhitespaceFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // If the new value contains only whitespace and is not empty, keep the old value
+    if (newValue.text.isNotEmpty && newValue.text.trim().isEmpty) {
+      return oldValue;
+    }
+    return newValue;
   }
 }

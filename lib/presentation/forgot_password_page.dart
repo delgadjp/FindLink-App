@@ -38,6 +38,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         elevation: 0,
         foregroundColor: Color(0xFF2A5298),
         centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Container(
         height: MediaQuery.of(context).size.height,
