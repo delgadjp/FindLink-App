@@ -13,9 +13,9 @@
     
     <application
         tools:replace="android:label"
-        android:label="findlink"
+        android:label="FindLink"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <!-- Add your Google Maps API key here -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
