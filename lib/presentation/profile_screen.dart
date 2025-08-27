@@ -329,180 +329,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }).toList();
   }
 
-  Future<String?> _showEditNameDialog() async {
-    TextEditingController nameController = TextEditingController(text: _name);
-    bool isValidName = true;
-    String errorText = '';
-    
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: true, // Allow dismissing by tapping outside
-      barrierColor: Colors.black54, // Semi-transparent barrier
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AnimatedContainer(
-              duration: Duration(milliseconds: 300),
-              child: AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                titlePadding: EdgeInsets.fromLTRB(24, 24, 24, 8),
-                contentPadding: EdgeInsets.fromLTRB(24, 0, 24, 0),
-                backgroundColor: Colors.white,
-                elevation: 5,
-                title: Column(
-                  children: [
-                    Icon(
-                      Icons.person_outline,
-                      color: Color(0xFF0D47A1),
-                      size: 48,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Edit Your Name',
-                      style: TextStyle(
-                        color: Color(0xFF0D47A1),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-                content: Container(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(height: 16),
-                      TextField(
-                        controller: nameController,
-                        autofocus: true,
-                        onChanged: (value) {
-                          setState(() {
-                            if (value.isEmpty) {
-                              isValidName = false;
-                              errorText = 'Name cannot be empty';
-                            } else if (value.length < 3) {
-                              isValidName = false;
-                              errorText = 'Name must be at least 3 characters';
-                            } else {
-                              isValidName = true;
-                              errorText = '';
-                            }
-                          });
-                        },
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color.fromARGB(255, 0, 0, 0), // Changed text color to green
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Your Name',
-                          labelStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0), // Changed label color to green
-                            fontWeight: FontWeight.w500,
-                          ),
-                          errorText: !isValidName ? errorText : null,
-                          prefixIcon: Icon(Icons.person, color: Color(0xFF0D47A1)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: const Color.fromARGB(255, 0, 0, 0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Color.fromARGB(255, 0, 0, 0), width: 2), // Changed focused border to green
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                        ),
-                      ),
-                      SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    child: Text(
-                      'CANCEL',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: isValidName ? () {
-                      Navigator.of(context).pop(nameController.text.trim());
-                    } : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF0D47A1),
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                    child: Text(
-                      'SAVE',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-                actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                actionsAlignment: MainAxisAlignment.spaceBetween,
-              ),
-            );
-          }
-        );
-      },
-    );
-  }
-
-  Future<void> _updateUserName(String newName) async {
-    try {
-      final User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        // First, find the user document by uid
-        final QuerySnapshot userQuery = await FirebaseFirestore.instance
-            .collection('users')
-            .where('uid', isEqualTo: currentUser.uid)
-            .limit(1)
-            .get();
-            
-        if (userQuery.docs.isNotEmpty) {
-          // Update in Firestore using document reference
-          await userQuery.docs.first.reference.update({
-            'displayName': newName
-          });
-          
-          // Update in Firebase Auth
-          await currentUser.updateDisplayName(newName);
-          
-          setState(() => _name = newName);
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Name updated successfully')),
-          );
-        } else {
-          throw Exception('User document not found');
-        }
-      }
-    } catch (e) {
-      print('Error updating name: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating name. Please try again.')),
-      );
-    }
-  }
-
   Future<void> _updateProfilePicture() async {
     try {
       // Show options to pick image from gallery or camera
@@ -799,32 +625,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _updateProfilePicture();
                         },
                       ),
-                      SizedBox(height: 16),                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _name,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          SizedBox(width: 2),
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.white, size: 20),
-                            onPressed: () async {
-                              final newName = await _showEditNameDialog();
-                              if (newName != null && newName.isNotEmpty) {
-                                await _updateUserName(newName);
-                              }
-                            },
-                          ),
-                        ],
+                      SizedBox(height: 16),                      Text(
+                        _name,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                       SizedBox(height: 8),
                       // Verification status badge
