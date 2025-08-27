@@ -4,6 +4,7 @@ import '/core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/services.dart';
 import 'evidence_submission_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -958,84 +959,125 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 if (_casesData.length > 1)
                                   Padding(
                                     padding: EdgeInsets.symmetric(vertical: 12),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        // Previous button
-                                        Expanded(
-                                          child: Padding(
-                                            padding: EdgeInsets.only(right: 8),
-                                            child: ElevatedButton.icon(
-                                              onPressed: () {
-                                                setState(() {
-                                                  _selectedCaseIndex = _selectedCaseIndex > 0 
-                                                      ? _selectedCaseIndex - 1 
-                                                      : _casesData.length - 1;
-                                                });
-                                              },
-                                              icon: Icon(Icons.skip_previous, size: 18),
-                                              label: Text('Previous'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.white,
-                                                foregroundColor: Color(0xFF0D47A1),
-                                                elevation: 2,
-                                                side: BorderSide(color: Color(0xFF0D47A1)),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(20),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final screenWidth = MediaQuery.of(context).size.width;
+                                        final isSmallScreen = screenWidth < 360;
+                                        
+                                        return Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            // Previous button
+                                            Expanded(
+                                              child: Padding(
+                                                padding: EdgeInsets.only(right: 4),
+                                                child: ElevatedButton.icon(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _selectedCaseIndex = _selectedCaseIndex > 0 
+                                                          ? _selectedCaseIndex - 1 
+                                                          : _casesData.length - 1;
+                                                    });
+                                                  },
+                                                  icon: Icon(
+                                                    Icons.skip_previous, 
+                                                    size: isSmallScreen ? 16 : 18,
+                                                  ),
+                                                  label: FittedBox(
+                                                    fit: BoxFit.scaleDown,
+                                                    child: Text(
+                                                      isSmallScreen ? 'Prev' : 'Previous',
+                                                      style: TextStyle(
+                                                        fontSize: isSmallScreen ? 12 : 14,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.white,
+                                                    foregroundColor: Color(0xFF0D47A1),
+                                                    elevation: 2,
+                                                    side: BorderSide(color: Color(0xFF0D47A1)),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+                                                    ),
+                                                    padding: EdgeInsets.symmetric(
+                                                      horizontal: isSmallScreen ? 8 : 12, 
+                                                      vertical: isSmallScreen ? 8 : 10,
+                                                    ),
+                                                    minimumSize: Size(isSmallScreen ? 80 : 100, 36),
+                                                  ),
                                                 ),
-                                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                minimumSize: Size(120, 40),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                        
-                                        // Case indicator with current position
-                                        Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                          decoration: BoxDecoration(
-                                            color: Color(0xFF0D47A1),
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                          child: Text(
-                                            '${_selectedCaseIndex + 1} / ${_casesData.length}',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                        
-                                        // Next button
-                                        Expanded(
-                                          child: Padding(
-                                            padding: EdgeInsets.only(left: 8),
-                                            child: ElevatedButton.icon(
-                                              onPressed: () {
-                                                setState(() {
-                                                  _selectedCaseIndex = _selectedCaseIndex < _casesData.length - 1 
-                                                      ? _selectedCaseIndex + 1 
-                                                      : 0;
-                                                });
-                                              },
-                                              icon: Icon(Icons.skip_next, size: 18),
-                                              label: Text('Next'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.white,
-                                                foregroundColor: Color(0xFF0D47A1),
-                                                elevation: 2,
-                                                side: BorderSide(color: Color(0xFF0D47A1)),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(20),
+                                            
+                                            // Case indicator with current position
+                                            Container(
+                                              margin: EdgeInsets.symmetric(horizontal: 8),
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isSmallScreen ? 12 : 16, 
+                                                vertical: isSmallScreen ? 8 : 10,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Color(0xFF0D47A1),
+                                                borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+                                              ),
+                                              child: Text(
+                                                '${_selectedCaseIndex + 1} / ${_casesData.length}',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: isSmallScreen ? 12 : 14,
                                                 ),
-                                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                minimumSize: Size(120, 40),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                      ],
+                                            
+                                            // Next button
+                                            Expanded(
+                                              child: Padding(
+                                                padding: EdgeInsets.only(left: 4),
+                                                child: ElevatedButton.icon(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _selectedCaseIndex = _selectedCaseIndex < _casesData.length - 1 
+                                                          ? _selectedCaseIndex + 1 
+                                                          : 0;
+                                                    });
+                                                  },
+                                                  icon: Icon(
+                                                    Icons.skip_next, 
+                                                    size: isSmallScreen ? 16 : 18,
+                                                  ),
+                                                  label: FittedBox(
+                                                    fit: BoxFit.scaleDown,
+                                                    child: Text(
+                                                      'Next',
+                                                      style: TextStyle(
+                                                        fontSize: isSmallScreen ? 12 : 14,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.white,
+                                                    foregroundColor: Color(0xFF0D47A1),
+                                                    elevation: 2,
+                                                    side: BorderSide(color: Color(0xFF0D47A1)),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+                                                    ),
+                                                    padding: EdgeInsets.symmetric(
+                                                      horizontal: isSmallScreen ? 8 : 12, 
+                                                      vertical: isSmallScreen ? 8 : 10,
+                                                    ),
+                                                    minimumSize: Size(isSmallScreen ? 80 : 100, 36),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     ),
                                   ),
                                 
@@ -1043,29 +1085,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 if (_casesData.length > 1)
                                   Padding(
                                     padding: EdgeInsets.only(top: 8),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: List.generate(
-                                        _casesData.length,
-                                        (index) => GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _selectedCaseIndex = index;
-                                            });
-                                          },
-                                          child: Container(
-                                            margin: EdgeInsets.symmetric(horizontal: 4),
-                                            width: 10,
-                                            height: 10,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: index == _selectedCaseIndex
-                                                  ? Color(0xFF0D47A1)
-                                                  : Colors.grey.shade400,
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final screenWidth = MediaQuery.of(context).size.width;
+                                        final dotSize = screenWidth < 360 ? 8.0 : 10.0;
+                                        final dotSpacing = screenWidth < 360 ? 3.0 : 4.0;
+                                        
+                                        return Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: List.generate(
+                                            _casesData.length,
+                                            (index) => GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  _selectedCaseIndex = index;
+                                                });
+                                              },
+                                              child: AnimatedContainer(
+                                                duration: Duration(milliseconds: 200),
+                                                margin: EdgeInsets.symmetric(horizontal: dotSpacing),
+                                                width: index == _selectedCaseIndex ? dotSize + 2 : dotSize,
+                                                height: index == _selectedCaseIndex ? dotSize + 2 : dotSize,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: index == _selectedCaseIndex
+                                                      ? Color(0xFF0D47A1)
+                                                      : Colors.grey.shade400,
+                                                  boxShadow: index == _selectedCaseIndex ? [
+                                                    BoxShadow(
+                                                      color: Color(0xFF0D47A1).withOpacity(0.3),
+                                                      spreadRadius: 1,
+                                                      blurRadius: 3,
+                                                    ),
+                                                  ] : null,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ),
+                                        );
+                                      },
                                     ),
                                   ),
                               ],
@@ -1108,59 +1166,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Padding(
                           padding: EdgeInsets.all(16),
                           child: Container(
-                            height: 90,
+                            height: 100, // Slightly increased for better visual balance
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: _casesData[_selectedCaseIndex]['progress'].length,
                               itemBuilder: (context, index) {
                                 final stage = _casesData[_selectedCaseIndex]['progress'][index];
-                                Color color = stage['status'] == 'Completed' 
-                                    ? Colors.green 
-                                    : stage['status'] == 'In Progress' 
-                                        ? Colors.orange 
-                                        : stage['status'] == 'N/A'
-                                            ? Colors.grey.shade400
-                                            : Colors.grey;
+                                Color color;
+                                IconData icon;
+                                
+                                // Enhanced status handling with proper Evidence Submitted support
+                                switch (stage['status']) {
+                                  case 'Completed':
+                                    color = Colors.green;
+                                    icon = Icons.check_circle;
+                                    break;
+                                  case 'In Progress':
+                                    color = Colors.orange;
+                                    icon = Icons.pending;
+                                    break;
+                                  case 'Pending':
+                                    color = Colors.grey.shade400;
+                                    icon = Icons.hourglass_empty;
+                                    break;
+                                  default:
+                                    color = Colors.grey;
+                                    icon = Icons.circle_outlined;
+                                }
+                                
+                                // Special handling for Evidence Submitted stage
+                                if (stage['stage'] == 'Evidence Submitted') {
+                                  if (stage['status'] == 'Completed') {
+                                    color = Colors.teal;
+                                    icon = Icons.upload_file;
+                                  } else if (stage['status'] == 'In Progress') {
+                                    color = Colors.orange;
+                                    icon = Icons.upload_outlined;
+                                  }
+                                }
                                 
                                 return Container(
-                                  width: MediaQuery.of(context).size.width / 3.5,
+                                  width: MediaQuery.of(context).size.width / 3.8, // Slightly larger for better readability
                                   child: Column(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: color.withOpacity(0.2),
-                                        child: CircleAvatar(
-                                          radius: 15,
-                                          backgroundColor: color,
-                                          child: Icon(
-                                            stage['status'] == 'Completed' 
-                                                ? Icons.check 
-                                                : stage['status'] == 'In Progress' 
-                                                    ? Icons.refresh 
-                                                    : stage['status'] == 'N/A'
-                                                        ? Icons.remove
-                                                        : Icons.hourglass_empty,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: color.withOpacity(0.15),
+                                          border: Border.all(color: color, width: 2),
+                                        ),
+                                        child: Icon(
+                                          icon,
+                                          color: color,
+                                          size: 20,
                                         ),
                                       ),
                                       SizedBox(height: 8),
                                       Text(
                                         stage['stage'],
                                         textAlign: TextAlign.center,
+                                        maxLines: 2, // Allow text wrapping for longer stage names
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           color: color,
-                                          fontSize: 12,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w600,
+                                          height: 1.2,
                                         ),
                                       ),
-                                      SizedBox(height: 4),
+                                      SizedBox(height: 2),
                                       Text(
                                         stage['status'],
+                                        textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          fontSize: 10,
+                                          fontSize: 9,
                                           color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
@@ -1571,38 +1654,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Upload Evidence button (only show when status is "In Progress")
             if (caseData['status'] == 'In Progress') ...[
               SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EvidenceSubmissionScreen(
-                          caseId: caseData['id'],
-                          caseNumber: caseData['caseNumber'],
-                          caseName: caseData['name'],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Get screen dimensions
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final screenHeight = MediaQuery.of(context).size.height;
+                  final orientation = MediaQuery.of(context).orientation;
+                  
+                  // Dynamic sizing based on screen size
+                  double buttonHeight = screenHeight < 600 ? 36 : 40; // Smaller height for small screens
+                  double iconSize = screenWidth < 360 ? 16 : 18; // Smaller icon for small screens
+                  double fontSize = screenWidth < 360 ? 12 : 14; // Smaller font for small screens
+                  double horizontalPadding = screenWidth < 360 ? 8 : 12; // Less padding on small screens
+                  double verticalPadding = screenHeight < 600 ? 6 : 8; // Less vertical padding on short screens
+                  
+                  // Adjust for landscape orientation
+                  if (orientation == Orientation.landscape) {
+                    buttonHeight = 36; // Smaller height in landscape
+                    fontSize = 13; // Slightly smaller font in landscape
+                  }
+                  
+                  return Container(
+                    width: double.infinity,
+                    constraints: BoxConstraints(
+                      minHeight: buttonHeight,
+                      maxHeight: buttonHeight + 8, // Allow slight flexibility
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EvidenceSubmissionScreen(
+                              caseId: caseData['id'],
+                              caseNumber: caseData['caseNumber'],
+                              caseName: caseData['name'],
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        Icons.upload_file, 
+                        size: iconSize,
+                      ),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Upload Evidence',
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  icon: Icon(Icons.upload_file, size: 18),
-                  label: Text(
-                    'Upload Evidence',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          vertical: verticalPadding, 
+                          horizontal: horizontalPadding,
+                        ),
+                        minimumSize: Size(double.infinity, buttonHeight), // Ensure minimum size
+                        maximumSize: Size(double.infinity, buttonHeight + 8), // Prevent button from being too tall
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  );
+                },
+              ),
+            ],
+            
+            // Show Evidence Submitted status with action button
+            if (caseData['status'] == 'Evidence Submitted') ...[
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.teal.shade200, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.teal.shade600,
+                      size: 18,
                     ),
-                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Evidence has been submitted and is under review',
+                        style: TextStyle(
+                          color: Colors.teal.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
