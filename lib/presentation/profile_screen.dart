@@ -761,6 +761,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: Center(
                                     child: Container(
                                       width: MediaQuery.of(context).size.width * 0.9,
+                                      constraints: BoxConstraints(
+                                        maxHeight: MediaQuery.of(context).size.height * 0.35, // Limit height
+                                      ),
                                       child: _buildCaseCard(_selectedCaseIndex),
                                     ),
                                   ),
@@ -1284,17 +1287,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(12), // Reduced padding from 16 to 12
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        padding: EdgeInsets.all(8), // Further reduced padding from 12 to 8
+        child: SingleChildScrollView( // Added scrollable container
+          physics: ClampingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Status badge with icon
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3), // Reduced padding
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Further reduced padding
               decoration: BoxDecoration(
                 color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: statusColor, width: 1),
               ),
               child: Row(
@@ -1302,22 +1307,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Icon(
                     statusIcon,
-                    size: 11, // Reduced from 12
+                    size: 10, // Further reduced from 11
                     color: statusColor,
                   ),
-                  SizedBox(width: 3), // Reduced from 4
+                  SizedBox(width: 2), // Reduced from 3
                   Text(
                     caseData['status'],
                     style: TextStyle(
                       color: statusColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 10, // Reduced from 11
+                      fontSize: 9, // Reduced from 10
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 8), // Reduced from 12
+            SizedBox(height: 6), // Reduced from 8
             
             // Case ID with copy button
             Row(
@@ -1361,20 +1366,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 8), // Reduced from 10
+            SizedBox(height: 6), // Reduced from 8
               // Missing Person info with enhanced styling
             Container(
-              height: 70, // Fixed height to make it smaller
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Reduced vertical padding
+              height: 60, // Reduced height from 70 to 60
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Further reduced padding
               decoration: BoxDecoration(
                 color: Colors.blue.shade50.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.blue.shade200, width: 1),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(5), // Reduced from 6
+                    padding: EdgeInsets.all(4), // Reduced from 5
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.blue.shade300, Colors.blue.shade700],
@@ -1393,11 +1398,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Icon(
                       Icons.person_search,
-                      size: 12, // Reduced from 14
+                      size: 11, // Reduced from 12
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(width: 8), // Reduced from 10
+                  SizedBox(width: 6), // Reduced from 8
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1407,21 +1412,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           "Missing Person",
                           style: TextStyle(
-                            fontSize: 16, // Reduced font size
+                            fontSize: 11, // Reduced font size from 16
                             color: Colors.blue.shade800,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: 1), // Reduced from 2
-                        Text(
-                          caseData['name'],
-                          maxLines: 1, // Changed back to 1 line for smaller height
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 16, // Reduced from 16
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black.withOpacity(0.85),
-                            height: 1.1, // Reduced line height
+                        SizedBox(height: 1),
+                        Flexible( // Added Flexible to prevent overflow
+                          child: Text(
+                            caseData['name'],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13, // Reduced from 16
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black.withOpacity(0.85),
+                              height: 1.1,
+                            ),
                           ),
                         ),
                       ],
@@ -1431,29 +1438,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             
-            SizedBox(height: 6), // Reduced from 10
+            SizedBox(height: 4), // Reduced from 6
             
             // Date reported with styled badge
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced padding
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2), // Further reduced padding
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.calendar_today,
-                    size: 10, // Reduced from 12
+                    size: 9, // Reduced from 10
                     color: Colors.grey[700],
                   ),
-                  SizedBox(width: 3), // Reduced from 4
+                  SizedBox(width: 2), // Reduced from 3
                   Text(
                     "Reported: ${caseData['dateCreated']}",
                     style: TextStyle(
                       color: Colors.grey[700],
-                      fontSize: 12, // Reduced from 11
+                      fontSize: 10, // Reduced from 12
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1463,89 +1470,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
             
             // Upload Evidence button (only show when status is "In Progress")
             if (caseData['status'] == 'In Progress') ...[
-              SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  // Get screen dimensions
-                  final screenWidth = MediaQuery.of(context).size.width;
-                  final screenHeight = MediaQuery.of(context).size.height;
-                  final orientation = MediaQuery.of(context).orientation;
-                  
-                  // Dynamic sizing based on screen size
-                  double buttonHeight = screenHeight < 600 ? 36 : 40; // Smaller height for small screens
-                  double iconSize = screenWidth < 360 ? 16 : 18; // Smaller icon for small screens
-                  double fontSize = screenWidth < 360 ? 12 : 14; // Smaller font for small screens
-                  double horizontalPadding = screenWidth < 360 ? 8 : 12; // Less padding on small screens
-                  double verticalPadding = screenHeight < 600 ? 6 : 8; // Less vertical padding on short screens
-                  
-                  // Adjust for landscape orientation
-                  if (orientation == Orientation.landscape) {
-                    buttonHeight = 36; // Smaller height in landscape
-                    fontSize = 13; // Slightly smaller font in landscape
-                  }
-                  
-                  return Container(
-                    width: double.infinity,
-                    constraints: BoxConstraints(
-                      minHeight: buttonHeight,
-                      maxHeight: buttonHeight + 8, // Allow slight flexibility
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EvidenceSubmissionScreen(
-                              caseId: caseData['id'],
-                              caseNumber: caseData['caseNumber'],
-                              caseName: caseData['name'],
+              SizedBox(height: 8), // Reduced from 12
+              Flexible( // Added Flexible to prevent overflow
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Get screen dimensions
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    final orientation = MediaQuery.of(context).orientation;
+                    
+                    // Dynamic sizing based on screen size - more aggressive reduction
+                    double buttonHeight = screenHeight < 600 ? 28 : 32; // Further reduced height
+                    double iconSize = screenWidth < 360 ? 14 : 16; // Reduced icon size
+                    double fontSize = screenWidth < 360 ? 10 : 12; // Smaller font
+                    double horizontalPadding = screenWidth < 360 ? 6 : 8; // Less padding
+                    double verticalPadding = 4; // Fixed smaller vertical padding
+                    
+                    // Adjust for landscape orientation
+                    if (orientation == Orientation.landscape) {
+                      buttonHeight = 26; // Even smaller height in landscape
+                      fontSize = 11; // Smaller font in landscape
+                    }
+                    
+                    return Container(
+                      width: double.infinity,
+                      constraints: BoxConstraints(
+                        minHeight: buttonHeight,
+                        maxHeight: buttonHeight + 4, // Smaller flexibility range
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EvidenceSubmissionScreen(
+                                caseId: caseData['id'],
+                                caseNumber: caseData['caseNumber'],
+                                caseName: caseData['name'],
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          Icons.upload_file, 
+                          size: iconSize,
+                        ),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Upload Evidence',
+                            style: TextStyle(
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        );
-                      },
-                      icon: Icon(
-                        Icons.upload_file, 
-                        size: iconSize,
-                      ),
-                      label: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'Upload Evidence',
-                          style: TextStyle(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.bold,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                          elevation: 1, // Reduced elevation
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6), // Smaller radius
                           ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: verticalPadding, 
+                            horizontal: horizontalPadding,
+                          ),
+                          minimumSize: Size(double.infinity, buttonHeight),
+                          maximumSize: Size(double.infinity, buttonHeight + 4),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          vertical: verticalPadding, 
-                          horizontal: horizontalPadding,
-                        ),
-                        minimumSize: Size(double.infinity, buttonHeight), // Ensure minimum size
-                        maximumSize: Size(double.infinity, buttonHeight + 8), // Prevent button from being too tall
-                      ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
             
             // Show Evidence Submitted status with action button
             if (caseData['status'] == 'Evidence Submitted') ...[
-              SizedBox(height: 12),
+              SizedBox(height: 8), // Reduced from 12
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6), // Reduced padding
                 decoration: BoxDecoration(
                   color: Colors.teal.shade50,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6), // Smaller radius
                   border: Border.all(color: Colors.teal.shade200, width: 1),
                 ),
                 child: Row(
@@ -1553,15 +1562,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icon(
                       Icons.check_circle,
                       color: Colors.teal.shade600,
-                      size: 18,
+                      size: 16, // Reduced from 18
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: 6), // Reduced from 8
                     Expanded(
                       child: Text(
                         'Evidence has been submitted and is under review',
                         style: TextStyle(
                           color: Colors.teal.shade700,
-                          fontSize: 13,
+                          fontSize: 11, // Reduced from 13
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1569,10 +1578,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
+            ], // Close the if condition array for Evidence Submitted status
+          ], // Close the children array of the Column
+        ), // Close SingleChildScrollView
+      ), 
+      )// Close Padding
+    ); // Close AnimatedContainer
+  } // Close _buildCaseCard method
+} // Close _ProfileScreenState class

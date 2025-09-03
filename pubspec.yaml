@@ -22,7 +22,7 @@ dependencies:
   google_maps_flutter: ^2.5.0
   geolocator: ^10.1.0
   uuid: ^4.5.1
-  intl: ^0.20.2
+  intl: ^0.19.0
   photo_view: ^0.14.0
   url_launcher: ^6.3.1
   geocoding: ^2.1.0 # Added geocoding package for address lookup
