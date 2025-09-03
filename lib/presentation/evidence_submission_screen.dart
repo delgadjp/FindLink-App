@@ -3,7 +3,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:signature/signature.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 import '/core/app_export.dart';
 
 class EvidenceSubmissionScreen extends StatefulWidget {
