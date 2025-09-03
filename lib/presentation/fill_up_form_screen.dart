@@ -1794,15 +1794,16 @@ class FillUpForm extends State<FillUpFormScreen> {
     final victimMiddleName = _middleNameVictimController.text.trim().toLowerCase();
     final victimDob = _dateOfBirthVictimController.text.trim();
     
-    // Check if all key identifying information matches
+    // Check if required fields (surname, first name, and date of birth) are not empty
+    // Middle name is optional so we don't require it to be filled
     if (reportingSurname.isNotEmpty && victimSurname.isNotEmpty &&
         reportingFirstName.isNotEmpty && victimFirstName.isNotEmpty &&
-        reportingMiddleName.isNotEmpty && victimMiddleName.isNotEmpty &&
         reportingDob.isNotEmpty && victimDob.isNotEmpty) {
       
+      // Check if key identifying information matches (including middle name comparison)
       if (reportingSurname == victimSurname &&
           reportingFirstName == victimFirstName &&
-          reportingMiddleName == victimMiddleName &&
+          reportingMiddleName == victimMiddleName && // This handles empty middle names correctly
           reportingDob == victimDob) {
         return false; // Same person - validation failed
       }
@@ -1813,22 +1814,54 @@ class FillUpForm extends State<FillUpFormScreen> {
 
   // Check for duplicate missing person
   Future<bool> _checkDuplicateMissingPerson() async {
-    final surname = _surnameVictimController.text.trim().toLowerCase();
-    final firstName = _firstNameVictimController.text.trim().toLowerCase();
-    final middleName = _middleNameVictimController.text.trim().toLowerCase();
+    final surname = _surnameVictimController.text.trim();
+    final firstName = _firstNameVictimController.text.trim();
+    final middleName = _middleNameVictimController.text.trim();
     final dob = _dateOfBirthVictimController.text.trim();
-    if (surname.isEmpty || firstName.isEmpty || middleName.isEmpty || dob.isEmpty) {
+    
+    // Only check for duplicates if required fields are filled
+    // Middle name is optional, so we don't require it to be filled
+    if (surname.isEmpty || firstName.isEmpty || dob.isEmpty) {
       return false;
     }
-    final query = await FirebaseFirestore.instance
-        .collection('incidents')
-        .where('itemC.familyName', isEqualTo: surname)
-        .where('itemC.firstName', isEqualTo: firstName)
-        .where('itemC.middleName', isEqualTo: middleName)
-        .where('itemC.dateOfBirth', isEqualTo: dob)
-        .limit(1)
-        .get();
-    return query.docs.isNotEmpty;
+
+    try {
+      // Build query based on available fields
+      Query query = FirebaseFirestore.instance
+          .collection('incidents')
+          .where('itemC.familyName', isEqualTo: surname)
+          .where('itemC.firstName', isEqualTo: firstName)
+          .where('itemC.dateOfBirth', isEqualTo: dob);
+      
+      // Add middle name to query only if it's not empty
+      if (middleName.isNotEmpty) {
+        query = query.where('itemC.middleName', isEqualTo: middleName);
+      }
+      
+      final querySnapshot = await query.limit(1).get();
+      
+      // Additional check for cases where middle name is empty in the form
+      // but might exist in the database
+      if (querySnapshot.docs.isEmpty && middleName.isEmpty) {
+        // Check for records with empty or null middle name
+        final emptyMiddleNameQuery = await FirebaseFirestore.instance
+            .collection('incidents')
+            .where('itemC.familyName', isEqualTo: surname)
+            .where('itemC.firstName', isEqualTo: firstName)
+            .where('itemC.dateOfBirth', isEqualTo: dob)
+            .where('itemC.middleName', whereIn: ['', null])
+            .limit(1)
+            .get();
+        
+        return emptyMiddleNameQuery.docs.isNotEmpty;
+      }
+      
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking for duplicate missing person: $e');
+      // In case of error, allow the form to proceed (don't block legitimate submissions)
+      return false;
+    }
   }
 
   @override  Widget build(BuildContext context) {
