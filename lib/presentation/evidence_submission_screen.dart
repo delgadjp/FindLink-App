@@ -50,12 +50,49 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   Uint8List? _signatureImage;
 
   @override
+  void initState() {
+    super.initState();
+    // Show data privacy modal every time the screen is opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showCompliance();
+    });
+  }
+
+  @override
   void dispose() {
     _missingPersonNameController.dispose();
     _statementController.dispose();
     _signatureController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // Show both modals in sequence for evidence submission
+  void showCompliance() {
+    ModalUtils.showLegalDisclaimerModal(
+      context,
+      onAccept: () {
+        // After legal disclaimer, show privacy policy modal
+        // Note: No persistence check - modal appears every time
+        ModalUtils.showPrivacyPolicyModal(
+          context,
+          onAcceptanceUpdate: (bool accepted) {
+            if (accepted) {
+              // User accepted - continue with evidence submission
+              print('User accepted privacy policy for evidence submission');
+            } else {
+              // User disagreed - navigate back
+              Navigator.of(context).pop();
+            }
+          },
+          onCancel: () {
+            // User disagreed - navigate back
+            Navigator.of(context).pop();
+          },
+          screenType: 'evidence_submission', // Identifier for this screen
+        );
+      },
+    );
   }
 
   // Function to scroll to a specific field when there's an error
