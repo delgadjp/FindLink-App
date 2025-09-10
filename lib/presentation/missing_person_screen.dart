@@ -234,16 +234,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
-        },
-        icon: Icon(Icons.arrow_back),
-        label: Text("Back"),
-        backgroundColor: Color(0xFF0D47A1), // Match app bar color
-        foregroundColor: Colors.white, // Make text and icon white
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat, // Position on left side
     );
   }
 

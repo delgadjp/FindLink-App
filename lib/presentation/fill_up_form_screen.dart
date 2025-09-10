@@ -32,7 +32,6 @@ class FillUpForm extends State<FillUpFormScreen> {
   bool hasOtherAddressReporting = false;
   bool hasOtherAddressVictim = false;
   bool isSubmitting = false;
-  bool isSavingDraft = false;
   bool hasAcceptedPrivacyPolicy = false;
   bool isCheckingPrivacyStatus = true;
   
@@ -42,6 +41,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Image handling variables
   File? _imageFile;
   Uint8List? _webImage;
+  String? _selectedImageHash;
   final picker = ImagePicker();
   ValidationStatus _validationStatus = ValidationStatus.none;
   String _validationMessage = '';
@@ -181,14 +181,50 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
 
-  // Store image hash in Firebase
-  Future<void> _storeImageHash(String imageHash) async {
+  // Generate organized document ID for imageHashes collection
+  Future<String> _generateImageHashDocId() async {
+    final today = DateTime.now();
+    final dateStr = DateFormat('yyyyMMdd').format(today);
+    final idPrefix = 'IMG-$dateStr-';
+
     try {
-      await FirebaseFirestore.instance.collection('imageHashes').add({
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('imageHashes')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: idPrefix + '0001')
+          .where(FieldPath.documentId, isLessThanOrEqualTo: idPrefix + '9999')
+          .get();
+
+      int highestNumber = 0;
+      for (final doc in querySnapshot.docs) {
+        final String docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+          final String suffix = docId.substring(idPrefix.length);
+          final int? num = int.tryParse(suffix);
+          if (num != null && num > highestNumber) highestNumber = num;
+        }
+      }
+
+      final int nextNumber = highestNumber + 1;
+      final String padded = nextNumber.toString().padLeft(4, '0');
+      return '$idPrefix$padded';
+    } catch (e) {
+      // fallback
+      return 'IMG-${DateFormat('yyyyMMdd').format(DateTime.now())}-0001';
+    }
+  }
+
+  // Store image hash in Firebase using organized document ID and without userId
+  Future<void> _storeImageHash(String imageHash, {String? irfId}) async {
+    try {
+      final docId = await _generateImageHashDocId();
+      final Map<String, dynamic> data = {
         'hash': imageHash,
         'createdAt': FieldValue.serverTimestamp(),
-        'userId': FirebaseAuth.instance.currentUser?.uid,
-      });
+      };
+      if (irfId != null) {
+        data['irfId'] = irfId;
+      }
+      await FirebaseFirestore.instance.collection('imageHashes').doc(docId).set(data);
     } catch (e) {
       print('Error storing image hash: $e');
     }
@@ -212,8 +248,7 @@ class FillUpForm extends State<FillUpFormScreen> {
         
         // Calculate SHA-256 hash
         String imageHash = _calculateImageHash(imageBytes);
-        
-        // Check for duplicate hash
+        // Check for duplicate hash in the database and block immediately if found
         bool isDuplicate = await _checkDuplicateImageHash(imageHash);
         if (isDuplicate) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -225,6 +260,8 @@ class FillUpForm extends State<FillUpFormScreen> {
           );
           return;
         }
+        // Keep selected image hash in memory; do not store it yet. It will be stored on successful form submission.
+        _selectedImageHash = imageHash;
         
         // Set image data for display
         dynamic imageData;
@@ -248,6 +285,7 @@ class FillUpForm extends State<FillUpFormScreen> {
               // Clear image on validation error
               _imageFile = null;
               _webImage = null;
+              _selectedImageHash = null;
             } else if (!validationResult['containsHuman']) {
               _imageFile = null;
               _webImage = null;
@@ -266,8 +304,9 @@ class FillUpForm extends State<FillUpFormScreen> {
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
               
-              // Store the hash only after successful validation
-              _storeImageHash(imageHash);
+              // Note: do NOT store the image hash here. It will be stored when the IRF form is submitted.
+              // Keep the computed hash in memory so submit can perform duplicate-check and store it organized.
+              _selectedImageHash = imageHash;
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -285,6 +324,7 @@ class FillUpForm extends State<FillUpFormScreen> {
             // Clear image on validation error
             _imageFile = null;
             _webImage = null;
+              _selectedImageHash = null;
           });
           
           ScaffoldMessenger.of(context).showSnackBar(
@@ -362,8 +402,6 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
   
-  // Reference to Firestore
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -524,7 +562,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           .limit(1)
           .get();
       if (userQuery.docs.isNotEmpty) {
-        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+  final userData = userQuery.docs.first.data();
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
           _firstNameReportingController.text = userData['firstName'] ?? '';          
@@ -1876,6 +1914,21 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
+      // Before uploading image, ensure selected image hash isn't a duplicate in the DB
+      if (_selectedImageHash != null) {
+        bool isDuplicate = await _checkDuplicateImageHash(_selectedImageHash!);
+        if (isDuplicate) {
+          setState(() { isSubmitting = false; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('This image has already been used in another report. Please choose a different image.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
       // Upload image and get URL
       String? imageUrl;
       if (kIsWeb && _webImage != null) {
@@ -1894,6 +1947,10 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Get the document to retrieve the formal ID
       DocumentSnapshot doc = await docRef.get();
       String formalId = (doc.data() as Map<String, dynamic>)['incidentDetails']?['incidentId'] ?? docRef.id;
+      // Store the image hash in the imageHashes collection now that the IRF has been successfully created
+      if (_selectedImageHash != null) {
+        await _storeImageHash(_selectedImageHash!, irfId: formalId);
+      }
       
       // Show success message with formal ID
       ScaffoldMessenger.of(context).showSnackBar(
