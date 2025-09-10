@@ -8,6 +8,8 @@ import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:ui'; // Added import for ImageFilter
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -157,6 +159,41 @@ class FillUpForm extends State<FillUpFormScreen> {
     );
   }
   
+  // Calculate SHA-256 hash of image bytes
+  String _calculateImageHash(Uint8List imageBytes) {
+    var digest = sha256.convert(imageBytes);
+    return digest.toString();
+  }
+
+  // Check if image hash already exists in Firebase
+  Future<bool> _checkDuplicateImageHash(String imageHash) async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('imageHashes')
+          .where('hash', isEqualTo: imageHash)
+          .limit(1)
+          .get();
+      
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking duplicate image hash: $e');
+      return false;
+    }
+  }
+
+  // Store image hash in Firebase
+  Future<void> _storeImageHash(String imageHash) async {
+    try {
+      await FirebaseFirestore.instance.collection('imageHashes').add({
+        'hash': imageHash,
+        'createdAt': FieldValue.serverTimestamp(),
+        'userId': FirebaseAuth.instance.currentUser?.uid,
+      });
+    } catch (e) {
+      print('Error storing image hash: $e');
+    }
+  }
+
   // Image picking and validation
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -164,18 +201,43 @@ class FillUpForm extends State<FillUpFormScreen> {
       
       final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
+        Uint8List imageBytes;
+        
+        // Get image bytes first
+        if (kIsWeb) {
+          imageBytes = await pickedFile.readAsBytes();
+        } else {
+          imageBytes = await File(pickedFile.path).readAsBytes();
+        }
+        
+        // Calculate SHA-256 hash
+        String imageHash = _calculateImageHash(imageBytes);
+        
+        // Check for duplicate hash
+        bool isDuplicate = await _checkDuplicateImageHash(imageHash);
+        if (isDuplicate) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('This image has already been uploaded previously. Please use a different image.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+        
+        // Set image data for display
         dynamic imageData;
         if (kIsWeb) {
-          final bytes = await pickedFile.readAsBytes();
-          imageData = bytes;
-          setState(() => _webImage = bytes);
+          imageData = imageBytes;
+          setState(() => _webImage = imageBytes);
         } else {
           final file = File(pickedFile.path);
           imageData = file;
           setState(() => _imageFile = file);
         }
         
-        // Validate image using service
+        // Validate image using Google Vision service
         try {
           final validationResult = await _irfService.validateImageWithGoogleVision(imageData);
           
@@ -183,6 +245,9 @@ class FillUpForm extends State<FillUpFormScreen> {
             if (!validationResult['isValid']) {
               _validationMessage = 'Error validating image: ${validationResult['message']}';
               _validationStatus = ValidationStatus.error;
+              // Clear image on validation error
+              _imageFile = null;
+              _webImage = null;
             } else if (!validationResult['containsHuman']) {
               _imageFile = null;
               _webImage = null;
@@ -200,13 +265,35 @@ class FillUpForm extends State<FillUpFormScreen> {
               _validationMessage = 'Person detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
+              
+              // Store the hash only after successful validation
+              _storeImageHash(imageHash);
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Image uploaded and validated successfully!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
             }
           });
         } catch (e) {
           setState(() {
             _validationMessage = 'Image validation error: ${e.toString()}';
             _validationStatus = ValidationStatus.warning;
+            // Clear image on validation error
+            _imageFile = null;
+            _webImage = null;
           });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error validating image: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       }
     } catch (e) {
@@ -216,6 +303,62 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
     } finally {
       setState(() => _isProcessingImage = false);
+    }
+  }
+
+  // Helper methods for validation status display
+  Color _getValidationStatusColor() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Colors.blue;
+      case ValidationStatus.humanDetected:
+      case ValidationStatus.success:
+        return Colors.green;
+      case ValidationStatus.noHuman:
+        return Colors.orange;
+      case ValidationStatus.error:
+        return Colors.red;
+      case ValidationStatus.warning:
+        return Colors.amber;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getValidationStatusIcon() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Icons.hourglass_empty;
+      case ValidationStatus.humanDetected:
+      case ValidationStatus.success:
+        return Icons.check_circle;
+      case ValidationStatus.noHuman:
+        return Icons.warning;
+      case ValidationStatus.error:
+        return Icons.error;
+      case ValidationStatus.warning:
+        return Icons.warning_amber;
+      default:
+        return Icons.info;
+    }
+  }
+
+  String _getValidationStatusText() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return 'Validating image...';
+      case ValidationStatus.humanDetected:
+        return 'Person detected ($_validationConfidence% confidence)';
+      case ValidationStatus.success:
+        return 'Image validated successfully';
+      case ValidationStatus.noHuman:
+        return 'No person detected';
+      case ValidationStatus.error:
+        return 'Validation error';
+      case ValidationStatus.warning:
+        return 'Validation warning';
+      default:
+        return 'Unknown status';
     }
   }
   
@@ -2910,6 +3053,68 @@ class FillUpForm extends State<FillUpFormScreen> {
                                                     ),
                                             ),
                                             SizedBox(height: 8),
+                                            // Validation status indicator
+                                            if (_validationStatus != ValidationStatus.none) ...[
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: _getValidationStatusColor(),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      _getValidationStatusIcon(),
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    SizedBox(width: 4),
+                                                    Text(
+                                                      _getValidationStatusText(),
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              SizedBox(height: 8),
+                                            ],
+                                            if (_isProcessingImage) ...[
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 12,
+                                                      height: 12,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      'Processing image...',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              SizedBox(height: 8),
+                                            ],
                                             Row(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [

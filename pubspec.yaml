@@ -27,10 +27,11 @@ dependencies:
   url_launcher: ^6.3.1
   geocoding: ^2.1.0 # Added geocoding package for address lookup
   signature: ^5.4.1
+  crypto: ^3.0.3  # Added for SHA-256 hashing
   
   cupertino_icons: ^1.0.8
   firebase_core: ^3.10.1
-  firebase_auth: ^5.4.1
+  firebase_auth: ^5.4.2
   google_sign_in: ^6.2.2
   cloud_firestore: ^5.6.4
   firebase_storage: ^12.4.4
