@@ -4,8 +4,6 @@ import '/core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/services.dart';
-import 'evidence_submission_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -378,11 +376,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final File imageFile = File(image.path);
       
-      // Create a reference with the user's UID
+      // Create a reference with the user's UID (without extension to match storage rules)
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('profile_images')
-          .child('${currentUser.uid}.jpg');
+          .child(currentUser.uid);
       
       // Upload the file with appropriate metadata
       final metadata = SettableMetadata(
@@ -402,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Find user document and update in Firestore
       final QuerySnapshot userQuery = await FirebaseFirestore.instance
           .collection('users')
-          .where('uid', isEqualTo: currentUser.uid)
+          .where('userId', isEqualTo: currentUser.uid)
           .limit(1)
           .get();
       

@@ -446,24 +446,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     }
   }
 
-
-  void _viewFamilyMemberLocation(TrustedContact family) {
-    // Navigate to specific family member's location
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${family.name}\'s Location'),
-        content: Text('This would show ${family.name}\'s current location on a map. Feature coming soon!'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _addTrustedContact() async {
     final result = await showDialog<Map<String, String>>(
       context: context,
@@ -698,94 +680,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                 ),
               ),
               SizedBox(height: 20),
-
-              // Advanced Settings Card
-              if (_findMeEnabled) ...[
-                Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.white, Colors.blue.shade50],
-                      ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF0D47A1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  Icons.settings,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              Text(
-                                'Advanced Settings',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0D47A1),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 20),
-                          _buildModernSwitchTile(
-                            'Share with Trusted Contacts',
-                            'Allow trusted contacts to view your location when family sharing is enabled',
-                            _shareWithContacts,
-                            (value) {
-                              setState(() => _shareWithContacts = value);
-                              _updateSetting('shareWithContacts', value);
-                            },
-                            Icons.contacts,
-                          ),
-                          SizedBox(height: 16),
-                          _buildModernSwitchTile(
-                            'High Accuracy Mode',
-                            'More precise location but higher battery usage',
-                            _highAccuracyMode,
-                            (value) {
-                              setState(() => _highAccuracyMode = value);
-                              _updateSetting('highAccuracyMode', value);
-                            },
-                            Icons.gps_fixed,
-                          ),
-                          SizedBox(height: 16),
-                          _buildModernSwitchTile(
-                            'Family Location Sharing',
-                            'Allow family members to see your location continuously',
-                            _familySharingEnabled,
-                            (value) {
-                              setState(() => _familySharingEnabled = value);
-                              _updateSetting('familySharingEnabled', value);
-                            },
-                            Icons.family_restroom,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-              ],
-
               // Trusted Contacts Card
               Card(
                 elevation: 8,

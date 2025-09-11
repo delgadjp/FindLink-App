@@ -1339,7 +1339,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     Function(String?) onChanged,
     IconData icon,
   ) {
-    final fieldKey = _fieldKeys[label.toLowerCase().replaceAll(' ', '')];
+    // Map label to correct key in _fieldKeys
+    String? keyName;
+    switch (label) {
+      case "Gender":
+        keyName = 'gender';
+        break;
+      case "Age Range":
+        keyName = 'ageRange';
+        break;
+      case "Height Range":
+        keyName = 'heightRange';
+        break;
+      case "Hair Color":
+        keyName = 'hairColor';
+        break;
+      default:
+        keyName = label.toLowerCase().replaceAll(' ', '');
+    }
+    final fieldKey = _fieldKeys[keyName];
     
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
