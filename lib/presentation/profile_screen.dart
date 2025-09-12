@@ -23,6 +23,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _casesData = [];
   int _selectedCaseIndex = 0;
   
+  // Lifting form notification state
+  List<Map<String, dynamic>> _liftingForms = [];
+  int _unseenLiftingFormsCount = 0;
+  bool _hasNewLiftingForms = false;
+  
   // Stream subscriptions for real-time updates
   List<StreamSubscription<QuerySnapshot>> _streamSubscriptions = [];
     // Status progression steps
@@ -52,6 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _fetchUserData();
     _initializeCaseStreams();
+    _updateLiftingForms(); // Load lifting forms on screen init
   }
 
   @override
@@ -163,6 +169,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .where('userId', isEqualTo: currentUser.uid)
         .snapshots();
 
+    // Stream from liftingform collection for notifications
+    final liftingFormStream = FirebaseFirestore.instance
+        .collection('liftingform')
+        .where('userId', isEqualTo: currentUser.uid)
+        .snapshots();
+
     // Add stream subscriptions
     _streamSubscriptions.add(
       incidentsStream.listen((snapshot) => _updateCasesData())
@@ -174,6 +186,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     _streamSubscriptions.add(
       archivedCasesStream.listen((snapshot) => _updateCasesData())
+    );
+    
+    _streamSubscriptions.add(
+      liftingFormStream.listen((snapshot) => _updateLiftingForms())
     );
   }
   // Update cases data from all collections
@@ -256,6 +272,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     } catch (e) {
       print('Error updating user cases: $e');
+    }
+  }
+  
+  // Update lifting forms data for notifications
+  Future<void> _updateLiftingForms() async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      final QuerySnapshot liftingFormsQuery = await FirebaseFirestore.instance
+          .collection('liftingform')
+          .where('userId', isEqualTo: currentUser.uid)
+          .orderBy('datetime_reported', descending: true)
+          .get();
+
+      final List<Map<String, dynamic>> forms = [];
+      for (final doc in liftingFormsQuery.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        forms.add({
+          'id': doc.id,
+          'liftingId': data['LiftingId'] ?? doc.id,
+          'missingPersonName': data['missingPersonName'] ?? 'Unknown',
+          'reporterName': data['reporterName'] ?? 'Unknown Reporter',
+          'address': data['address'] ?? 'Unknown Address',
+          'date': data['date'] ?? '',
+          'datetime_reported': data['datetime_reported'],
+          'imageUrl': data['imageUrl'] ?? '',
+          'whereaboutsDescription': data['whereaboutsDescription'] ?? '',
+          'rawData': data,
+        });
+      }
+
+      setState(() {
+        _liftingForms = forms;
+        _unseenLiftingFormsCount = forms.length; // For now, count all as unseen
+        _hasNewLiftingForms = forms.isNotEmpty;
+      });
+    } catch (e) {
+      print('Error updating lifting forms: $e');
     }
   }
   
@@ -523,6 +578,244 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (shouldLogOut == true) {
       await AuthService().signOutUser(context);
     }
+  }
+
+  // Show lifting forms dialog
+  void _showLiftingFormsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF0D47A1),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.assignment_outlined,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Lifting Forms',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                // Content
+                Flexible(
+                  child: _liftingForms.isEmpty
+                      ? Container(
+                          padding: EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.assignment_outlined,
+                                size: 64,
+                                color: Colors.grey.shade400,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No lifting forms available',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _liftingForms.length,
+                          itemBuilder: (context, index) {
+                            final form = _liftingForms[index];
+                            return _buildLiftingFormCard(form);
+                          },
+                        ),
+                ),
+                // Footer
+                Container(
+                  padding: EdgeInsets.all(16),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _unseenLiftingFormsCount = 0;
+                        _hasNewLiftingForms = false;
+                      });
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF0D47A1),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Mark All as Read'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Build lifting form card widget
+  Widget _buildLiftingFormCard(Map<String, dynamic> form) {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with lifting ID
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF0D47A1).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Color(0xFF0D47A1), width: 1),
+                  ),
+                  child: Text(
+                    form['liftingId'] ?? 'Unknown ID',
+                    style: TextStyle(
+                      color: Color(0xFF0D47A1),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Spacer(),
+                Text(
+                  form['date'] ?? '',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            
+            // Missing person info
+            Row(
+              children: [
+                Icon(Icons.person, color: Colors.blue.shade700, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    form['missingPersonName'] ?? 'Unknown Person',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            
+            // Reporter info
+            Row(
+              children: [
+                Icon(Icons.person_outline, color: Colors.grey.shade600, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Reporter: ${form['reporterName'] ?? 'Unknown'}',
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            
+            // Address
+            Row(
+              children: [
+                Icon(Icons.location_on_outlined, color: Colors.grey.shade600, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    form['address'] ?? 'Unknown Address',
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            // Whereabouts description if available
+            if (form['whereaboutsDescription'] != null && form['whereaboutsDescription'].isNotEmpty) ...[
+              SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, color: Colors.grey.shade600, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      form['whereaboutsDescription'],
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   // Function to get verification status color
@@ -1206,6 +1499,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+      floatingActionButton: _hasNewLiftingForms ? FloatingActionButton(
+        onPressed: () {
+          _showLiftingFormsDialog();
+        },
+        backgroundColor: Color(0xFF0D47A1),
+        child: Stack(
+          children: [
+            Icon(
+              Icons.notifications,
+              color: Colors.white,
+            ),
+            if (_unseenLiftingFormsCount > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    _unseenLiftingFormsCount.toString(),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ) : null,
     );
   }
 
