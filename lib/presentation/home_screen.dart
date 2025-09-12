@@ -77,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0, // Remove shadow
+        automaticallyImplyLeading: false, // Remove back button
         title: Text(
           "Home",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
