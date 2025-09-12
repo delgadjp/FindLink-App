@@ -23,10 +23,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _casesData = [];
   int _selectedCaseIndex = 0;
   
-  // Lifting form notification state
+  // Lifting form notifications
+  int _unreadLiftingFormsCount = 0;
   List<Map<String, dynamic>> _liftingForms = [];
-  int _unseenLiftingFormsCount = 0;
-  bool _hasNewLiftingForms = false;
   
   // Stream subscriptions for real-time updates
   List<StreamSubscription<QuerySnapshot>> _streamSubscriptions = [];
@@ -57,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _fetchUserData();
     _initializeCaseStreams();
-    _updateLiftingForms(); // Load lifting forms on screen init
+    _updateLiftingFormNotifications();
   }
 
   @override
@@ -189,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     
     _streamSubscriptions.add(
-      liftingFormStream.listen((snapshot) => _updateLiftingForms())
+      liftingFormStream.listen((snapshot) => _updateLiftingFormNotifications())
     );
   }
   // Update cases data from all collections
@@ -275,42 +274,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
   
-  // Update lifting forms data for notifications
-  Future<void> _updateLiftingForms() async {
+  // Update lifting form notifications
+  Future<void> _updateLiftingFormNotifications() async {
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      final QuerySnapshot liftingFormsQuery = await FirebaseFirestore.instance
+      final QuerySnapshot liftingFormQuery = await FirebaseFirestore.instance
           .collection('liftingform')
           .where('userId', isEqualTo: currentUser.uid)
           .orderBy('datetime_reported', descending: true)
           .get();
 
-      final List<Map<String, dynamic>> forms = [];
-      for (final doc in liftingFormsQuery.docs) {
+      final List<Map<String, dynamic>> liftingForms = [];
+      for (final doc in liftingFormQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        forms.add({
+        liftingForms.add({
           'id': doc.id,
-          'liftingId': data['LiftingId'] ?? doc.id,
-          'missingPersonName': data['missingPersonName'] ?? 'Unknown',
-          'reporterName': data['reporterName'] ?? 'Unknown Reporter',
-          'address': data['address'] ?? 'Unknown Address',
-          'date': data['date'] ?? '',
+          'liftingId': data['LiftingId'] ?? '',
+          'missingPersonName': data['missingPersonName'] ?? '',
+          'reporterName': data['reporterName'] ?? '',
           'datetime_reported': data['datetime_reported'],
-          'imageUrl': data['imageUrl'] ?? '',
-          'whereaboutsDescription': data['whereaboutsDescription'] ?? '',
+          'address': data['address'] ?? '',
           'rawData': data,
         });
       }
 
       setState(() {
-        _liftingForms = forms;
-        _unseenLiftingFormsCount = forms.length; // For now, count all as unseen
-        _hasNewLiftingForms = forms.isNotEmpty;
+        _liftingForms = liftingForms;
+        _unreadLiftingFormsCount = liftingForms.length;
       });
     } catch (e) {
-      print('Error updating lifting forms: $e');
+      print('Error updating lifting form notifications: $e');
     }
   }
   
@@ -580,244 +575,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Show lifting forms dialog
-  void _showLiftingFormsDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF0D47A1),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.assignment_outlined,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Lifting Forms',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(Icons.close, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                // Content
-                Flexible(
-                  child: _liftingForms.isEmpty
-                      ? Container(
-                          padding: EdgeInsets.all(40),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.assignment_outlined,
-                                size: 64,
-                                color: Colors.grey.shade400,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'No lifting forms available',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _liftingForms.length,
-                          itemBuilder: (context, index) {
-                            final form = _liftingForms[index];
-                            return _buildLiftingFormCard(form);
-                          },
-                        ),
-                ),
-                // Footer
-                Container(
-                  padding: EdgeInsets.all(16),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _unseenLiftingFormsCount = 0;
-                        _hasNewLiftingForms = false;
-                      });
-                      Navigator.of(context).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF0D47A1),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text('Mark All as Read'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Build lifting form card widget
-  Widget _buildLiftingFormCard(Map<String, dynamic> form) {
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with lifting ID
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF0D47A1).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Color(0xFF0D47A1), width: 1),
-                  ),
-                  child: Text(
-                    form['liftingId'] ?? 'Unknown ID',
-                    style: TextStyle(
-                      color: Color(0xFF0D47A1),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Spacer(),
-                Text(
-                  form['date'] ?? '',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            
-            // Missing person info
-            Row(
-              children: [
-                Icon(Icons.person, color: Colors.blue.shade700, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    form['missingPersonName'] ?? 'Unknown Person',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            
-            // Reporter info
-            Row(
-              children: [
-                Icon(Icons.person_outline, color: Colors.grey.shade600, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Reporter: ${form['reporterName'] ?? 'Unknown'}',
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            
-            // Address
-            Row(
-              children: [
-                Icon(Icons.location_on_outlined, color: Colors.grey.shade600, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    form['address'] ?? 'Unknown Address',
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            // Whereabouts description if available
-            if (form['whereaboutsDescription'] != null && form['whereaboutsDescription'].isNotEmpty) ...[
-              SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, color: Colors.grey.shade600, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      form['whereaboutsDescription'],
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   // Function to get verification status color
   Color _getVerificationStatusColor() {
     switch (_verificationStatus) {
@@ -844,6 +601,847 @@ class _ProfileScreenState extends State<ProfileScreen> {
       default:
         return Icons.person_off;
     }
+  }
+
+  // Show lifting form notifications dialog
+  void _showLiftingFormNotifications() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 16,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  spreadRadius: 5,
+                  blurRadius: 15,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Enhanced Header
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.flash_on,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Flash Alarm Lifting Requests',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            Text(
+                              'Recent notifications received',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_unreadLiftingFormsCount > 0)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                          child: Text(
+                            '$_unreadLiftingFormsCount',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                
+                // Content Area
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    child: _liftingForms.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _liftingForms.length,
+                            itemBuilder: (context, index) {
+                              final liftingForm = _liftingForms[index];
+                              return _buildLiftingFormCard(liftingForm);
+                            },
+                          ),
+                  ),
+                ),
+                
+                // Action Buttons
+                Container(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (_unreadLiftingFormsCount > 0)
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _unreadLiftingFormsCount = 0;
+                              });
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('All notifications marked as read'),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            icon: Icon(Icons.mark_as_unread, size: 18),
+                            label: Text('Mark as Read'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Color(0xFF0D47A1),
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      if (_unreadLiftingFormsCount > 0) SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: Icon(Icons.close, size: 18),
+                          label: Text('Close'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF0D47A1),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Enhanced empty state widget
+  Widget _buildEmptyState() {
+    return Container(
+      padding: EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.flash_off,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          SizedBox(height: 24),
+          Text(
+            'No Flash Alarm Requests',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'You don\'t have any lifting form notifications at the moment.',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'New requests will appear here when they are received.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build individual lifting form card
+  Widget _buildLiftingFormCard(Map<String, dynamic> liftingForm) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with gradient background
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0D47A1).withOpacity(0.1), Color(0xFF1565C0).withOpacity(0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF0D47A1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'ID: ${liftingForm['liftingId']}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  Spacer(),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.flash_on, size: 12, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'URGENT',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Main content
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image and person info row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Enhanced image container
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Color(0xFF0D47A1), width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFF0D47A1).withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: liftingForm['rawData']['imageUrl'] != null && 
+                                 liftingForm['rawData']['imageUrl'].toString().isNotEmpty
+                              ? Image.network(
+                                  liftingForm['rawData']['imageUrl'],
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.shade100,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.person,
+                                            size: 40,
+                                            color: Colors.grey.shade400,
+                                          ),
+                                          Text(
+                                            'No Image',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      color: Colors.grey.shade100,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0D47A1)),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  color: Colors.grey.shade100,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.person,
+                                        size: 40,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      Text(
+                                        'No Image',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey.shade500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      
+                      // Person info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              liftingForm['missingPersonName'] ?? 'Unknown Person',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.person_outline, size: 14, color: Colors.blue.shade700),
+                                  SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      'Reporter: ${liftingForm['reporterName'] ?? 'Unknown'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.blue.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            if (liftingForm['datetime_reported'] != null)
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.access_time, size: 14, color: Colors.green.shade700),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Received: ${_formatTimestamp(liftingForm['datetime_reported'])}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // Enhanced View Details Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _showLiftingFormDetails(liftingForm);
+                      },
+                      icon: Icon(Icons.visibility, size: 20),
+                      label: Text(
+                        'View Details',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF0D47A1),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                        shadowColor: Color(0xFF0D47A1).withOpacity(0.3),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Show lifting form details dialog
+  void _showLiftingFormDetails(Map<String, dynamic> liftingForm) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 16,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  spreadRadius: 5,
+                  blurRadius: 15,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Enhanced Header
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.info_outline,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Lifting Request Details',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            Text(
+                              'ID: ${liftingForm['liftingId']}',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Content Area
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Person image and name section
+                        Center(
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Color(0xFF0D47A1), width: 3),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0xFF0D47A1).withOpacity(0.2),
+                                      spreadRadius: 2,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(13),
+                                  child: liftingForm['rawData']['imageUrl'] != null && 
+                                         liftingForm['rawData']['imageUrl'].toString().isNotEmpty
+                                      ? Image.network(
+                                          liftingForm['rawData']['imageUrl'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.grey.shade100,
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.person,
+                                                    size: 50,
+                                                    color: Colors.grey.shade400,
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Text(
+                                                    'No Image',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey.shade500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          color: Colors.grey.shade100,
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.person,
+                                                size: 50,
+                                                color: Colors.grey.shade400,
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'No Image',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xFF0D47A1).withOpacity(0.1), Color(0xFF1565C0).withOpacity(0.05)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.2)),
+                                ),
+                                child: Text(
+                                  liftingForm['missingPersonName'] ?? 'Unknown Person',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        
+                        // Details section
+                        Text(
+                          'Request Information',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0D47A1),
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        
+                        _buildEnhancedDetailRow('Lifting ID', liftingForm['liftingId'] ?? 'N/A', Icons.badge),
+                        _buildEnhancedDetailRow('Reporter Name', liftingForm['reporterName'] ?? 'N/A', Icons.person_outline),
+                        _buildEnhancedDetailRow('Address', liftingForm['address'] ?? 'N/A', Icons.location_on),
+                        _buildEnhancedDetailRow(
+                          'Date Reported', 
+                          liftingForm['datetime_reported'] != null 
+                              ? _formatTimestamp(liftingForm['datetime_reported'])
+                              : 'N/A',
+                          Icons.calendar_today
+                        ),
+                        _buildEnhancedDetailRow(
+                          'Flash Alarm Date', 
+                          liftingForm['rawData']['flashAlarmDate'] ?? 'N/A',
+                          Icons.flash_on
+                        ),
+                        if (liftingForm['rawData']['missingDate'] != null)
+                          _buildEnhancedDetailRow('Missing Date', liftingForm['rawData']['missingDate'], Icons.event),
+                        if (liftingForm['rawData']['missingTime'] != null)
+                          _buildEnhancedDetailRow('Missing Time', liftingForm['rawData']['missingTime'], Icons.access_time),
+                        if (liftingForm['rawData']['whereaboutsDescription'] != null && 
+                            liftingForm['rawData']['whereaboutsDescription'].toString().isNotEmpty)
+                          _buildEnhancedDetailRow('Last Known Location', liftingForm['rawData']['whereaboutsDescription'], Icons.my_location),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Action Button
+                Container(
+                  padding: EdgeInsets.all(20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close, size: 20),
+                      label: Text(
+                        'Close',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF0D47A1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Enhanced helper method to build detail rows
+  Widget _buildEnhancedDetailRow(String label, String value, IconData icon) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF0D47A1).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 16,
+                    color: Color(0xFF0D47A1),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF0D47A1),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -1499,45 +2097,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      floatingActionButton: _hasNewLiftingForms ? FloatingActionButton(
-        onPressed: () {
-          _showLiftingFormsDialog();
-        },
-        backgroundColor: Color(0xFF0D47A1),
-        child: Stack(
-          children: [
-            Icon(
-              Icons.notifications,
-              color: Colors.white,
+      floatingActionButton: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFF0D47A1).withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            if (_unseenLiftingFormsCount > 0)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  constraints: BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    _unseenLiftingFormsCount.toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+            child: FloatingActionButton(
+              onPressed: () {
+                // Show lifting form notifications
+                _showLiftingFormNotifications();
+              },
+              backgroundColor: Color(0xFF0D47A1),
+              elevation: 8,
+              child: Icon(
+                Icons.notifications_active,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+          if (_unreadLiftingFormsCount > 0)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.5),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
                     ),
-                    textAlign: TextAlign.center,
+                  ],
+                ),
+                constraints: BoxConstraints(
+                  minWidth: 24,
+                  minHeight: 24,
+                ),
+                child: Text(
+                  '$_unreadLiftingFormsCount',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-          ],
-        ),
-      ) : null,
+            ),
+        ],
+      ),
     );
   }
 
