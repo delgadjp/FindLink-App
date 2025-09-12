@@ -52,6 +52,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   @override
   void initState() {
     super.initState();
+    // Pre-populate the missing person name from the case data
+    _missingPersonNameController.text = widget.caseName;
     // Show data privacy modal every time the screen is opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showCompliance();
@@ -325,18 +327,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
   Future<void> _submitEvidence() async {
     // Validation with auto-scroll to error fields
-    final missingPersonName = _missingPersonNameController.text;
     final statement = _statementController.text;
-    
-    // Check missing person name - empty or only whitespace
-    if (!_isValidTextInput(missingPersonName)) {
-      if (missingPersonName.isEmpty) {
-        _scrollToErrorField(_missingPersonNameKey, 'Missing person name is required');
-      } else if (_isOnlyWhitespace(missingPersonName)) {
-        _scrollToErrorField(_missingPersonNameKey, 'Missing person name cannot contain only spaces');
-      }
-      return;
-    }
     
     if (_selectedImages.isEmpty) {
       _scrollToErrorField(_photoEvidenceKey, 'Photo evidence is required');
@@ -834,24 +825,22 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                               ),
                               child: TextField(
                                 controller: _missingPersonNameController,
-                                style: TextStyle(fontSize: 16, color: Colors.black),
-                                inputFormatters: [
-                                  NoOnlyWhitespaceFormatter(),
-                                ],
+                                readOnly: true,
+                                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                                 decoration: InputDecoration(
-                                  hintText: 'Enter missing person\'s full name',
+                                  hintText: 'Missing person\'s name (auto-filled)',
                                   hintStyle: TextStyle(color: Colors.grey.shade500),
-                                  helperText: 'Name cannot be empty or contain only spaces',
+                                  helperText: 'This field is automatically filled from case data',
                                   helperStyle: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                   filled: true,
-                                  fillColor: Colors.white,
+                                  fillColor: Colors.grey.shade50,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
+                                    borderSide: BorderSide(color: Colors.grey.shade300),
                                   ),
-                                  focusedBorder: OutlineInputBorder(
+                                  enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Color(0xFF0D47A1), width: 2),
+                                    borderSide: BorderSide(color: Colors.grey.shade300),
                                   ),
                                   contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                                 ),
