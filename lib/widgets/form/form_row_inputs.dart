@@ -42,6 +42,10 @@ class FormRowInputs extends StatelessWidget {
         // Handle date dropdown fields for date of birth
         else if (field['label'] == 'DATE OF BIRTH' && field['isDateDropdown'] == true) {
           return _buildDateDropdownField(field, fieldKey);
+        }
+        // Handle incident date+time field
+        else if (field['label'] == 'DATE/TIME OF INCIDENT' && field['isIncidentDateTime'] == true) {
+          return _buildIncidentDateTimeField(field, fieldKey);
         }        // Handle standard fields
         return CustomInputField(
           key: fieldKey, // Pass the extracted key to the CustomInputField
@@ -744,6 +748,93 @@ class FormRowInputs extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildIncidentDateTimeField(Map<String, dynamic> field, Key? key) {
+    // Get the callback functions passed from the parent
+    final void Function() onTap = field['onTap'];
+    final String displayText = field['displayText'] ?? 'Select Date & Time';
+    
+    return Expanded(
+      key: key,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 35,
+              child: Row(
+                children: [
+                  Text(
+                    '* ',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      field['label'],
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        color: Colors.black,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 35,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color.fromARGB(255, 188, 188, 188)),
+                  borderRadius: BorderRadius.circular(5),
+                  color: Colors.white,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(5),
+                    onTap: onTap,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.event_note,
+                            color: Color(0xFF0D47A1),
+                            size: 16,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              displayText,
+                              style: TextStyle(
+                                color: displayText != 'Select Date & Time' 
+                                    ? Colors.black87 
+                                    : Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

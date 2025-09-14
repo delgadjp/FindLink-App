@@ -528,6 +528,12 @@ class FillUpForm extends State<FillUpFormScreen> {
   int? selectedDayVictim;
   int? selectedMonthVictim;
   int? selectedYearVictim;
+  
+  // Date and time dropdown variables for incident date/time
+  int? selectedDayIncident;
+  int? selectedMonthIncident;
+  int? selectedYearIncident;
+  TimeOfDay? selectedTimeIncident;
 
   // Combined state for FormRowInputs
   Map<String, dynamic> formState = {};
@@ -588,6 +594,37 @@ class FillUpForm extends State<FillUpFormScreen> {
     updateFormState();
   }
   
+  // Update incident date and time controller from dropdown and time selections
+  void _updateIncidentDateTimeFromDropdowns() {
+    if (selectedDayIncident != null && selectedMonthIncident != null && selectedYearIncident != null && selectedTimeIncident != null) {
+      try {
+        final incidentDate = DateTime(
+          selectedYearIncident!, 
+          selectedMonthIncident!, 
+          selectedDayIncident!,
+          selectedTimeIncident!.hour,
+          selectedTimeIncident!.minute,
+        );
+        
+        // Update the dateTimeIncident variable and controllers
+        setState(() {
+          dateTimeIncident = incidentDate;
+          _dateTimeIncidentController.text = _formatDateTime(incidentDate);
+          _dateTimeIncidentDController.text = _formatDateTime(incidentDate);
+        });
+      } catch (e) {
+        print('Error creating incident date time: $e');
+      }
+    } else {
+      setState(() {
+        dateTimeIncident = null;
+        _dateTimeIncidentController.text = '';
+        _dateTimeIncidentDController.text = '';
+      });
+    }
+    updateFormState();
+  }
+  
   // Generate list of days based on selected month and year for reporting person
   List<int> _getDaysInMonthReporting() {
     if (selectedMonthReporting == null || selectedYearReporting == null) {
@@ -622,6 +659,30 @@ class FillUpForm extends State<FillUpFormScreen> {
     switch (selectedMonthVictim!) {
       case 2: // February
         daysInMonth = (_isLeapYear(selectedYearVictim!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  // Generate list of days based on selected month and year for incident
+  List<int> _getDaysInMonthIncident() {
+    if (selectedMonthIncident == null || selectedYearIncident == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonthIncident!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYearIncident!) ? 29 : 28);
         break;
       case 4:
       case 6:
@@ -1147,6 +1208,437 @@ class FillUpForm extends State<FillUpFormScreen> {
         onDateTimeSelected(selectedDateTime);
         controller.text = _formatDateTime(selectedDateTime);
       }
+    }
+  }
+
+  // Incident date and time picker function using dropdown date + time picker
+  void _pickIncidentDateTime() {
+    // Get initial values from current dateTimeIncident or use current date/time
+    DateTime now = DateTime.now();
+    DateTime initialDate = dateTimeIncident ?? now;
+    if (initialDate.isAfter(now)) {
+      initialDate = now;
+    }
+    
+    // If we have an existing incident date, use its values as initial selection
+    if (dateTimeIncident != null) {
+      selectedDayIncident = dateTimeIncident!.day;
+      selectedMonthIncident = dateTimeIncident!.month;
+      selectedYearIncident = dateTimeIncident!.year;
+      selectedTimeIncident = TimeOfDay.fromDateTime(dateTimeIncident!);
+    } else {
+      // Use current date/time as default
+      selectedDayIncident = initialDate.day;
+      selectedMonthIncident = initialDate.month;
+      selectedYearIncident = initialDate.year;
+      selectedTimeIncident = TimeOfDay.fromDateTime(initialDate);
+    }
+    
+    // Show date+time picker dialog
+    _showIncidentDateTimePickerDialog();
+  }
+
+  // Show date+time picker dialog for incident
+  void _showIncidentDateTimePickerDialog() {
+    // Track local state for the dialog
+    int? localMonth = selectedMonthIncident;
+    int? localDay = selectedDayIncident;
+    int? localYear = selectedYearIncident;
+    TimeOfDay? localTime = selectedTimeIncident;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              child: Container(
+                width: 400,
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.event_note,
+                          color: Color(0xFF0D47A1),
+                          size: 24,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Select Date & Time',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0D47A1),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+                    
+                    // Date section
+                    Text(
+                      'Date',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    
+                    // Date selection row
+                    Row(
+                      children: [
+                        // Month dropdown
+                        Expanded(
+                          flex: 5,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localMonth,
+                              decoration: InputDecoration(
+                                labelText: 'Month',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: List.generate(12, (index) {
+                                int month = index + 1;
+                                List<String> monthNames = [
+                                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                ];
+                                return DropdownMenuItem<int>(
+                                  value: month,
+                                  child: Text(
+                                    '${month.toString().padLeft(2, '0')} - ${monthNames[index]}',
+                                    style: TextStyle(fontSize: 12, color: Colors.black),
+                                  ),
+                                );
+                              }),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localMonth = newValue;
+                                  // Reset day if current day is not valid for new month
+                                  if (localDay != null && localYear != null && newValue != null) {
+                                    int daysInMonth = _getDaysInSelectedMonth(newValue, localYear!);
+                                    if (localDay! > daysInMonth) {
+                                      localDay = daysInMonth;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Day dropdown
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localDay,
+                              decoration: InputDecoration(
+                                labelText: 'Day',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: localMonth != null && localYear != null ? 
+                                List.generate(_getDaysInSelectedMonth(localMonth!, localYear!), (index) {
+                                int day = index + 1;
+                                return DropdownMenuItem<int>(
+                                  value: day,
+                                  child: Text(day.toString().padLeft(2, '0'), style: TextStyle(fontSize: 12, color: Colors.black)),
+                                );
+                              }) : [],
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localDay = newValue;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Year dropdown
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localYear,
+                              decoration: InputDecoration(
+                                labelText: 'Year',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: List.generate(25, (index) {
+                                int year = DateTime.now().year - index;
+                                return DropdownMenuItem<int>(
+                                  value: year,
+                                  child: Text(year.toString(), style: TextStyle(fontSize: 12, color: Colors.black)),
+                                );
+                              }),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localYear = newValue;
+                                  // Reset day if current day is not valid for new year
+                                  if (localDay != null && localMonth != null && newValue != null) {
+                                    int daysInMonth = _getDaysInSelectedMonth(localMonth!, newValue);
+                                    if (localDay! > daysInMonth) {
+                                      localDay = daysInMonth;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Time section
+                    Text(
+                      'Time',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    
+                    // Time picker button
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            final TimeOfDay? pickedTime = await showTimePicker(
+                              context: dialogContext,
+                              initialTime: localTime ?? TimeOfDay.now(),
+                            );
+                            if (pickedTime != null) {
+                              setState(() {
+                                localTime = pickedTime;
+                              });
+                            }
+                          },
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  color: Color(0xFF0D47A1),
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  localTime != null 
+                                    ? localTime!.format(context)
+                                    : 'Select Time',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: localTime != null ? Colors.black87 : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Selected date and time preview
+                    if (localMonth != null && localDay != null && localYear != null && localTime != null)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF0D47A1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Selected Date & Time:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${localMonth.toString().padLeft(2, '0')}/${localDay.toString().padLeft(2, '0')}/$localYear ${localTime!.format(context)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: (localMonth != null && localDay != null && localYear != null && localTime != null) ? () {
+                            // Validate that the selected date/time is not in the future
+                            final selectedDateTime = DateTime(
+                              localYear!,
+                              localMonth!,
+                              localDay!,
+                              localTime!.hour,
+                              localTime!.minute,
+                            );
+                            
+                            final now = DateTime.now();
+                            if (selectedDateTime.isAfter(now)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Future date/time not allowed. Please select a past date and time.'),
+                                  backgroundColor: Colors.red,
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                              return;
+                            }
+                            
+                            // Update the actual values
+                            this.setState(() {
+                              selectedMonthIncident = localMonth;
+                              selectedDayIncident = localDay;
+                              selectedYearIncident = localYear;
+                              selectedTimeIncident = localTime;
+                            });
+                            _updateIncidentDateTimeFromDropdowns();
+                            Navigator.of(dialogContext).pop();
+                          } : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF0D47A1),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Helper to get days in a specific month and year (for dialog)
+  int _getDaysInSelectedMonth(int month, int year) {
+    switch (month) {
+      case 2: // February
+        return (_isLeapYear(year) ? 29 : 28);
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        return 30;
+      default:
+        return 31;
     }
   }
 
@@ -3124,20 +3616,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'DATE/TIME OF INCIDENT',
                               'required': true,
-                              'controller': _dateTimeIncidentController,
-                              'readOnly': true,
+                              'isIncidentDateTime': true,
                               'key': _getOrCreateKey('DATE/TIME OF INCIDENT'),
+                              'displayText': dateTimeIncident != null 
+                                ? _formatDateTime(dateTimeIncident!)
+                                : 'Select Date & Time',
                               'onTap': () {
-                                _pickDateTime(
-                                  _dateTimeIncidentController,
-                                  dateTimeIncident,
-                                  (DateTime selectedDateTime) {
-                                    setState(() {
-                                      dateTimeIncident = selectedDateTime;
-                                      _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
-                                    });
-                                  },
-                                );
+                                _pickIncidentDateTime();
                               },
                             },
                             {
