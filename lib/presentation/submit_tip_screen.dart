@@ -99,6 +99,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   String? selectedHairColor;
   String? selectedAgeRange;
   String? selectedHeightRange; // Add selected height range
+  
+  // Date dropdown variables for date last seen
+  int? selectedDay;
+  int? selectedMonth;
+  int? selectedYear;
 
   final List<String> genderOptions = ['Male', 'Female', 'Prefer not to say'];
   final List<String> hairColors = [
@@ -151,6 +156,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     super.initState();
     _getCurrentLocation();
     checkScreenCompliance();
+    _setDefaultDateToToday();
+  }
+
+  // Set default date to today for convenience
+  void _setDefaultDateToToday() {
+    final now = DateTime.now();
+    setState(() {
+      selectedDay = now.day;
+      selectedMonth = now.month;
+      selectedYear = now.year;
+    });
+    // Update the date controller and tip data
+    _updateDateFromDropdowns();
   }
 
   // Check compliance for submit tip screen
@@ -293,6 +311,47 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       });
     }
   }
+  
+  // Update date controller from dropdown selections
+  void _updateDateFromDropdowns() {
+    if (selectedDay != null && selectedMonth != null && selectedYear != null) {
+      final dateStr = "${selectedYear!.toString().padLeft(4, '0')}-${selectedMonth!.toString().padLeft(2, '0')}-${selectedDay!.toString().padLeft(2, '0')}";
+      _dateLastSeenController.text = dateStr;
+      tipData['dateLastSeen'] = dateStr;
+    } else {
+      _dateLastSeenController.text = '';
+      tipData['dateLastSeen'] = '';
+    }
+  }
+  
+  // Generate list of days based on selected month and year
+  List<int> _getDaysInMonth() {
+    if (selectedMonth == null || selectedYear == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonth!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYear!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  bool _isLeapYear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+  }
+  
   void _updateMarkerAndControllers() {
     if (selectedLocation != null) {
       markers.clear();
@@ -555,9 +614,24 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     // Check form validation state
     final bool isValid = _formKey.currentState?.validate() ?? false;
     
-    if (!isValid) {
+    // Additional validation for date dropdowns
+    bool dateDropdownValid = selectedDay != null && selectedMonth != null && selectedYear != null;
+    
+    if (!isValid || !dateDropdownValid) {
       // Find the first field with an error and scroll to it
       GlobalKey<FormFieldState>? firstErrorKey;
+      
+      // Check date dropdowns first if they're incomplete
+      if (!dateDropdownValid) {
+        // Show error message for incomplete date
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please select a complete date (month, day, and year)'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
       
       for (final entry in _fieldKeys.entries) {
         final fieldState = entry.value.currentState;
@@ -979,7 +1053,137 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSectionHeader("Sighting Details"),
-                        _buildTextField(_dateLastSeenController, "Date Last Seen", icon: Icons.calendar_today),
+                        // Date Last Seen dropdown
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Date Last Seen',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_today, color: Color(0xFF0D47A1), size: 20),
+                                    SizedBox(width: 10),
+                                    // Month dropdown
+                                    Expanded(
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<int>(
+                                          value: selectedMonth,
+                                          hint: Text('Month', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                                          style: TextStyle(color: Colors.black, fontSize: 14),
+                                          isExpanded: true,
+                                          icon: SizedBox.shrink(),
+                                          dropdownColor: Colors.white,
+                                          items: List.generate(12, (index) {
+                                            int month = index + 1;
+                                            List<String> monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                                                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                            return DropdownMenuItem<int>(
+                                              value: month,
+                                              child: Text(monthNames[index], style: TextStyle(color: Colors.black)),
+                                            );
+                                          }),
+                                          onChanged: (int? newValue) {
+                                            setState(() {
+                                              selectedMonth = newValue;
+                                              // Reset day if it's invalid for new month
+                                              if (selectedDay != null && selectedDay! > _getDaysInMonth().length) {
+                                                selectedDay = null;
+                                              }
+                                              _updateDateFromDropdowns();
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      height: 20,
+                                      width: 1,
+                                      color: Colors.grey.shade300,
+                                      margin: EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                    // Day dropdown
+                                    Expanded(
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<int>(
+                                          value: selectedDay,
+                                          hint: Text('Day', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                                          style: TextStyle(color: Colors.black, fontSize: 14),
+                                          isExpanded: true,
+                                          icon: SizedBox.shrink(),
+                                          dropdownColor: Colors.white,
+                                          items: _getDaysInMonth().map((day) {
+                                            return DropdownMenuItem<int>(
+                                              value: day,
+                                              child: Text('$day', style: TextStyle(color: Colors.black)),
+                                            );
+                                          }).toList(),
+                                          onChanged: (int? newValue) {
+                                            setState(() {
+                                              selectedDay = newValue;
+                                              _updateDateFromDropdowns();
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      height: 20,
+                                      width: 1,
+                                      color: Colors.grey.shade300,
+                                      margin: EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                    // Year dropdown
+                                    Expanded(
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<int>(
+                                          value: selectedYear,
+                                          hint: Text('Year', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                                          style: TextStyle(color: Colors.black, fontSize: 14),
+                                          isExpanded: true,
+                                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF0D47A1)),
+                                          dropdownColor: Colors.white,
+                                          items: List.generate(50, (index) {
+                                            int year = DateTime.now().year - index;
+                                            return DropdownMenuItem<int>(
+                                              value: year,
+                                              child: Text('$year', style: TextStyle(color: Colors.black)),
+                                            );
+                                          }),
+                                          onChanged: (int? newValue) {
+                                            setState(() {
+                                              selectedYear = newValue;
+                                              // Reset day if it's invalid for new year (leap year changes)
+                                              if (selectedDay != null && selectedDay! > _getDaysInMonth().length) {
+                                                selectedDay = null;
+                                              }
+                                              _updateDateFromDropdowns();
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         SizedBox(height: 16), // Added extra spacing here
                         _buildTextField(_timeLastSeenController, "Time Last Seen", icon: Icons.access_time),
                       ],

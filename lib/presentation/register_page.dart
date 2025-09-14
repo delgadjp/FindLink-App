@@ -1,6 +1,5 @@
 import '/core/app_export.dart';
 import '../widgets/step_indicator.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/gestures.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -20,6 +19,11 @@ class _RegisterPageState extends State<RegisterPage> {
   String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
   int? age;
+  
+  // Date dropdown variables
+  int? selectedDay;
+  int? selectedMonth;
+  int? selectedYear;
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -185,43 +189,54 @@ class _RegisterPageState extends State<RegisterPage> {
       age = calculatedAge;
     });
   }
+  
+  // Calculate age from dropdown selections
+  void _calculateAgeFromDropdowns() {
+    if (selectedDay != null && selectedMonth != null && selectedYear != null) {
+      final birthDate = DateTime(selectedYear!, selectedMonth!, selectedDay!);
+      setState(() {
+        selectedDate = birthDate;
+      });
+      _calculateAge(birthDate);
+    } else {
+      setState(() {
+        selectedDate = null;
+        age = null;
+      });
+    }
+  }
+  
+  // Generate list of days based on selected month and year
+  List<int> _getDaysInMonth() {
+    if (selectedMonth == null || selectedYear == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonth!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYear!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  bool _isLeapYear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+  }
 
   bool _validateEmail(String email) {
     final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegExp.hasMatch(email);
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime(DateTime.now().year - 18, DateTime.now().month, DateTime.now().day),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(), // Cannot pick future dates
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Color(0xFFFFD27E),
-              onPrimary: Color(0xFF424242),
-              surface: Colors.white,
-              onSurface: Color(0xFF424242),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: Color(0xFFFFD27E),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-        _calculateAge(picked);
-      });
-    }
   }
 
   // Method to scroll to the first validation error
@@ -234,7 +249,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _scrollToWidget(_middleNameKey);
       } else if (lastNameController.text.isEmpty) {
         _scrollToWidget(_lastNameKey);
-      } else if (selectedDate == null) {
+      } else if (selectedDay == null || selectedMonth == null || selectedYear == null) {
         _scrollToWidget(_dateOfBirthKey);
       } else if (emailController.text.isEmpty || !_validateEmail(emailController.text)) {
         _scrollToWidget(_emailKey);
@@ -274,11 +289,11 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
     
-    if (selectedDate == null) {
+    if (selectedDay == null || selectedMonth == null || selectedYear == null) {
       _scrollToWidget(_dateOfBirthKey);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select your date of birth'),
+          content: Text('Please select your complete date of birth'),
           backgroundColor: Colors.red,
         ),
       );
@@ -492,31 +507,121 @@ class _RegisterPageState extends State<RegisterPage> {
                                       children: [
                                         _buildInputLabel('Date of Birth'),
                                         SizedBox(height: 5),
-                                        InkWell(
+                                        Container(
                                           key: _dateOfBirthKey,
-                                          onTap: () => _selectDate(context),
-                                          child: Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius: BorderRadius.circular(10),
-                                                border: Border.all(color: Colors.grey.shade300),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.calendar_today, color: Color(0xFF53C0FF), size: 20),
-                                                  SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: Text(
-                                                      selectedDate == null ? 'Select date' : 
-                                                      DateFormat('MM/dd/yyyy').format(selectedDate!),
-                                                    style: TextStyle(
-                                                      color: selectedDate == null ? Colors.grey : Colors.black,
-                                                    ),
+                                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: Colors.grey.shade300),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.calendar_today, color: Color(0xFF53C0FF), size: 20),
+                                              SizedBox(width: 10),
+                                              // Month dropdown
+                                              Expanded(
+                                                flex: 3,
+                                                child: DropdownButtonHideUnderline(
+                                                  child: DropdownButton<int>(
+                                                    value: selectedMonth,
+                                                    hint: Text('Month', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                                    style: TextStyle(color: Colors.black, fontSize: 12),
+                                                    isExpanded: true,
+                                                    icon: SizedBox.shrink(),
+                                                    dropdownColor: Colors.white,
+                                                    items: List.generate(12, (index) {
+                                                      int month = index + 1;
+                                                      List<String> monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                                                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                                      return DropdownMenuItem<int>(
+                                                        value: month,
+                                                        child: Text(monthNames[index], style: TextStyle(color: Colors.black, fontSize: 12)),
+                                                      );
+                                                    }),
+                                                    onChanged: (int? newValue) {
+                                                      setState(() {
+                                                        selectedMonth = newValue;
+                                                        // Reset day if it's invalid for new month
+                                                        if (selectedDay != null && selectedDay! > _getDaysInMonth().length) {
+                                                          selectedDay = null;
+                                                        }
+                                                        _calculateAgeFromDropdowns();
+                                                      });
+                                                    },
                                                   ),
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                              Container(
+                                                height: 20,
+                                                width: 1,
+                                                color: Colors.grey.shade300,
+                                                margin: EdgeInsets.symmetric(horizontal: 6),
+                                              ),
+                                              // Day dropdown
+                                              Expanded(
+                                                flex: 2,
+                                                child: DropdownButtonHideUnderline(
+                                                  child: DropdownButton<int>(
+                                                    value: selectedDay,
+                                                    hint: Text('Day', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                                    style: TextStyle(color: Colors.black, fontSize: 12),
+                                                    isExpanded: true,
+                                                    icon: SizedBox.shrink(),
+                                                    dropdownColor: Colors.white,
+                                                    items: _getDaysInMonth().map((day) {
+                                                      return DropdownMenuItem<int>(
+                                                        value: day,
+                                                        child: Text('$day', style: TextStyle(color: Colors.black, fontSize: 12)),
+                                                      );
+                                                    }).toList(),
+                                                    onChanged: (int? newValue) {
+                                                      setState(() {
+                                                        selectedDay = newValue;
+                                                        _calculateAgeFromDropdowns();
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(
+                                                height: 20,
+                                                width: 1,
+                                                color: Colors.grey.shade300,
+                                                margin: EdgeInsets.symmetric(horizontal: 6),
+                                              ),
+                                              // Year dropdown
+                                              Expanded(
+                                                flex: 3,
+                                                child: DropdownButtonHideUnderline(
+                                                  child: DropdownButton<int>(
+                                                    value: selectedYear,
+                                                    hint: Text('Year', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                                    style: TextStyle(color: Colors.black, fontSize: 12),
+                                                    isExpanded: true,
+                                                    icon: Icon(Icons.arrow_drop_down, color: Color(0xFF53C0FF), size: 20),
+                                                    dropdownColor: Colors.white,
+                                                    items: List.generate(100, (index) {
+                                                      int year = DateTime.now().year - index;
+                                                      return DropdownMenuItem<int>(
+                                                        value: year,
+                                                        child: Text('$year', style: TextStyle(color: Colors.black, fontSize: 12)),
+                                                      );
+                                                    }),
+                                                    onChanged: (int? newValue) {
+                                                      setState(() {
+                                                        selectedYear = newValue;
+                                                        // Reset day if it's invalid for new year (leap year changes)
+                                                        if (selectedDay != null && selectedDay! > _getDaysInMonth().length) {
+                                                          selectedDay = null;
+                                                        }
+                                                        _calculateAgeFromDropdowns();
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
