@@ -504,7 +504,7 @@ class FormRowInputs extends StatelessWidget {
                       children: [
                         // Month dropdown
                         Expanded(
-                          flex: 4,
+                          flex: 5,
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
@@ -516,7 +516,7 @@ class FormRowInputs extends StatelessWidget {
                                 labelText: 'Month',
                                 labelStyle: TextStyle(
                                   color: Color(0xFF0D47A1),
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
@@ -554,11 +554,11 @@ class FormRowInputs extends StatelessWidget {
                             ),
                           ),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: 8),
                         
                         // Day dropdown
                         Expanded(
-                          flex: 2,
+                          flex: 4,
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
@@ -570,7 +570,7 @@ class FormRowInputs extends StatelessWidget {
                                 labelText: 'Day',
                                 labelStyle: TextStyle(
                                   color: Color(0xFF0D47A1),
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
@@ -598,11 +598,11 @@ class FormRowInputs extends StatelessWidget {
                             ),
                           ),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: 8),
                         
                         // Year dropdown
                         Expanded(
-                          flex: 3,
+                          flex: 4,
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
@@ -614,7 +614,7 @@ class FormRowInputs extends StatelessWidget {
                                 labelText: 'Year',
                                 labelStyle: TextStyle(
                                   color: Color(0xFF0D47A1),
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
