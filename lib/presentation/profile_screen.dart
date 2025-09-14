@@ -283,7 +283,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final QuerySnapshot liftingFormQuery = await FirebaseFirestore.instance
           .collection('liftingform')
           .where('userId', isEqualTo: currentUser.uid)
-          .orderBy('datetime_reported', descending: true)
           .get();
 
       final List<Map<String, dynamic>> liftingForms = [];
@@ -299,6 +298,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'rawData': data,
         });
       }
+
+      // Sort the results in memory instead of using orderBy in the query
+      liftingForms.sort((a, b) {
+        final aTime = a['datetime_reported'];
+        final bTime = b['datetime_reported'];
+        
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        
+        try {
+          DateTime dateA, dateB;
+          
+          if (aTime is Timestamp) {
+            dateA = aTime.toDate();
+          } else if (aTime is String) {
+            dateA = DateTime.parse(aTime);
+          } else {
+            return 1;
+          }
+          
+          if (bTime is Timestamp) {
+            dateB = bTime.toDate();
+          } else if (bTime is String) {
+            dateB = DateTime.parse(bTime);
+          } else {
+            return -1;
+          }
+          
+          return dateB.compareTo(dateA); // Descending order (newest first)
+        } catch (e) {
+          return 0;
+        }
+      });
 
       setState(() {
         _liftingForms = liftingForms;
