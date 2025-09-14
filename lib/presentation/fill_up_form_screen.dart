@@ -519,6 +519,16 @@ class FillUpForm extends State<FillUpFormScreen> {
   Municipality? victimOtherMunicipality;
   String? victimOtherBarangay;
 
+  // Date dropdown variables for reporting person date of birth
+  int? selectedDayReporting;
+  int? selectedMonthReporting;
+  int? selectedYearReporting;
+  
+  // Date dropdown variables for victim date of birth
+  int? selectedDayVictim;
+  int? selectedMonthVictim;
+  int? selectedYearVictim;
+
   // Combined state for FormRowInputs
   Map<String, dynamic> formState = {};
 
@@ -530,6 +540,104 @@ class FillUpForm extends State<FillUpFormScreen> {
       age--;
     }
     return age;
+  }
+
+  // Update reporting person date controller from dropdown selections
+  void _updateReportingDateFromDropdowns() {
+    if (selectedDayReporting != null && selectedMonthReporting != null && selectedYearReporting != null) {
+      final dateStr = "${selectedDayReporting!.toString().padLeft(2, '0')}/${selectedMonthReporting!.toString().padLeft(2, '0')}/${selectedYearReporting!}";
+      _dateOfBirthReportingController.text = dateStr;
+      
+      // Calculate and update age automatically
+      try {
+        final birthDate = DateTime(selectedYearReporting!, selectedMonthReporting!, selectedDayReporting!);
+        final age = calculateAge(birthDate);
+        _ageReportingController.text = age.toString();
+        reportingPersonAge = age;
+      } catch (e) {
+        print('Error calculating reporting person age: $e');
+      }
+    } else {
+      _dateOfBirthReportingController.text = '';
+      _ageReportingController.text = '';
+      reportingPersonAge = null;
+    }
+    updateFormState();
+  }
+  
+  // Update victim date controller from dropdown selections
+  void _updateVictimDateFromDropdowns() {
+    if (selectedDayVictim != null && selectedMonthVictim != null && selectedYearVictim != null) {
+      final dateStr = "${selectedDayVictim!.toString().padLeft(2, '0')}/${selectedMonthVictim!.toString().padLeft(2, '0')}/${selectedYearVictim!}";
+      _dateOfBirthVictimController.text = dateStr;
+      
+      // Calculate and update age automatically
+      try {
+        final birthDate = DateTime(selectedYearVictim!, selectedMonthVictim!, selectedDayVictim!);
+        final age = calculateAge(birthDate);
+        _ageVictimController.text = age.toString();
+        victimAge = age;
+      } catch (e) {
+        print('Error calculating victim age: $e');
+      }
+    } else {
+      _dateOfBirthVictimController.text = '';
+      _ageVictimController.text = '';
+      victimAge = null;
+    }
+    updateFormState();
+  }
+  
+  // Generate list of days based on selected month and year for reporting person
+  List<int> _getDaysInMonthReporting() {
+    if (selectedMonthReporting == null || selectedYearReporting == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonthReporting!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYearReporting!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  // Generate list of days based on selected month and year for victim
+  List<int> _getDaysInMonthVictim() {
+    if (selectedMonthVictim == null || selectedYearVictim == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonthVictim!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYearVictim!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  bool _isLeapYear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
   }
   @override
   void initState() {
@@ -608,6 +716,10 @@ class FillUpForm extends State<FillUpFormScreen> {
               
               if (dob != null) {
                 _dateOfBirthReportingController.text = "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+                // Also set the dropdown values
+                selectedDayReporting = dob.day;
+                selectedMonthReporting = dob.month;
+                selectedYearReporting = dob.year;
               }
             } catch (e) {
               print('Error parsing birthday: $e');
@@ -1404,11 +1516,12 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    if (_dateOfBirthReportingController.text.trim().isEmpty) {
+    // Check date of birth dropdowns for reporting person
+    if (selectedDayReporting == null || selectedMonthReporting == null || selectedYearReporting == null) {
       await _scrollToSpecificField('DATE OF BIRTH');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Date of Birth (Reporting Person) is required and cannot be empty.'),
+          content: Text('Date of Birth (Reporting Person) is required. Please select month, day, and year.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -1615,11 +1728,12 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    if (_dateOfBirthVictimController.text.trim().isEmpty) {
+    // Check date of birth dropdowns for victim
+    if (selectedDayVictim == null || selectedMonthVictim == null || selectedYearVictim == null) {
       await _scrollToSpecificField('DATE OF BIRTH VICTIM');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Date of Birth (Missing Person) is required and cannot be empty.'),
+          content: Text('Date of Birth (Missing Person) is required. Please select month, day, and year.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -2240,25 +2354,29 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'DATE OF BIRTH',
                               'required': true,
                               'controller': _dateOfBirthReportingController,
-                              'readOnly': true,
                               'key': _getOrCreateKey('DATE OF BIRTH'),
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthReportingController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    reportingPersonAge = calculateAge(pickedDate);
-                                    _ageReportingController.text = reportingPersonAge.toString();
-                                  });
-                                }
+                              'isDateDropdown': true,
+                              'section': 'reporting',
+                              'context': context,
+                              'selectedDay': selectedDayReporting,
+                              'selectedMonth': selectedMonthReporting,
+                              'selectedYear': selectedYearReporting,
+                              'getDaysInMonth': _getDaysInMonthReporting,
+                              'updateDateFromDropdowns': _updateReportingDateFromDropdowns,
+                              'onDateFieldChange': (String key, dynamic value) {
+                                setState(() {
+                                  switch (key) {
+                                    case 'selectedDayReporting':
+                                      selectedDayReporting = value;
+                                      break;
+                                    case 'selectedMonthReporting':
+                                      selectedMonthReporting = value;
+                                      break;
+                                    case 'selectedYearReporting':
+                                      selectedYearReporting = value;
+                                      break;
+                                  }
+                                });
                               },
                             },
                             {
@@ -2656,25 +2774,29 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'DATE OF BIRTH',
                               'required': true,
                               'controller': _dateOfBirthVictimController,
-                              'readOnly': true,
                               'key': _getOrCreateKey('DATE OF BIRTH VICTIM'),
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthVictimController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    victimAge = calculateAge(pickedDate);
-                                    _ageVictimController.text = victimAge.toString();
-                                  });
-                                }
+                              'isDateDropdown': true,
+                              'section': 'victim',
+                              'context': context,
+                              'selectedDay': selectedDayVictim,
+                              'selectedMonth': selectedMonthVictim,
+                              'selectedYear': selectedYearVictim,
+                              'getDaysInMonth': _getDaysInMonthVictim,
+                              'updateDateFromDropdowns': _updateVictimDateFromDropdowns,
+                              'onDateFieldChange': (String key, dynamic value) {
+                                setState(() {
+                                  switch (key) {
+                                    case 'selectedDayVictim':
+                                      selectedDayVictim = value;
+                                      break;
+                                    case 'selectedMonthVictim':
+                                      selectedMonthVictim = value;
+                                      break;
+                                    case 'selectedYearVictim':
+                                      selectedYearVictim = value;
+                                      break;
+                                  }
+                                });
                               },
                             },
                             {
