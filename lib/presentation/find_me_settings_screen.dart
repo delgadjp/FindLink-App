@@ -19,7 +19,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   bool _isTracking = false;
   bool _loading = true;
   bool _shareWithContacts = true;
-  bool _familySharingEnabled = false;
   bool _highAccuracyMode = false;
   List<TrustedContact> _trustedContacts = [];
   bool _isTogglingFindMe = false;
@@ -65,7 +64,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             _findMeEnabled = userData['findMeEnabled'] ?? false;
             _isTracking = userData['isTracking'] ?? false;
             _shareWithContacts = userData['shareWithContacts'] ?? true;
-            _familySharingEnabled = userData['familySharingEnabled'] ?? false;
             _highAccuracyMode = userData['highAccuracyMode'] ?? false;
             _loading = false;
           });
@@ -75,7 +73,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             _findMeEnabled = false;
             _isTracking = false;
             _shareWithContacts = true;
-            _familySharingEnabled = false;
             _highAccuracyMode = false;
             _loading = false;
           });
@@ -366,7 +363,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   'Your location will ONLY be shared when:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Text('• Family sharing is enabled and trusted contacts have access'),
+                Text('• Trusted contacts have location access permission'),
                 Text('• You explicitly share your location'),
                 SizedBox(height: 12),
                 Text(
@@ -389,31 +386,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         );
       },
     ) ?? false;
-  }
-
-  Future<void> _updateSetting(String setting, bool value) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      // Find current user's custom document ID
-      final currentUserQuery = await _firestore
-          .collection('users')
-          .where('userId', isEqualTo: user.uid)
-          .limit(1)
-          .get();
-      
-      if (currentUserQuery.docs.isEmpty) return;
-
-      final currentUserDocId = currentUserQuery.docs.first.id;
-
-      await _firestore.collection('users').doc(currentUserDocId).update({setting: value});
-    } catch (e) {
-      print('Error updating setting: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating setting')),
-      );
-    }
   }
 
   Future<void> _updateContactPermission(String contactId, String permission, bool value) async {
@@ -982,7 +954,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                         _buildPrivacyItem('All location data is encrypted and secured', Icons.lock),
                         _buildPrivacyItem('Background tracking works even when app is closed', Icons.phone_android),
                         _buildPrivacyItem('Motion-based tracking conserves battery life', Icons.battery_charging_full),
-                        _buildPrivacyItem('Family sharing provides continuous location access', Icons.family_restroom),
+                        _buildPrivacyItem('Trusted contacts with permission can access your location', Icons.people),
                         _buildPrivacyItem('Individual permissions can be granted per contact', Icons.person_add),
                         _buildPrivacyItem('Location history is kept for maximum 30 days', Icons.history),
                         _buildPrivacyItem('You can disable any feature anytime', Icons.toggle_off),
@@ -1033,63 +1005,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         ),
       ),
       )
-    );
-  }
-
-  Widget _buildModernSwitchTile(String title, String subtitle, bool value, Function(bool) onChanged, IconData icon) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Color(0xFF0D47A1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0D47A1),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: Color(0xFF0D47A1),
-            activeTrackColor: Color(0xFF0D47A1).withOpacity(0.3),
-          ),
-        ],
-      ),
     );
   }
 

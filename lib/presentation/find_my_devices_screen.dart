@@ -105,11 +105,10 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
             final contactUserData = contactUserQuery.docs.first.data();
             
             print('  - Contact user found: ${contactUserData['name'] ?? contactUserData['displayName']}');
-            print('  - Family sharing enabled: ${contactUserData['familySharingEnabled']}');
             print('  - FindMe enabled: ${contactUserData['findMeEnabled']}');
             
-            // Only show if family sharing is enabled
-            if (contactUserData['familySharingEnabled'] == true) {
+            // Show if contact has FindMe enabled (removed family sharing dependency)
+            if (contactUserData['findMeEnabled'] == true) {
               // Get contact's latest location
               LocationData? contactLocation;
               try {
@@ -171,7 +170,7 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                 print('  - Skipping contact: duplicate device ID detected');
               }
             } else {
-              print('  - Skipping contact: family sharing not enabled');
+              print('  - Skipping contact: FindMe not enabled');
             }
           } else {
             print('  - Contact user not found for contactUserId: $contactUserId');
@@ -230,8 +229,8 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
               if (mutualUserQuery.docs.isNotEmpty) {
                 final mutualUserData = mutualUserQuery.docs.first.data();
                 
-                if (mutualUserData['familySharingEnabled'] == true) {
-                  print('  - Mutual contact has family sharing enabled');
+                if (mutualUserData['findMeEnabled'] == true) {
+                  print('  - Mutual contact has FindMe enabled');
                   
                   // Get their location
                   LocationData? mutualLocation;
@@ -333,24 +332,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
     return 'Location Unknown';
   }
 
-  Color _getStatusColor(Map<String, dynamic> device) {
-    if (!device['findMeEnabled']) {
-      return Colors.grey;
-    }
-    
-    final lastLocation = device['lastLocation'] as LocationData?;
-    if (lastLocation != null) {
-      final difference = DateTime.now().difference(lastLocation.timestamp);
-      if (difference.inMinutes < 5) {
-        return Colors.green;
-      } else if (difference.inHours < 1) {
-        return Colors.orange;
-      }
-    }
-    
-    return Colors.red;
-  }
-
   IconData _getDeviceIcon(String deviceType) {
     switch (deviceType) {
       case 'phone':
@@ -426,13 +407,13 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(device).withOpacity(0.1),
+                          color: Color(0xFF0D47A1).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _getDeviceStatus(device),
                           style: TextStyle(
-                            color: _getStatusColor(device),
+                            color: Color(0xFF0D47A1),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -636,35 +617,18 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                             ),
                             child: ListTile(
                               contentPadding: EdgeInsets.all(16),
-                              leading: Stack(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF0D47A1).withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      _getDeviceIcon(device['deviceType']),
-                                      size: 28,
-                                      color: Color(0xFF0D47A1),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      width: 16,
-                                      height: 16,
-                                      decoration: BoxDecoration(
-                                        color: _getStatusColor(device),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              leading: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF0D47A1).withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _getDeviceIcon(device['deviceType']),
+                                  size: 28,
+                                  color: Color(0xFF0D47A1),
+                                ),
                               ),
                               title: Row(
                                 children: [
@@ -698,22 +662,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  SizedBox(height: 8),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(device).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      _getDeviceStatus(device),
-                                      style: TextStyle(
-                                        color: _getStatusColor(device),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
                                   if (lastLocation?.address != null) ...[
                                     SizedBox(height: 8),
                                     Row(

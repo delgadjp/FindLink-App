@@ -268,8 +268,8 @@ class TrustedContactsService {
 
       if (trustedContactQuery.docs.isNotEmpty) {
         // If current user has the person as trusted contact with location access,
-        // and the person has family sharing enabled
-        if (personData['familySharingEnabled'] == true) {
+        // and the person has FindMe enabled
+        if (personData['findMeEnabled'] == true) {
           return true;
         }
       }
@@ -313,8 +313,8 @@ class TrustedContactsService {
           if (userQuery.docs.isNotEmpty) {
             final userData = userQuery.docs.first.data();
             
-            // Check if this user has family sharing enabled
-            if (userData['familySharingEnabled'] == true) {
+            // Check if this user has FindMe enabled
+            if (userData['findMeEnabled'] == true) {
               familyMembers.add(TrustedContact.fromMap({
                 'id': contactDoc.id,
                 'userId': user.uid, // Current user is the owner of this trusted contact relationship
@@ -371,13 +371,13 @@ class TrustedContactsService {
           if (userQuery.docs.isNotEmpty) {
             final userData = userQuery.docs.first.data();
             
-            // Check if this user has family sharing enabled
-            if (userData['familySharingEnabled'] == true) {
+            // Check if this user has FindMe enabled
+            if (userData['findMeEnabled'] == true) {
               trackableUsers.add({
                 'userId': contactUserId, // Use the contact's userId
                 'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
                 'email': userData['email'] ?? contactData['email'] ?? '',
-                'familySharingEnabled': userData['familySharingEnabled'] ?? false,
+                'findMeEnabled': userData['findMeEnabled'] ?? false,
                 'lastKnownLocation': userData['lastKnownLocation'],
               });
             }
