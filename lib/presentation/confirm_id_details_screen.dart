@@ -30,6 +30,8 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
   String? _mismatchReason; // Store reason if data doesn't match
   bool _isCorrectIDType = true; // Flag to check if uploaded ID matches selected type
   bool _isExpired = false; // Flag to check if driver's license is expired
+  bool _hasOCRError = false; // Flag to check if OCR failed to extract any meaningful data
+  bool _showRetryOption = false; // Flag to show retry option when validation fails
 
   // Google Vision API key from TipService
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
@@ -109,15 +111,19 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
           // If no data was extracted, validation fails
           setState(() {
             _isDataMatching = false;
-            _mismatchReason = "Could not extract enough information from ID. Please upload a clearer image.";
+            _hasOCRError = true;
+            _showRetryOption = true;
+            _mismatchReason = "Could not extract enough information from your ID. This may be due to poor image quality, blur, or lighting issues. Please try retaking the photo with better conditions.";
           });
         }
       } else {
         // If not in registration flow, success depends on having extracted data
         setState(() {
           _isDataMatching = hasExtractedData;
+          _hasOCRError = !hasExtractedData;
+          _showRetryOption = !hasExtractedData;
           if (!hasExtractedData) {
-            _mismatchReason = "Could not extract information from ID. Please upload a clearer image.";
+            _mismatchReason = "Could not extract information from your ID. Please upload a clearer image.";
           }
         });
       }
@@ -132,7 +138,9 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       // Show error but continue with empty data
       setState(() {
         isLoading = false;
-        _mismatchReason = "Error extracting data from ID: $e";
+        _hasOCRError = true;
+        _showRetryOption = true;
+        _mismatchReason = "Error processing your ID image: $e. Please try retaking the photo or check your internet connection.";
         _isDataMatching = false;
       });
     }
@@ -886,29 +894,69 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
     if (!hasExtractedData) {
       setState(() {
         _isDataMatching = false;
-        _mismatchReason = "Could not extract information from ID. Please upload a clearer image.";
+        _hasOCRError = true;
+        _showRetryOption = true;
+        _mismatchReason = "Could not extract information from your ID. This could be due to poor image quality, lighting, or blur. Please try retaking the photo with better lighting and ensure the ID is clearly visible.";
+      });
+      return;
+    }
+    
+    // Check the quality of extracted data
+    int extractedFieldsCount = 0;
+    
+    if (extractedData['firstName']?.isNotEmpty == true) extractedFieldsCount++;
+    if (extractedData['lastName']?.isNotEmpty == true) extractedFieldsCount++;
+    if (extractedData['dateOfBirth'] != null) extractedFieldsCount++;
+    
+    // If we extracted less than 2 out of 3 critical fields, consider it poor quality
+    if (extractedFieldsCount < 2) {
+      setState(() {
+        _isDataMatching = false;
+        _hasOCRError = true;
+        _showRetryOption = true;
+        _mismatchReason = "Only partial information could be extracted from your ID. Please ensure the image is clear, well-lit, and all text is readable. Try retaking the photo.";
       });
       return;
     }
     
     List<String> mismatches = [];
+    List<String> criticalMismatches = []; // For first name, last name, DOB
     
     // Check first name match if extracted
-    if (extractedData['firstName']?.isNotEmpty == true &&
-        extractedData['firstName'].toLowerCase() != widget.registrationData!['firstName'].toLowerCase()) {
-      mismatches.add('First Name');
+    if (extractedData['firstName']?.isNotEmpty == true) {
+      String extractedFirstName = extractedData['firstName'].toLowerCase().trim();
+      String registeredFirstName = widget.registrationData!['firstName'].toLowerCase().trim();
+      
+      // Allow for minor OCR variations (remove common OCR substitutions)
+      extractedFirstName = _normalizeTextForComparison(extractedFirstName);
+      registeredFirstName = _normalizeTextForComparison(registeredFirstName);
+      
+      if (extractedFirstName != registeredFirstName) {
+        mismatches.add('First Name (ID: "${extractedData['firstName']}", Registered: "${widget.registrationData!['firstName']}")');
+        criticalMismatches.add('First Name');
+      }
     }
     
-    // Check middle name match if extracted
-    if (extractedData['middleName']?.isNotEmpty == true &&
-        extractedData['middleName'].toLowerCase() != widget.registrationData!['middleName'].toLowerCase()) {
-      mismatches.add('Middle Name');
+    // Check middle name match if extracted (more lenient as middle names can vary)
+    if (extractedData['middleName']?.isNotEmpty == true && 
+        widget.registrationData!['middleName']?.isNotEmpty == true) {
+      String extractedMiddleName = _normalizeTextForComparison(extractedData['middleName'].toLowerCase().trim());
+      String registeredMiddleName = _normalizeTextForComparison(widget.registrationData!['middleName'].toLowerCase().trim());
+      
+      if (extractedMiddleName != registeredMiddleName) {
+        mismatches.add('Middle Name (ID: "${extractedData['middleName']}", Registered: "${widget.registrationData!['middleName']}")');
+      }
     }
     
     // Check last name match if extracted
-    if (extractedData['lastName']?.isNotEmpty == true &&
-        extractedData['lastName'].toLowerCase() != widget.registrationData!['lastName'].toLowerCase()) {
-      mismatches.add('Last Name');
+    if (extractedData['lastName']?.isNotEmpty == true) {
+      String extractedLastName = _normalizeTextForComparison(extractedData['lastName'].toLowerCase().trim());
+      String registeredLastName = _normalizeTextForComparison(widget.registrationData!['lastName'].toLowerCase().trim());
+      
+      if (extractedLastName != registeredLastName) {
+        mismatches.add('Last Name (ID: "${extractedData['lastName']}", Registered: "${widget.registrationData!['lastName']}")');
+        criticalMismatches.add('Last Name');
+      }
     }
     
     // Check date of birth match if extracted
@@ -916,20 +964,39 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       DateTime idDOB = extractedData['dateOfBirth'];
       DateTime regDOB = widget.registrationData!['dateOfBirth'];
       if (idDOB.year != regDOB.year || idDOB.month != regDOB.month || idDOB.day != regDOB.day) {
-        mismatches.add('Date of Birth');
+        mismatches.add('Date of Birth (ID: "${DateFormat('MM/dd/yyyy').format(idDOB)}", Registered: "${DateFormat('MM/dd/yyyy').format(regDOB)}")');
+        criticalMismatches.add('Date of Birth');
       }
     }
     
-    // If there are mismatches, set _isDataMatching to false and create mismatch reason
+    // Determine validation result and appropriate message
     setState(() {
       if (mismatches.isNotEmpty) {
         _isDataMatching = false;
-        _mismatchReason = "The following information from your ID doesn't match your registration details: ${mismatches.join(', ')}.";
+        _showRetryOption = criticalMismatches.length >= 2; // Show retry if 2+ critical fields mismatch
+        
+        if (criticalMismatches.length >= 2) {
+          _mismatchReason = "Multiple critical fields don't match between your ID and registration details:\n\n${mismatches.join('\n')}\n\nThis may be due to OCR errors. Please try retaking a clearer photo of your ID, or go back and verify your registration information is correct.";
+        } else {
+          _mismatchReason = "The following information from your ID doesn't match your registration details:\n\n${mismatches.join('\n')}\n\nPlease go back and update your registration information to match your ID, or retake a clearer photo if you believe this is an OCR error.";
+        }
       } else {
         _isDataMatching = true;
         _mismatchReason = null;
+        _hasOCRError = false;
+        _showRetryOption = false;
       }
     });
+  }
+  
+  // Helper method to normalize text for comparison (handle common OCR errors)
+  String _normalizeTextForComparison(String text) {
+    return text
+        .replaceAll('0', 'o')  // Common OCR mistake: 0 vs O
+        .replaceAll('1', 'i')  // Common OCR mistake: 1 vs I
+        .replaceAll('5', 's')  // Common OCR mistake: 5 vs S
+        .replaceAll(RegExp(r'[^\w]'), '') // Remove special characters
+        .toLowerCase();
   }
 
   Future<void> _submitVerification() async {
@@ -942,12 +1009,20 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       await Future.delayed(Duration(seconds: 2));
       
       if (widget.isFromRegistration) {
-        if (!_isDataMatching) {
-          // Show error if data doesn't match
+        if (!_isDataMatching || _hasOCRError) {
+          // Show detailed error message based on the type of issue
+          String errorMessage;
+          if (_hasOCRError) {
+            errorMessage = 'ID verification failed: Unable to extract sufficient data from your ID. Please retake the photo with better quality.';
+          } else {
+            errorMessage = 'ID verification failed: ${_mismatchReason ?? "Data mismatch detected."}';
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('ID verification failed: $_mismatchReason'),
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
             ),
           );
           setState(() {
@@ -1104,7 +1179,9 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                         ? _buildLoadingState()
                         : !_isCorrectIDType || _isExpired
                             ? _buildIDTypeMismatchError()
-                            : Column(
+                            : (_hasOCRError || (!_isDataMatching && _showRetryOption))
+                                ? _buildOCRErrorState()
+                                : Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   // Logo
@@ -1158,50 +1235,89 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
                                           color: _isDataMatching ? Colors.green.shade300 : Colors.red.shade300,
                                         ),
                                       ),
-                                      child: Row(
+                                      child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(
-                                            _isDataMatching ? Icons.check_circle : Icons.error_outline,
-                                            color: _isDataMatching ? Colors.green : Colors.red,
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(
+                                                _isDataMatching ? Icons.check_circle : Icons.error_outline,
+                                                color: _isDataMatching ? Colors.green : Colors.red,
+                                                size: 24,
+                                              ),
+                                              SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      _isDataMatching ? 'ID Validation Successful' : 'ID Validation Failed',
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 16,
+                                                        color: _isDataMatching ? Colors.green.shade700 : Colors.red.shade700,
+                                                      ),
+                                                    ),
+                                                    if (!_isDataMatching && _mismatchReason != null)
+                                                      Padding(
+                                                        padding: const EdgeInsets.only(top: 8.0),
+                                                        child: Text(
+                                                          _mismatchReason!,
+                                                          style: TextStyle(
+                                                            color: Colors.red.shade700,
+                                                            fontSize: 13,
+                                                            height: 1.3,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                          if (!_isDataMatching) ...[
+                                            SizedBox(height: 12),
+                                            Row(
                                               children: [
-                                                Text(
-                                                  _isDataMatching ? 'ID Validation Successful' : 'ID Validation Failed',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: _isDataMatching ? Colors.green.shade700 : Colors.red.shade700,
+                                                if (_showRetryOption) ...[
+                                                  Expanded(
+                                                    child: OutlinedButton.icon(
+                                                      onPressed: () => Navigator.pop(context),
+                                                      icon: Icon(Icons.camera_alt, size: 16),
+                                                      label: Text('RETAKE PHOTO'),
+                                                      style: OutlinedButton.styleFrom(
+                                                        foregroundColor: Color(0xFF2A5298),
+                                                        side: BorderSide(color: Color(0xFF2A5298)),
+                                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                ],
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    onPressed: () {
+                                                      Navigator.popUntil(context, (route) => route.settings.name == '/register');
+                                                    },
+                                                    icon: Icon(Icons.edit, size: 16),
+                                                    label: Text('UPDATE INFO'),
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor: Colors.red.shade700,
+                                                      side: BorderSide(color: Colors.red.shade300),
+                                                      padding: EdgeInsets.symmetric(vertical: 8),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
-                                                if (!_isDataMatching && _mismatchReason != null)
-                                                  Padding(
-                                                    padding: const EdgeInsets.only(top: 2.0),
-                                                    child: Text(
-                                                      _mismatchReason!,
-                                                      style: TextStyle(
-                                                        color: Colors.red.shade700,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (!_isDataMatching)
-                                                  Padding(
-                                                    padding: const EdgeInsets.only(top: 6.0),
-                                                    child: Text(
-                                                      'Please go back and update your registration information to match your ID.',
-                                                      style: TextStyle(
-                                                        color: Colors.red.shade700,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ),
                                               ],
                                             ),
-                                          ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -1363,6 +1479,183 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
         ),
         SizedBox(height: 20),
       ],
+    );
+  }
+
+  // Error state widget for OCR failure or data mismatch
+  Widget _buildOCRErrorState() {
+    return Column(
+      children: [
+        SizedBox(height: 20),
+        Image.asset(
+          ImageConstant.logoFinal,
+          width: 100,
+          height: 100,
+          fit: BoxFit.contain,
+        ),
+        SizedBox(height: 30),
+        Icon(
+          _hasOCRError ? Icons.image_not_supported : Icons.warning,
+          color: Colors.orange.shade600,
+          size: 60,
+        ),
+        SizedBox(height: 20),
+        Text(
+          _hasOCRError ? 'Unable to Read ID' : 'Validation Issues Detected',
+          style: TextStyle(
+            color: Colors.orange.shade700,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 15),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            _mismatchReason ?? 'There was an issue processing your ID.',
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 14,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        SizedBox(height: 30),
+        
+        // Action buttons
+        Column(
+          children: [
+            // Retry photo button
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.camera_alt, size: 20),
+              label: Text('RETAKE PHOTO'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF2A5298),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+            SizedBox(height: 12),
+            
+            // Alternative action based on context
+            if (!_hasOCRError) ...[
+              OutlinedButton.icon(
+                onPressed: () {
+                  // Navigate back to registration to update info
+                  Navigator.popUntil(context, (route) => route.settings.name == '/register');
+                },
+                icon: Icon(Icons.edit, size: 18),
+                label: Text('UPDATE REGISTRATION'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Color(0xFF2A5298),
+                  side: BorderSide(color: Color(0xFF2A5298)),
+                  padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              SizedBox(height: 12),
+            ],
+            
+            // Help/tips button
+            TextButton.icon(
+              onPressed: () => _showIDPhotoTips(),
+              icon: Icon(Icons.help_outline, size: 18),
+              label: Text('PHOTO TIPS'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey.shade600,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 20),
+      ],
+    );
+  }
+  
+  // Show tips for taking better ID photos
+  void _showIDPhotoTips() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.lightbulb_outline, color: Color(0xFF2A5298), size: 24),
+                    SizedBox(width: 12),
+                    Text(
+                      'Tips for Better ID Photos',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2A5298),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                _buildTipItem('📱', 'Hold your phone steady and avoid shaking'),
+                _buildTipItem('💡', 'Use good lighting - avoid shadows and glare'),
+                _buildTipItem('📐', 'Keep the ID flat and fill most of the frame'),
+                _buildTipItem('🔍', 'Ensure all text is clear and readable'),
+                _buildTipItem('🚫', 'Avoid reflections from plastic covers'),
+                _buildTipItem('📏', 'Take the photo straight-on, not at an angle'),
+                SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'GOT IT',
+                      style: TextStyle(
+                        color: Color(0xFF2A5298),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildTipItem(String emoji, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: TextStyle(fontSize: 16)),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
