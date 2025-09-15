@@ -128,6 +128,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           print('User document not found in Firestore. Creating a new document.');
           await AuthService().addUserToFirestore(currentUser, currentUser.email ?? '');
         }
+        
+        // Set up lifting form stream now that we have user data
+        _setupLiftingFormStream();
       }
     } catch (e) {
       print('Error fetching user data: $e');
@@ -137,6 +140,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+  
+  // Set up lifting form stream with reporterName query
+  void _setupLiftingFormStream() {
+    if (_userData == null) return;
+    
+    final String? firstName = _userData!['firstName'] ?? _userData!['displayName']?.split(' ')[0];
+    final String? middleName = _userData!['middleName'];
+    final String? lastName = _userData!['lastName'] ?? _userData!['familyName'];
+    
+    if (firstName == null) return;
+    
+    final String fullName = [firstName, middleName, lastName]
+        .where((name) => name != null && name.isNotEmpty)
+        .join(' ');
+    
+    final liftingFormStream = FirebaseFirestore.instance
+        .collection('liftingform')
+        .where('reporterName', isEqualTo: fullName)
+        .snapshots();
+    
+    _streamSubscriptions.add(
+      liftingFormStream.listen((snapshot) => _updateLiftingFormNotifications())
+    );
   }
 
   // Initialize all case streams
@@ -169,10 +196,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .snapshots();
 
     // Stream from liftingform collection for notifications
-    final liftingFormStream = FirebaseFirestore.instance
-        .collection('liftingform')
-        .where('userId', isEqualTo: currentUser.uid)
-        .snapshots();
+    // Note: We'll set up the stream after user data is loaded to get the reporterName
+    // This will be handled in _fetchUserData method
 
     // Add stream subscriptions
     _streamSubscriptions.add(
@@ -187,9 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       archivedCasesStream.listen((snapshot) => _updateCasesData())
     );
     
-    _streamSubscriptions.add(
-      liftingFormStream.listen((snapshot) => _updateLiftingFormNotifications())
-    );
+    // Lifting form stream will be set up in _fetchUserData after we have user info
   }
   // Update cases data from all collections
   Future<void> _updateCasesData() async {
@@ -278,16 +301,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updateLiftingFormNotifications() async {
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
+      if (currentUser == null || _userData == null) return;
+
+      // Get the full name from user data to match reporterName field
+      final String? firstName = _userData!['firstName'] ?? _userData!['displayName']?.split(' ')[0];
+      final String? middleName = _userData!['middleName'];
+      final String? lastName = _userData!['lastName'] ?? _userData!['familyName'];
+      
+      if (firstName == null) return;
+      
+      // Construct full name like in React version
+      final String fullName = [firstName, middleName, lastName]
+          .where((name) => name != null && name.isNotEmpty)
+          .join(' ');
 
       final QuerySnapshot liftingFormQuery = await FirebaseFirestore.instance
           .collection('liftingform')
-          .where('userId', isEqualTo: currentUser.uid)
+          .where('reporterName', isEqualTo: fullName)
           .get();
 
       final List<Map<String, dynamic>> liftingForms = [];
       for (final doc in liftingFormQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
+        
+        // Handle image URL conversion if needed (similar to React version)
+        String? imageUrl = data['imageUrl'];
+        if (imageUrl != null && !imageUrl.startsWith('http')) {
+          // This is a storage path, needs to be converted to download URL
+          try {
+            final Reference ref = FirebaseStorage.instance.ref(imageUrl);
+            imageUrl = await ref.getDownloadURL();
+          } catch (e) {
+            imageUrl = null; // Will use placeholder
+          }
+        }
+        
         liftingForms.add({
           'id': doc.id,
           'liftingId': data['LiftingId'] ?? '',
@@ -295,11 +343,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'reporterName': data['reporterName'] ?? '',
           'datetime_reported': data['datetime_reported'],
           'address': data['address'] ?? '',
+          'flashAlarmDate': data['flashAlarmDate'],
+          'imageUrl': imageUrl,
           'rawData': data,
         });
       }
 
-      // Sort the results in memory instead of using orderBy in the query
+      // Sort by datetime_reported (newest first) like in React version
       liftingForms.sort((a, b) {
         final aTime = a['datetime_reported'];
         final bTime = b['datetime_reported'];
@@ -636,176 +686,416 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Show lifting form notifications dialog
+  // Show lifting form notifications in an improved modal dialog
   void _showLiftingFormNotifications() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              elevation: 16,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  maxWidth: MediaQuery.of(context).size.width * 0.95,
+                  minHeight: 500,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF2c2c78).withOpacity(0.2),
+                      spreadRadius: 3,
+                      blurRadius: 20,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Enhanced Header with gradient and animations
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF2c2c78), Color(0xFF4f8cff)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Icon(
+                                  Icons.flash_on,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Flash Alarm Lifting Requests',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Received notifications 🔔',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Content Area with improved design
+                    Flexible(
+                      child: Container(
+                        width: double.infinity,
+                        child: _liftingForms.isEmpty
+                            ? _buildEnhancedEmptyState()
+                            : _LiftingFormsPaginatedList(
+                                liftingForms: _liftingForms,
+                                onFormSelected: (form) {
+                                  Navigator.of(context).pop(); // Close current dialog
+                                  _showLiftingFormDetails(form); // Show details
+                                },
+                              ),
+                      ),
+                    ),
+                    
+                    // Action Buttons with improved styling
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(24),
+                          bottomRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextButton.icon(
+                              onPressed: () {
+                                // Clear notification count when closing
+                                this.setState(() {
+                                  _unreadLiftingFormsCount = 0;
+                                });
+                                Navigator.of(context).pop();
+                              },
+                              icon: Icon(Icons.close, size: 20),
+                              label: Text('Close'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Color(0xFF2c2c78),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: Color(0xFF2c2c78).withOpacity(0.3)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  // Enhanced empty state for modal
+  Widget _buildEnhancedEmptyState() {
+    return Container(
+      padding: EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFF2c2c78).withOpacity(0.1),
+                  spreadRadius: 2,
+                  blurRadius: 15,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.flash_off,
+              size: 80,
+              color: Color(0xFF2c2c78).withOpacity(0.6),
+            ),
+          ),
+          SizedBox(height: 32),
+          Text(
+            'No Flash Alarm Requests',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2c2c78),
+              letterSpacing: 0.5,
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'No lifting forms submitted by you.',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 12),
+          Text(
+            'New requests will appear here when received.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade500,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Show lifting form details modal (improved version)
+  void _showLiftingFormDetails(Map<String, dynamic> form) {
+    // Clear the notification count when viewing details
+    setState(() {
+      _unreadLiftingFormsCount = 0;
+    });
+    
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
           elevation: 16,
           backgroundColor: Colors.transparent,
           child: Container(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
               maxWidth: MediaQuery.of(context).size.width * 0.9,
+              minWidth: 340,
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  spreadRadius: 5,
-                  blurRadius: 15,
-                  offset: Offset(0, 5),
+                  color: Color(0xFF2c2c78).withOpacity(0.2),
+                  spreadRadius: 3,
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Enhanced Header
+                // Header with gradient
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                      colors: [Color(0xFF2c2c78), Color(0xFF4f8cff)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.flash_on,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Flash Alarm Lifting Requests',
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              Icons.flash_on,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              'Flash Alarm Details',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 18,
+                                fontSize: 20,
+                                letterSpacing: 0.5,
                               ),
                             ),
-                            Text(
-                              'Recent notifications received',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 24,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      if (_unreadLiftingFormsCount > 0)
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white, width: 1),
-                          ),
-                          child: Text(
-                            '$_unreadLiftingFormsCount',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
                 
-                // Content Area
+                // Content
                 Flexible(
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    child: _liftingForms.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _liftingForms.length,
-                            itemBuilder: (context, index) {
-                              final liftingForm = _liftingForms[index];
-                              return _buildLiftingFormCard(liftingForm);
-                            },
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        // Person image with enhanced styling
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Color(0xFF2c2c78), width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF2c2c78).withOpacity(0.2),
+                                spreadRadius: 2,
+                                blurRadius: 12,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
                           ),
+                          child: ClipOval(
+                            child: _buildModalFormImage(form),
+                          ),
+                        ),
+                        
+                        SizedBox(height: 20),
+                        
+                        // Name with enhanced styling
+                        Text(
+                          form['missingPersonName'] ?? 'Unknown Person',
+                          style: TextStyle(
+                            color: Color(0xFF2c2c78),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 24,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        SizedBox(height: 8),
+                        // Divider
+                        Container(
+                          height: 1,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                Color(0xFF2c2c78).withOpacity(0.3),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                        
+                        SizedBox(height: 24),
+                        
+                        // Details with enhanced cards
+                        _buildEnhancedDetailCard('Address', form['address'] ?? 'No address provided', Icons.location_on),
+                        SizedBox(height: 16),
+                        _buildEnhancedDetailCard('Date Reported', _formatTimestamp(form['datetime_reported']), Icons.access_time),
+                        SizedBox(height: 16),
+                        _buildEnhancedDetailCard('Flash Alarm Date', _formatFlashAlarmDate(form['flashAlarmDate']), Icons.alarm),
+                      ],
+                    ),
                   ),
                 ),
                 
-                // Action Buttons
+                // Action button with enhanced styling
                 Container(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      if (_unreadLiftingFormsCount > 0)
-                        Expanded(
-                          child: TextButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _unreadLiftingFormsCount = 0;
-                              });
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('All notifications marked as read'),
-                                  backgroundColor: Colors.green,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                            icon: Icon(Icons.mark_as_unread, size: 18),
-                            label: Text('Mark as Read'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Color(0xFF0D47A1),
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      if (_unreadLiftingFormsCount > 0) SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(Icons.close, size: 18),
-                          label: Text('Close'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF0D47A1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            elevation: 2,
-                          ),
-                        ),
-                      ),
-                    ],
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    
                   ),
                 ),
               ],
@@ -813,6 +1103,143 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
+    );
+  }
+  
+  // Enhanced detail card
+  Widget _buildEnhancedDetailCard(String label, String value, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Color(0xFFe3e8ff), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF2c2c78).withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF2c2c78).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: Color(0xFF2c2c78),
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2c2c78),
+                  fontSize: 16,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Padding(
+            padding: EdgeInsets.only(left: 42),
+            child: Text(
+              value.isNotEmpty ? value : 'Not provided',
+              style: TextStyle(
+                fontSize: 15,
+                color: value.isNotEmpty ? Colors.grey.shade700 : Colors.grey.shade500,
+                fontStyle: value.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildModalFormImage(Map<String, dynamic> form) {
+    final imageUrl = form['imageUrl'];
+    
+    if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) => _buildModalPlaceholderImage(),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Color(0xFFfafafa),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2c2c78)),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      return _buildModalPlaceholderImage();
+    }
+  }
+  
+  Widget _buildModalPlaceholderImage() {
+    return Container(
+      color: Color(0xFFfafafa),
+      child: Icon(
+        Icons.person,
+        size: 50,
+        color: Colors.grey.shade400,
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Color(0xFF222),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isNotEmpty ? value : 'Not provided',
+              style: TextStyle(
+                color: Color(0xFF222),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1148,8 +1575,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Show lifting form details dialog
-  void _showLiftingFormDetails(Map<String, dynamic> liftingForm) {
+  // Show lifting form details dialog (old version - to be removed)
+  void _showLiftingFormDetailsOld(Map<String, dynamic> liftingForm) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -1378,34 +1805,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-                
-                // Action Button
-                Container(
-                  padding: EdgeInsets.all(20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close, size: 20),
-                      label: Text(
-                        'Close',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF0D47A1),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        elevation: 2,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -1472,6 +1871,253 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+  
+  // Paginated list widget for lifting forms in modal
+  Widget _LiftingFormsPaginatedList({
+    required List<Map<String, dynamic>> liftingForms,
+    required Function(Map<String, dynamic>) onFormSelected,
+  }) {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        final pageSize = 4; // Smaller page size for modal
+        int currentPage = 1; // Local state for modal pagination
+        final totalPages = (liftingForms.length / pageSize).ceil();
+        
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final startIndex = (currentPage - 1) * pageSize;
+            final endIndex = startIndex + pageSize;
+            final paginatedForms = liftingForms.sublist(
+              startIndex,
+              endIndex > liftingForms.length ? liftingForms.length : endIndex,
+            );
+            
+            return Column(
+              children: [
+                // Forms grid
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(20),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: MediaQuery.of(context).size.width > 800 ? 2 : 1,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.1,
+                      ),
+                      itemCount: paginatedForms.length,
+                      itemBuilder: (context, index) {
+                        final form = paginatedForms[index];
+                        return _buildEnhancedLiftingFormCard(form, onFormSelected);
+                      },
+                    ),
+                  ),
+                ),
+                
+                // Pagination controls (only show if more than 1 page)
+                if (totalPages > 1)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    margin: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Previous button
+                        ElevatedButton.icon(
+                          onPressed: currentPage > 1
+                              ? () => setModalState(() => currentPage--)
+                              : null,
+                          icon: Icon(Icons.chevron_left, size: 18),
+                          label: Text('Prev'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: currentPage > 1 ? Color(0xFF2c2c78) : Colors.grey.shade300,
+                            foregroundColor: currentPage > 1 ? Colors.white : Colors.grey.shade500,
+                            elevation: currentPage > 1 ? 2 : 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                        ),
+                        
+                        // Page indicator
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2c2c78).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Page $currentPage of $totalPages',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2c2c78),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        
+                        // Next button
+                        ElevatedButton.icon(
+                          onPressed: currentPage < totalPages
+                              ? () => setModalState(() => currentPage++)
+                              : null,
+                          icon: Icon(Icons.chevron_right, size: 18),
+                          label: Text('Next'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: currentPage < totalPages ? Color(0xFF2c2c78) : Colors.grey.shade300,
+                            foregroundColor: currentPage < totalPages ? Colors.white : Colors.grey.shade500,
+                            elevation: currentPage < totalPages ? 2 : 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  // Enhanced lifting form card for modal
+  Widget _buildEnhancedLiftingFormCard(
+    Map<String, dynamic> form,
+    Function(Map<String, dynamic>) onFormSelected,
+  ) {
+    return GestureDetector(
+      onTap: () => onFormSelected(form),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF2c2c78).withOpacity(0.08),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Color(0xFFe3e8ff), width: 1),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  // Circular image with better styling
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Color(0xFF2c2c78), width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF2c2c78).withOpacity(0.15),
+                          spreadRadius: 1,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: _buildModalFormImage(form),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // Name with better typography
+                  Text(
+                    form['missingPersonName'] ?? 'Unknown Person',
+                    style: TextStyle(
+                      color: Color(0xFF2c2c78),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      letterSpacing: 0.3,
+                      height: 1.2,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 8),
+                  
+                  // Date info with icon
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        _formatTimestamp(form['datetime_reported']),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              
+              // Action button with improved styling
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(top: 12),
+                child: ElevatedButton.icon(
+                  onPressed: () => onFormSelected(form),
+                  icon: Icon(Icons.visibility, size: 16),
+                  label: Text(
+                    'View Details',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF2c2c78),
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shadowColor: Color(0xFF2c2c78).withOpacity(0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2571,4 +3217,347 @@ class _ProfileScreenState extends State<ProfileScreen> {
       )// Close Padding
     ); // Close AnimatedContainer
   } // Close _buildCaseCard method
+  
+  // Helper method to format flash alarm date
+  String _formatFlashAlarmDate(dynamic flashAlarmDate) {
+    if (flashAlarmDate == null) return 'N/A';
+    
+    try {
+      if (flashAlarmDate is String) {
+        final DateTime date = DateTime.parse(flashAlarmDate);
+        return DateFormat('dd MMM yyyy').format(date);
+      }
+      return flashAlarmDate.toString();
+    } catch (e) {
+      return flashAlarmDate.toString();
+    }
+  }
 } // Close _ProfileScreenState class
+
+// Lifting Forms Screen - Separate screen for listing lifting forms
+class _LiftingFormsScreen extends StatefulWidget {
+  final List<Map<String, dynamic>> liftingForms;
+  final Function(Map<String, dynamic>) onFormSelected;
+  
+  const _LiftingFormsScreen({
+    required this.liftingForms,
+    required this.onFormSelected,
+  });
+  
+  @override
+  _LiftingFormsScreenState createState() => _LiftingFormsScreenState();
+}
+
+class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
+  int _currentPage = 1;
+  final int _pageSize = 6;
+  
+  List<Map<String, dynamic>> get _paginatedForms {
+    final startIndex = (_currentPage - 1) * _pageSize;
+    final endIndex = startIndex + _pageSize;
+    return widget.liftingForms.sublist(
+      startIndex,
+      endIndex > widget.liftingForms.length ? widget.liftingForms.length : endIndex,
+    );
+  }
+  
+  int get _totalPages => (widget.liftingForms.length / _pageSize).ceil();
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        title: Text(
+          "Flash Alarm Lifting Requests 🔔",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: Color(0xFF2c2c78),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: widget.liftingForms.isEmpty
+            ? _buildEmptyState()
+            : Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
+                              crossAxisSpacing: 24,
+                              mainAxisSpacing: 24,
+                              childAspectRatio: 1.2,
+                            ),
+                            itemCount: _paginatedForms.length,
+                            itemBuilder: (context, index) {
+                              final form = _paginatedForms[index];
+                              return _buildLiftingFormCard(form);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_totalPages > 1) _buildPaginationControls(),
+                ],
+              ),
+      ),
+    );
+  }
+  
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 5,
+                    blurRadius: 15,
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.flash_off,
+                size: 80,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            SizedBox(height: 32),
+            Text(
+              'No Flash Alarm Requests',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2c2c78),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No lifting forms submitted by you.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildLiftingFormCard(Map<String, dynamic> form) {
+    return GestureDetector(
+      onTap: () => widget.onFormSelected(form),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF2c2c78).withOpacity(0.12),
+              spreadRadius: 2,
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Color(0xFFe3e8ff), width: 1),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  // Circular image
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Color(0xFF2c2c78), width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF2c2c78).withOpacity(0.10),
+                          spreadRadius: 1,
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: _buildFormImage(form),
+                    ),
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    form['missingPersonName'] ?? 'Unknown Person',
+                    style: TextStyle(
+                      color: Color(0xFF2c2c78),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+              Container(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => widget.onFormSelected(form),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF2c2c78),
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+                  ),
+                  child: Text(
+                    'View Details',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildFormImage(Map<String, dynamic> form) {
+    final imageUrl = form['imageUrl'];
+    
+    if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Color(0xFFfafafa),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2c2c78)),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      return _buildPlaceholderImage();
+    }
+  }
+  
+  Widget _buildPlaceholderImage() {
+    return Container(
+      color: Color(0xFFfafafa),
+      child: Icon(
+        Icons.person,
+        size: 60,
+        color: Colors.grey.shade400,
+      ),
+    );
+  }
+  
+  Widget _buildPaginationControls() {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: _currentPage > 1
+                ? () => setState(() => _currentPage--)
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF2c2c78),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(100),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: Text('Prev'),
+          ),
+          SizedBox(width: 20),
+          Text(
+            'Page $_currentPage of $_totalPages',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2c2c78),
+            ),
+          ),
+          SizedBox(width: 20),
+          ElevatedButton(
+            onPressed: _currentPage < _totalPages
+                ? () => setState(() => _currentPage++)
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF2c2c78),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(100),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: Text('Next'),
+          ),
+        ],
+      ),
+    );
+  }
+}
