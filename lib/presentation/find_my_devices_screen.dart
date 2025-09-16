@@ -310,28 +310,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
     }
   }
 
-  String _getDeviceStatus(Map<String, dynamic> device) {
-    if (!device['findMeEnabled']) {
-      return 'FindMe Disabled';
-    }
-    
-    final lastLocation = device['lastLocation'] as LocationData?;
-    if (lastLocation != null) {
-      final difference = DateTime.now().difference(lastLocation.timestamp);
-      if (difference.inMinutes < 5) {
-        return 'Online';
-      } else if (difference.inMinutes < 60) {
-        return 'Last seen ${difference.inMinutes}m ago';
-      } else if (difference.inHours < 24) {
-        return 'Last seen ${difference.inHours}h ago';
-      } else {
-        return 'Last seen ${difference.inDays}d ago';
-      }
-    }
-    
-    return 'Location Unknown';
-  }
-
   IconData _getDeviceIcon(String deviceType) {
     switch (deviceType) {
       case 'phone':
@@ -404,21 +382,6 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                         ),
                       ),
                       SizedBox(height: 4),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF0D47A1).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _getDeviceStatus(device),
-                          style: TextStyle(
-                            color: Color(0xFF0D47A1),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
