@@ -941,6 +941,31 @@ class FillUpForm extends State<FillUpFormScreen> {
         case 'reportingBarangay':
           reportingPersonBarangay = value;
           break;
+        // Add victim address field handlers
+        case 'victimRegion':
+          if (victimRegion != value) {
+            victimProvince = null;
+            victimMunicipality = null;
+            victimBarangay = null;
+          }
+          victimRegion = value;
+          break;
+        case 'victimProvince':
+          if (victimProvince != value) {
+            victimMunicipality = null;
+            victimBarangay = null;
+          }
+          victimProvince = value;
+          break;
+        case 'victimMunicipality':
+          if (victimMunicipality != value) {
+            victimBarangay = null;
+          }
+          victimMunicipality = value;
+          break;
+        case 'victimBarangay':
+          victimBarangay = value;
+          break;
         // Add missing reporting other address field handlers
         case 'reportingOtherRegion':
           if (reportingPersonOtherRegion != value) {
