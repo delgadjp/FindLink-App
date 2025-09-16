@@ -6,12 +6,12 @@ import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:geocoding/geocoding.dart'; // Add this import for geocoding
 import 'package:http/http.dart' as http; // Add HTTP package for API calls
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart'; // Add url launcher
 import 'dart:math';
 
 class SubmitTipScreen extends StatefulWidget {
@@ -149,6 +149,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   Set<Marker> markers = {};
   LatLng? selectedLocation;
 
+  // Add search and street view functionality
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  List<Map<String, dynamic>> _searchResults = [];
+  static const String API_KEY = "AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0";
+
   static const String SCREEN_SUBMIT_TIP_COMPLIANCE = 'submitTipComplianceAccepted';
 
   @override
@@ -206,6 +212,114 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       setState(() {
         isCheckingPrivacyStatus = false;
       });
+    }
+  }
+
+  // Search for places using Google Places API
+  Future<void> _searchPlaces(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://maps.googleapis.com/maps/api/place/textsearch/json?query=$query&key=$API_KEY'
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final results = data['results'] as List<dynamic>;
+        
+        setState(() {
+          _searchResults = results.take(5).map((result) => {
+            'name': result['name'] ?? '',
+            'formatted_address': result['formatted_address'] ?? '',
+            'lat': result['geometry']['location']['lat'],
+            'lng': result['geometry']['location']['lng'],
+            'place_id': result['place_id'] ?? '',
+          }).toList();
+          _isSearching = false;
+        });
+      } else {
+        setState(() {
+          _isSearching = false;
+          _searchResults = [];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error searching for places. Please try again.')),
+        );
+      }
+    } catch (e) {
+      print('Error searching places: $e');
+      setState(() {
+        _isSearching = false;
+        _searchResults = [];
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error searching for places. Please check your internet connection.')),
+      );
+    }
+  }
+
+  // Select a place from search results
+  void _selectPlace(Map<String, dynamic> place) {
+    final lat = place['lat'] as double;
+    final lng = place['lng'] as double;
+    final newLocation = LatLng(lat, lng);
+    
+    setState(() {
+      selectedLocation = newLocation;
+      _addressController.text = place['formatted_address'] ?? '';
+      _searchResults = [];
+      _searchController.clear();
+    });
+
+    // Update map camera and marker
+    _updateMarkerAndControllers();
+    if (mapController != null) {
+      mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(newLocation, 15),
+      );
+    }
+
+    // Check for nearby tips
+    _checkForNearbyTips();
+  }
+
+  // Open Street View
+  Future<void> _openStreetView() async {
+    if (selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a location first')),
+      );
+      return;
+    }
+
+    final lat = selectedLocation!.latitude;
+    final lng = selectedLocation!.longitude;
+    final url = 'https://www.google.com/maps/@$lat,$lng,3a,75y,90t/data=!3m6!1e1';
+    
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open Google Maps')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error opening Street View: $e')),
+      );
     }
   }
 
@@ -436,20 +550,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _addressError = "Error: $e";
       });
     }
-  }
-
-  String? _validateCoordinate(String? value, String type) {
-    if (value == null || value.isEmpty) return 'Please enter $type';
-    if (!RegExp(r'^-?\d*\.?\d*$').hasMatch(value)) return 'Invalid $type format';
-    double? coord = double.tryParse(value);
-    if (coord == null) return 'Invalid $type';
-    if (type == 'longitude' && (coord < -180 || coord > 180)) {
-      return 'Longitude must be between -180 and 180';
-    }
-    if (type == 'latitude' && (coord < -90 || coord > 90)) {
-      return 'Latitude must be between -90 and 90';
-    }
-    return null;
   }
 
   /// Enhanced image picker with better permission handling and immediate validation
@@ -803,28 +903,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     }
   }
   
-  // Method to try again with a different image
-  void _tryDifferentImage() {
-    setState(() {
-      _imageFile = null;
-      _webImage = null;
-      _validationStatus = ValidationStatus.none;
-      _validationMessage = '';
-    });
-    _showImageSourceOptions();
-  }
-  
-  // Method to submit without image
-  void _submitWithoutImage() {
-    setState(() {
-      _imageFile = null;
-      _webImage = null;
-      _validationStatus = ValidationStatus.none;
-      _validationMessage = '';
-    });
-    _submitTip();
-  }
-
   Widget _buildMapSection() {
     // Add debug prints to identify platform and location status
     print("Platform is web: ${kIsWeb}");
@@ -836,6 +914,111 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader("Select Location on Map"),
+          
+          // Search bar
+          Container(
+            margin: EdgeInsets.only(bottom: 16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  style: TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'Search for a place...',
+                    prefixIcon: Icon(Icons.search, color: Color(0xFF0D47A1)),
+                    suffixIcon: _isSearching 
+                      ? Container(
+                          width: 20,
+                          height: 20,
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchResults = [];
+                              });
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Color(0xFF0D47A1), width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                  ),
+                  onChanged: (value) {
+                    if (value.isNotEmpty) {
+                      // Debounce search to avoid too many API calls
+                      Future.delayed(Duration(milliseconds: 500), () {
+                        if (_searchController.text == value) {
+                          _searchPlaces(value);
+                        }
+                      });
+                    } else {
+                      setState(() {
+                        _searchResults = [];
+                      });
+                    }
+                  },
+                ),
+                
+                // Search results
+                if (_searchResults.isNotEmpty)
+                  Container(
+                    margin: EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final place = _searchResults[index];
+                        return ListTile(
+                          leading: Icon(Icons.place, color: Color(0xFF0D47A1)),
+                          title: Text(
+                            place['name'] ?? '',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          subtitle: Text(
+                            place['formatted_address'] ?? '',
+                            style: TextStyle(color: Colors.black87),
+                          ),
+                          onTap: () => _selectPlace(place),
+                          dense: true,
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          
           Container(
             height: 300,
             decoration: BoxDecoration(
@@ -866,10 +1049,22 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       Positioned(
                         bottom: 16,
                         right: 16,
-                        child: FloatingActionButton(
-                          onPressed: _getCurrentLocation,
-                          child: Icon(Icons.my_location),
-                          backgroundColor: Color(0xFF0D47A1),
+                        child: Column(
+                          children: [
+                            FloatingActionButton(
+                              onPressed: _getCurrentLocation,
+                              child: Icon(Icons.my_location),
+                              backgroundColor: Color(0xFF0D47A1),
+                              heroTag: "location_btn",
+                            ),
+                            SizedBox(height: 8),
+                            FloatingActionButton(
+                              onPressed: _openStreetView,
+                              child: Icon(Icons.streetview),
+                              backgroundColor: Color(0xFF0D47A1),
+                              heroTag: "streetview_btn",
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -899,6 +1094,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   ),
                 ),
               ),
+              SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: selectedLocation != null ? _openStreetView : null,
+                  icon: Icon(Icons.streetview),
+                  label: Text("Street View"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: selectedLocation != null ? Color(0xFF0D47A1) : Colors.grey,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -910,6 +1118,111 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader("Select Location on Map"),
+        
+        // Search bar
+        Container(
+          margin: EdgeInsets.only(bottom: 16),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchController,
+                style: TextStyle(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: 'Search for a place...',
+                  prefixIcon: Icon(Icons.search, color: Color(0xFF0D47A1)),
+                  suffixIcon: _isSearching 
+                    ? Container(
+                        width: 20,
+                        height: 20,
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchResults = [];
+                            });
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Color(0xFF0D47A1), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                onChanged: (value) {
+                  if (value.isNotEmpty) {
+                    // Debounce search to avoid too many API calls
+                    Future.delayed(Duration(milliseconds: 500), () {
+                      if (_searchController.text == value) {
+                        _searchPlaces(value);
+                      }
+                    });
+                  } else {
+                    setState(() {
+                      _searchResults = [];
+                    });
+                  }
+                },
+              ),
+              
+              // Search results
+              if (_searchResults.isNotEmpty)
+                Container(
+                  margin: EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final place = _searchResults[index];
+                      return ListTile(
+                        leading: Icon(Icons.place, color: Color(0xFF0D47A1)),
+                        title: Text(
+                          place['name'] ?? '',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black,
+                          ),
+                        ),
+                        subtitle: Text(
+                          place['formatted_address'] ?? '',
+                          style: TextStyle(color: Colors.black87),
+                        ),
+                        onTap: () => _selectPlace(place),
+                        dense: true,
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+        
         Container(
           height: 300,
           decoration: BoxDecoration(
@@ -939,8 +1252,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       mapController = controller;
                     },
                     markers: markers,
-                    myLocationButtonEnabled: true,
-                    myLocationEnabled: true,                    onTap: (LatLng position) {
+                    myLocationButtonEnabled: false, // We'll add custom buttons
+                    myLocationEnabled: true,
+                    onTap: (LatLng position) {
                       setState(() {
                         selectedLocation = position;
                         _updateMarkerAndControllers();
@@ -1004,6 +1318,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 label: Text("Use My Location"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF0D47A1),
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: selectedLocation != null ? _openStreetView : null,
+                icon: Icon(Icons.streetview),
+                label: Text("Street View"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: selectedLocation != null ? Color(0xFF0D47A1) : Colors.grey,
                   padding: EdgeInsets.symmetric(vertical: 12),
                   foregroundColor: Colors.white,
                 ),
@@ -1279,20 +1606,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 16),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
         ),
       ),
     );
