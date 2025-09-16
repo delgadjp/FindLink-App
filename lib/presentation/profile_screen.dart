@@ -2289,7 +2289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 16),                    // Case Cards Carousel
+                    SizedBox(height: 12),                    // Case Cards Carousel
                     Container(
                       height: 300, // Increased height to accommodate navigation
                       child: _casesData.isEmpty
@@ -2339,7 +2339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   // Navigation controls below the card
                                 if (_casesData.length > 1)
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    padding: EdgeInsets.symmetric(vertical: 8),
                                     child: LayoutBuilder(
                                       builder: (context, constraints) {
                                         final screenWidth = MediaQuery.of(context).size.width;
@@ -2509,8 +2509,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                               ],
                             ),
-                    ),SizedBox(height: 24),
-                    SizedBox(height: 24),
+                    ),
+                    // Conditional spacing - only add space when pagination controls are visible
+                    SizedBox(height: _casesData.length > 1 ? 16 : 8),
                     
                     // Status Timeline Section
                     Row(
@@ -2536,7 +2537,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 16),
+                    SizedBox(height: 12),
 
                     // Timeline Visualization in a Card
                     if (_casesData.isNotEmpty)
