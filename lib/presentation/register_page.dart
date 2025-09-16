@@ -265,9 +265,27 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Method to validate form and proceed to ID validation
   void _validateAndProceedToIDValidation() {
-    if (!_formKey.currentState!.validate()) {
+    // Custom validation for phone number since we removed validator
+    bool isPhoneValid = phoneNumberController.text.isNotEmpty && _validatePhoneNumber(phoneNumberController.text);
+    
+    if (!_formKey.currentState!.validate() || !isPhoneValid) {
+      // Update phone validation state
+      setState(() {
+        _isPhoneNumberValid = isPhoneValid;
+      });
+      
       // If validation fails, scroll to the first error
       _scrollToFirstError();
+      
+      // Show phone-specific error if needed
+      if (!isPhoneValid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please enter a valid 10-digit phone number'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
     
@@ -460,7 +478,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         // Year dropdown
                         Expanded(
-                          flex: 4,
+                          flex: 5,
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
@@ -945,88 +963,92 @@ class _RegisterPageState extends State<RegisterPage> {
                               // Phone Number
                               _buildInputLabel('Phone Number'),
                               SizedBox(height: 5),
-                              Container(
-                                key: _phoneKey,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Country code prefix container
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: Radius.circular(9),
-                                          bottomLeft: Radius.circular(9),
-                                        ),
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        countryCode,
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 15,
-                                        ),
-                                      ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    key: _phoneKey,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
                                     ),
-                                    // Phone number input field
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: phoneNumberController,
-                                        style: TextStyle(color: Colors.black),
-                                        keyboardType: TextInputType.phone,
-                                        decoration: InputDecoration(
-                                          hintText: 'Enter your phone number',
-                                          prefixIcon: Icon(
-                                            Icons.phone_outlined,
-                                            color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                    child: Row(
+                                      children: [
+                                        // Country code prefix container
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(9),
+                                              bottomLeft: Radius.circular(9),
+                                            ),
+                                            border: Border(
+                                              right: BorderSide(color: Colors.grey.shade300),
+                                            ),
                                           ),
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(vertical: 15),
-                                          errorStyle: TextStyle(height: 0), // Hide error text as we'll use red border
+                                          child: Text(
+                                            countryCode,
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            phoneNumberController.text = _formatPhoneNumber(value);
-                                            phoneNumberController.selection = TextSelection.fromPosition(
-                                              TextPosition(offset: phoneNumberController.text.length),
-                                            );
-                                            _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
-                                          });
-                                        },
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) {
-                                            return 'Please enter your phone number';
-                                          }
-                                          if (!_validatePhoneNumber(value)) {
-                                            return 'Please enter a valid phone number (10 digits)';
-                                          }
-                                          return null;
-                                        },
+                                        // Phone number input field
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: phoneNumberController,
+                                            style: TextStyle(color: Colors.black),
+                                            keyboardType: TextInputType.phone,
+                                            decoration: InputDecoration(
+                                              hintText: 'Enter your phone number',
+                                              prefixIcon: Icon(
+                                                Icons.phone_outlined,
+                                                color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding: EdgeInsets.symmetric(vertical: 15),
+                                              errorStyle: TextStyle(height: 0), // Hide default error text
+                                            ),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                phoneNumberController.text = _formatPhoneNumber(value);
+                                                phoneNumberController.selection = TextSelection.fromPosition(
+                                                  TextPosition(offset: phoneNumberController.text.length),
+                                                );
+                                                _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
+                                              });
+                                            },
+                                            validator: (value) {
+                                              // Return null to prevent default error display
+                                              return null;
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  // Custom error message or format hint
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 5),
+                                    child: Text(
+                                      phoneNumberController.text.isNotEmpty && !_isPhoneNumberValid
+                                          ? 'Please enter a valid 10-digit phone number'
+                                          : 'Enter 10 digits (e.g., 9123456789)',
+                                      style: TextStyle(
+                                        color: phoneNumberController.text.isNotEmpty && !_isPhoneNumberValid
+                                            ? Colors.red
+                                            : Colors.grey.shade600,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              // Phone number format hint
-                              Padding(
-                                padding: EdgeInsets.only(left: 5),
-                                child: Text(
-                                  'Enter 10 digits (e.g., 9123456789)',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 12,
-                                    fontStyle: FontStyle.italic,
                                   ),
-                                ),
+                                ],
                               ),
                               SizedBox(height: 15),
 
