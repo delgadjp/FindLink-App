@@ -466,6 +466,344 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
   }
   
+  // Show time picker dialog
+  void _showTimePickerDialog() {
+    // Parse current time if exists, otherwise use current time
+    TimeOfDay initialTime;
+    if (_timeLastSeenController.text.isNotEmpty) {
+      try {
+        final parts = _timeLastSeenController.text.split(':');
+        initialTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      } catch (e) {
+        initialTime = TimeOfDay.now();
+      }
+    } else {
+      initialTime = TimeOfDay.now();
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        int selectedHour = initialTime.hour;
+        int selectedMinute = initialTime.minute;
+        
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 8,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 15,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF0D47A1).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.access_time,
+                              color: Color(0xFF0D47A1),
+                              size: 28,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Select Time',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Choose the time last seen',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // Time selection
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Hour picker
+                            Column(
+                              children: [
+                                Text(
+                                  'Hour',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Container(
+                                  width: 80,
+                                  height: 120,
+                                  child: ListWheelScrollView.useDelegate(
+                                    itemExtent: 40,
+                                    diameterRatio: 1.5,
+                                    physics: FixedExtentScrollPhysics(),
+                                    onSelectedItemChanged: (index) {
+                                      setState(() {
+                                        selectedHour = index;
+                                      });
+                                    },
+                                    controller: FixedExtentScrollController(
+                                      initialItem: selectedHour,
+                                    ),
+                                    childDelegate: ListWheelChildBuilderDelegate(
+                                      builder: (context, index) {
+                                        if (index < 0 || index > 23) return null;
+                                        return Container(
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: selectedHour == index
+                                                ? Color(0xFF0D47A1).withOpacity(0.1)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            index.toString().padLeft(2, '0'),
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: selectedHour == index
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: selectedHour == index
+                                                  ? Color(0xFF0D47A1)
+                                                  : Colors.black,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      childCount: 24,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            // Separator
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                ':',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0D47A1),
+                                ),
+                              ),
+                            ),
+                            
+                            // Minute picker
+                            Column(
+                              children: [
+                                Text(
+                                  'Minute',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF0D47A1),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Container(
+                                  width: 80,
+                                  height: 120,
+                                  child: ListWheelScrollView.useDelegate(
+                                    itemExtent: 40,
+                                    diameterRatio: 1.5,
+                                    physics: FixedExtentScrollPhysics(),
+                                    onSelectedItemChanged: (index) {
+                                      setState(() {
+                                        selectedMinute = index;
+                                      });
+                                    },
+                                    controller: FixedExtentScrollController(
+                                      initialItem: selectedMinute,
+                                    ),
+                                    childDelegate: ListWheelChildBuilderDelegate(
+                                      builder: (context, index) {
+                                        if (index < 0 || index > 59) return null;
+                                        return Container(
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: selectedMinute == index
+                                                ? Color(0xFF0D47A1).withOpacity(0.1)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            index.toString().padLeft(2, '0'),
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: selectedMinute == index
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: selectedMinute == index
+                                                  ? Color(0xFF0D47A1)
+                                                  : Colors.black,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      childCount: 60,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      SizedBox(height: 24),
+                      
+                      // Selected time preview
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF0D47A1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Selected Time:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      SizedBox(height: 24),
+                      
+                      // Action buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                // Update the time controller
+                                final timeString = '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
+                                this.setState(() {
+                                  _timeLastSeenController.text = timeString;
+                                });
+                                Navigator.of(dialogContext).pop();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF0D47A1),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: Text(
+                                'Confirm',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
   void _updateMarkerAndControllers() {
     if (selectedLocation != null) {
       markers.clear();
@@ -714,10 +1052,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     // Check form validation state
     final bool isValid = _formKey.currentState?.validate() ?? false;
     
-    // Additional validation for date dropdowns
+    // Additional validation for date dropdowns and time
     bool dateDropdownValid = selectedDay != null && selectedMonth != null && selectedYear != null;
+    bool timeValid = _timeLastSeenController.text.isNotEmpty;
     
-    if (!isValid || !dateDropdownValid) {
+    if (!isValid || !dateDropdownValid || !timeValid) {
       // Find the first field with an error and scroll to it
       GlobalKey<FormFieldState>? firstErrorKey;
       
@@ -727,6 +1066,17 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Please select a complete date (month, day, and year)'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Check time field
+      if (!timeValid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please select a time'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1512,7 +1862,61 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           ),
                         ),
                         SizedBox(height: 16), // Added extra spacing here
-                        _buildTextField(_timeLastSeenController, "Time Last Seen", icon: Icons.access_time),
+                        // Time Last Seen with time picker
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Time Last Seen',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              InkWell(
+                                onTap: () => _showTimePickerDialog(),
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.access_time, color: Color(0xFF0D47A1), size: 20),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _timeLastSeenController.text.isEmpty 
+                                              ? 'Select time (HH:MM)' 
+                                              : _timeLastSeenController.text,
+                                          style: TextStyle(
+                                            color: _timeLastSeenController.text.isEmpty 
+                                                ? Colors.grey.shade600 
+                                                : Colors.black,
+                                            fontSize: 14,
+                                            fontWeight: _timeLastSeenController.text.isEmpty 
+                                                ? FontWeight.normal 
+                                                : FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: Color(0xFF0D47A1),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1968,63 +2372,242 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     );
   }
 
-  // Add a method to show image source options
+  // Add a method to show image source options with improved UI
   void _showImageSourceOptions() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Select Image Source",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D47A1),
-              ),
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            if (!kIsWeb) // Show camera option only on mobile platforms
-              ListTile(
-                leading: Icon(Icons.camera_alt, color: Color(0xFF0D47A1)),
-                title: Text(
-                  "Take Photo",
-                  style: TextStyle(
-                    color: Color(0xFF0D47A1),
-                    fontWeight: FontWeight.w500,
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon and title
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF0D47A1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.add_photo_alternate,
+                          color: Color(0xFF0D47A1),
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Image Source',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Choose how to upload the photo',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
+                  SizedBox(height: 24),
+                  
+                  // Gallery option
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(ImageSource.gallery);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF0D47A1).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.photo_library_rounded,
+                                color: Color(0xFF0D47A1),
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Choose from Gallery',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF424242),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Select an existing photo',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.grey.shade400,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // Camera option (only show on mobile)
+                  if (!kIsWeb)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _pickImage(ImageSource.camera);
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF0D47A1).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: Color(0xFF0D47A1),
+                                  size: 24,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Take a Photo',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF424242),
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Use your camera to capture',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.grey.shade400,
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 20),
+                  
+                  // Cancel button
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ListTile(
-              leading: Icon(Icons.photo_library, color: Color(0xFF0D47A1)),
-              title: Text(
-                "Choose from Gallery",
-                style: TextStyle(
-                  color: Color(0xFF0D47A1),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
