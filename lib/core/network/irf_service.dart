@@ -508,4 +508,181 @@ class IRFService {
       return null;
     }
   }
+
+  // Save reporting person data for future form use
+  Future<bool> saveReportingPersonData(Map<String, dynamic> reportingPersonData) async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return false;
+      }
+
+      // Generate formal document ID for saved reporting person data
+      String formalDocId = await _generateSavedDataDocumentId();
+
+      // Create a document in savedReportingPersonData collection with formal ID
+      await _firestore
+          .collection('savedReportingPersonData')
+          .doc(formalDocId)
+          .set({
+        'userId': currentUserId,
+        'documentId': formalDocId,
+        'reportingPersonData': reportingPersonData,
+        'savedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('Successfully saved reporting person data for user: $currentUserId with ID: $formalDocId');
+      return true;
+    } catch (e) {
+      print('Error saving reporting person data: $e');
+      return false;
+    }
+  }
+
+  // Generate formal document ID for saved reporting person data: SRPD-YYYYMMDD-XXXX
+  Future<String> _generateSavedDataDocumentId() async {
+    final today = DateTime.now();
+    final dateStr = DateFormat('yyyyMMdd').format(today);
+    final idPrefix = 'SRPD-$dateStr-'; // SRPD = Saved Reporting Person Data
+
+    try {
+      // Get all documents with today's date prefix by document ID
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('savedReportingPersonData')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: idPrefix + '0001')
+          .where(FieldPath.documentId, isLessThanOrEqualTo: idPrefix + '9999')
+          .get();
+
+      // Find the highest sequential number by checking doc.id
+      int highestNumber = 0;
+      for (final doc in querySnapshot.docs) {
+        final String docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+          final String seqPart = docId.substring(idPrefix.length);
+          final int? seqNum = int.tryParse(seqPart);
+          if (seqNum != null && seqNum > highestNumber) {
+            highestNumber = seqNum;
+          }
+        }
+      }
+
+      // Increment for next document
+      final int nextNumber = highestNumber + 1;
+      final String paddedNumber = nextNumber.toString().padLeft(4, '0');
+      final String newDocId = '$idPrefix$paddedNumber';
+      return newDocId;
+    } catch (e) {
+      // Fallback ID using current user ID for uniqueness
+      final String fallbackId = 'SRPD-${dateStr}-USER-${currentUserId?.substring(0, 8) ?? 'UNKNOWN'}';
+      return fallbackId;
+    }
+  }
+
+  // Retrieve saved reporting person data
+  Future<Map<String, dynamic>?> getSavedReportingPersonData() async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return null;
+      }
+
+      // Query by userId since we're no longer using userId as document ID
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('savedReportingPersonData')
+          .where('userId', isEqualTo: currentUserId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final data = querySnapshot.docs.first.data() as Map<String, dynamic>;
+        return data['reportingPersonData'] as Map<String, dynamic>?;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error retrieving saved reporting person data: $e');
+      return null;
+    }
+  }
+
+  // Check if user has saved reporting person data
+  Future<bool> hasSavedReportingPersonData() async {
+    try {
+      if (currentUserId == null) return false;
+
+      // Query by userId since we're no longer using userId as document ID
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('savedReportingPersonData')
+          .where('userId', isEqualTo: currentUserId)
+          .limit(1)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking for saved reporting person data: $e');
+      return false;
+    }
+  }
+
+  // Clear saved reporting person data
+  Future<bool> clearSavedReportingPersonData() async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return false;
+      }
+
+      // Query by userId to find the document to delete
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('savedReportingPersonData')
+          .where('userId', isEqualTo: currentUserId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        await querySnapshot.docs.first.reference.delete();
+        print('Successfully cleared saved reporting person data for user: $currentUserId');
+        return true;
+      } else {
+        print('No saved reporting person data found for user: $currentUserId');
+        return false;
+      }
+    } catch (e) {
+      print('Error clearing saved reporting person data: $e');
+      return false;
+    }
+  }
+
+  // Update existing saved reporting person data
+  Future<bool> updateSavedReportingPersonData(Map<String, dynamic> reportingPersonData) async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return false;
+      }
+
+      // Query by userId to find the document to update
+      final QuerySnapshot querySnapshot = await _firestore
+          .collection('savedReportingPersonData')
+          .where('userId', isEqualTo: currentUserId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        await querySnapshot.docs.first.reference.update({
+          'reportingPersonData': reportingPersonData,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        print('Successfully updated saved reporting person data for user: $currentUserId');
+        return true;
+      } else {
+        // If no existing document, create a new one
+        return await saveReportingPersonData(reportingPersonData);
+      }
+    } catch (e) {
+      print('Error updating saved reporting person data: $e');
+      return false;
+    }
+  }
 }

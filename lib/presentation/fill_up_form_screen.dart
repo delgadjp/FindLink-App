@@ -369,6 +369,536 @@ class FillUpForm extends State<FillUpFormScreen> {
     );
   }
   
+  // Show dialog to ask if user wants to save reporting person data
+  Future<void> _showSaveReportingPersonDataDialog() async {
+    // Check if user already has saved data
+    bool hasSavedData = await _irfService.hasSavedReportingPersonData();
+    
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.save_alt,
+                  size: 60,
+                  color: Theme.of(context).primaryColor,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  hasSavedData ? 'Update Saved Information?' : 'Save Your Information?',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 15),
+                Text(
+                  hasSavedData 
+                    ? 'Would you like to update your saved reporting person information with the details from this form? This will make future form submissions faster.'
+                    : 'Would you like to save your reporting person information for future forms? This will automatically fill in your details next time, making reporting faster and easier.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Text(
+                          'Not Now',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(context).pop();
+                          await _saveReportingPersonData();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          hasSavedData ? 'Update' : 'Save',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Save reporting person data to Firebase
+  Future<void> _saveReportingPersonData() async {
+    try {
+      // Collect reporting person data from form
+      Map<String, dynamic> reportingPersonData = {
+        'surname': _surnameReportingController.text,
+        'firstName': _firstNameReportingController.text,
+        'middleName': _middleNameReportingController.text,
+        'qualifier': _qualifierReportingController.text,
+        'nickname': _nicknameReportingController.text,
+        'citizenship': _citizenshipReportingController.text,
+        'sexGender': _sexGenderReportingController.text,
+        'civilStatus': _civilStatusReportingController.text,
+        'dateOfBirth': _dateOfBirthReportingController.text,
+        'age': _ageReportingController.text,
+        'placeOfBirth': _placeOfBirthReportingController.text,
+        'homePhone': _homePhoneReportingController.text,
+        'mobilePhone': _mobilePhoneReportingController.text,
+        'currentAddress': _currentAddressReportingController.text,
+        'villageSitio': _villageSitioReportingController.text,
+        'education': _educationReportingController.text,
+        'occupation': _occupationReportingController.text,
+        'idCardPresented': _idCardPresentedController.text,
+        'email': _emailReportingController.text,
+        // Address location data
+        'regionName': reportingPersonRegion?.regionName,
+        'provinceName': reportingPersonProvince?.name,
+        'municipalityName': reportingPersonMunicipality?.name,
+        'barangay': reportingPersonBarangay,
+        // Date components for proper restoration
+        'selectedDay': selectedDayReporting,
+        'selectedMonth': selectedMonthReporting,
+        'selectedYear': selectedYearReporting,
+        // Other address data if applicable
+        'hasOtherAddress': hasOtherAddressReporting,
+        'otherRegionName': hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
+        'otherProvinceName': hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
+        'otherMunicipalityName': hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
+        'otherBarangay': hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      };
+
+      // Check if data already exists and update accordingly
+      bool hasSavedData = await _irfService.hasSavedReportingPersonData();
+      bool success;
+      
+      if (hasSavedData) {
+        success = await _irfService.updateSavedReportingPersonData(reportingPersonData);
+      } else {
+        success = await _irfService.saveReportingPersonData(reportingPersonData);
+      }
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(hasSavedData ? 'Reporting person information updated successfully!' : 'Reporting person information saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save reporting person information. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error saving reporting person data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving information: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  
+  // Show dialog to confirm clearing saved reporting person data
+  Future<void> _showClearSavedDataDialog() async {
+    // First check if user has saved data
+    bool hasSavedData = await _irfService.hasSavedReportingPersonData();
+    
+    if (!hasSavedData) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No saved reporting person data found.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 60,
+                  color: Colors.orange,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Clear Saved Information?',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 15),
+                Text(
+                  'Are you sure you want to permanently delete your saved reporting person information? This action cannot be undone.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(context).pop();
+                          await _clearSavedReportingPersonData();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Clear saved reporting person data
+  Future<void> _clearSavedReportingPersonData() async {
+    try {
+      bool success = await _irfService.clearSavedReportingPersonData();
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved reporting person information cleared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to clear saved information. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error clearing saved reporting person data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error clearing information: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Load saved reporting person data into the form
+  Future<void> _loadSavedReportingPersonData() async {
+    try {
+      Map<String, dynamic>? savedData = await _irfService.getSavedReportingPersonData();
+      
+      if (savedData == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No saved reporting person data found.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Show confirmation dialog before overwriting current data
+      bool shouldLoad = await _showLoadSavedDataConfirmationDialog();
+      if (!shouldLoad) return;
+
+      setState(() {
+        _surnameReportingController.text = savedData['surname'] ?? '';
+        _firstNameReportingController.text = savedData['firstName'] ?? '';
+        _middleNameReportingController.text = savedData['middleName'] ?? '';
+        _qualifierReportingController.text = savedData['qualifier'] ?? '';
+        _nicknameReportingController.text = savedData['nickname'] ?? '';
+        _citizenshipReportingController.text = savedData['citizenship'] ?? '';
+        _sexGenderReportingController.text = savedData['sexGender'] ?? '';
+        _civilStatusReportingController.text = savedData['civilStatus'] ?? '';
+        _dateOfBirthReportingController.text = savedData['dateOfBirth'] ?? '';
+        _ageReportingController.text = savedData['age'] ?? '';
+        _placeOfBirthReportingController.text = savedData['placeOfBirth'] ?? '';
+        _homePhoneReportingController.text = savedData['homePhone'] ?? '';
+        _mobilePhoneReportingController.text = savedData['mobilePhone'] ?? '';
+        _currentAddressReportingController.text = savedData['currentAddress'] ?? '';
+        _villageSitioReportingController.text = savedData['villageSitio'] ?? '';
+        _educationReportingController.text = savedData['education'] ?? '';
+        _occupationReportingController.text = savedData['occupation'] ?? '';
+        _idCardPresentedController.text = savedData['idCardPresented'] ?? '';
+        _emailReportingController.text = savedData['email'] ?? '';
+        
+        // Restore date components
+        selectedDayReporting = savedData['selectedDay'];
+        selectedMonthReporting = savedData['selectedMonth'];
+        selectedYearReporting = savedData['selectedYear'];
+        
+        // Restore address selection state
+        hasOtherAddressReporting = savedData['hasOtherAddress'] ?? false;
+      });
+
+      _restoreLocationData(savedData);
+      updateFormState();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved reporting person information loaded successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error loading saved reporting person data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading saved information: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Show confirmation dialog before loading saved data
+  Future<bool> _showLoadSavedDataConfirmationDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.download,
+                  size: 60,
+                  color: Colors.blue,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Load Saved Information?',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 15),
+                Text(
+                  'This will replace any information currently filled in the reporting person section. Are you sure you want to continue?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(false);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(true);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Load',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ) ?? false;
+  }
+  
   // Calculate SHA-256 hash of image bytes
   String _calculateImageHash(Uint8List imageBytes) {
     var digest = sha256.convert(imageBytes);
@@ -932,7 +1462,49 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Only prefill if the form is empty
       if (_surnameReportingController.text.isNotEmpty || _firstNameReportingController.text.isNotEmpty) return;
       
-      // Get selected ID type from IRFService
+      // First, try to get saved reporting person data (priority over user profile)
+      Map<String, dynamic>? savedReportingData = await _irfService.getSavedReportingPersonData();
+      
+      if (savedReportingData != null) {
+        // Use saved reporting person data
+        setState(() {
+          _surnameReportingController.text = savedReportingData['surname'] ?? '';
+          _firstNameReportingController.text = savedReportingData['firstName'] ?? '';
+          _middleNameReportingController.text = savedReportingData['middleName'] ?? '';
+          _qualifierReportingController.text = savedReportingData['qualifier'] ?? '';
+          _nicknameReportingController.text = savedReportingData['nickname'] ?? '';
+          _citizenshipReportingController.text = savedReportingData['citizenship'] ?? '';
+          _sexGenderReportingController.text = savedReportingData['sexGender'] ?? '';
+          _civilStatusReportingController.text = savedReportingData['civilStatus'] ?? '';
+          _dateOfBirthReportingController.text = savedReportingData['dateOfBirth'] ?? '';
+          _ageReportingController.text = savedReportingData['age'] ?? '';
+          _placeOfBirthReportingController.text = savedReportingData['placeOfBirth'] ?? '';
+          _homePhoneReportingController.text = savedReportingData['homePhone'] ?? '';
+          _mobilePhoneReportingController.text = savedReportingData['mobilePhone'] ?? '';
+          _currentAddressReportingController.text = savedReportingData['currentAddress'] ?? '';
+          _villageSitioReportingController.text = savedReportingData['villageSitio'] ?? '';
+          _educationReportingController.text = savedReportingData['education'] ?? '';
+          _occupationReportingController.text = savedReportingData['occupation'] ?? '';
+          _idCardPresentedController.text = savedReportingData['idCardPresented'] ?? '';
+          _emailReportingController.text = savedReportingData['email'] ?? '';
+          
+          // Restore date components
+          selectedDayReporting = savedReportingData['selectedDay'];
+          selectedMonthReporting = savedReportingData['selectedMonth'];
+          selectedYearReporting = savedReportingData['selectedYear'];
+          
+          // Restore address selection state
+          hasOtherAddressReporting = savedReportingData['hasOtherAddress'] ?? false;
+          
+          // Note: We'll need to handle region/province/municipality restoration separately
+          // as these require async calls to the Philippines API
+          _restoreLocationData(savedReportingData);
+        });
+        updateFormState();
+        return; // Don't proceed to user profile data if saved data exists
+      }
+      
+      // Fallback to user profile data if no saved reporting person data exists
       String? selectedIDType = await _irfService.getUserSelectedIDType();
       
       final userQuery = await FirebaseFirestore.instance
@@ -941,7 +1513,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           .limit(1)
           .get();
       if (userQuery.docs.isNotEmpty) {
-  final userData = userQuery.docs.first.data();
+        final userData = userQuery.docs.first.data();
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
           _firstNameReportingController.text = userData['firstName'] ?? '';          
@@ -949,7 +1521,9 @@ class FillUpForm extends State<FillUpFormScreen> {
           _emailReportingController.text = userData['email'] ?? '';
           _sexGenderReportingController.text = userData['gender'] ?? '';
           _ageReportingController.text = userData['age'] != null ? userData['age'].toString() : '';
-          _idCardPresentedController.text = selectedIDType ?? '';          // Handle birthday field for date of birth
+          _idCardPresentedController.text = selectedIDType ?? '';
+          
+          // Handle birthday field for date of birth
           if (userData['birthday'] != null) {
             DateTime? dob;
             try {
@@ -1009,6 +1583,38 @@ class FillUpForm extends State<FillUpFormScreen> {
       }
     } catch (e) {
       print('Error pre-filling user details: $e');
+    }
+  }
+
+  // Helper method to restore location data from saved reporting person data
+  Future<void> _restoreLocationData(Map<String, dynamic> savedData) async {
+    try {
+      // Note: This is a simplified version. In a complete implementation,
+      // you would need to handle the async loading of regions, provinces, etc.
+      // For now, we'll just store the names and they can be selected manually
+      
+      // Get stored location names for future reference
+      // String? regionName = savedData['regionName'];
+      // String? provinceName = savedData['provinceName'];
+      // String? municipalityName = savedData['municipalityName'];
+      String? barangay = savedData['barangay'];
+      
+      // You would need to implement proper restoration of the Region, Province, 
+      // Municipality objects here by calling the Philippines API or having them cached
+      
+      // For now, just set the barangay which is a string
+      reportingPersonBarangay = barangay;
+      
+      // Handle other address data
+      if (savedData['hasOtherAddress'] == true) {
+        hasOtherAddressReporting = true;
+        reportingPersonOtherBarangay = savedData['otherBarangay'];
+        // Similar restoration needed for other address location objects
+      }
+      
+      setState(() {}); // Trigger UI update
+    } catch (e) {
+      print('Error restoring location data: $e');
     }
   }
 
@@ -2722,6 +3328,9 @@ class FillUpForm extends State<FillUpFormScreen> {
         ),
       );
       
+      // Check if user wants to save reporting person data for future use
+      await _showSaveReportingPersonDataDialog();
+      
       // Navigate back
       Navigator.pop(context);
     } catch (e) {
@@ -2839,6 +3448,43 @@ class FillUpForm extends State<FillUpFormScreen> {
           icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (String value) async {
+              switch (value) {
+                case 'clear_saved_data':
+                  await _showClearSavedDataDialog();
+                  break;
+                case 'load_saved_data':
+                  await _loadSavedReportingPersonData();
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'load_saved_data',
+                child: Row(
+                  children: [
+                    Icon(Icons.download, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Load Saved Info'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'clear_saved_data',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Clear Saved Info'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: isCheckingPrivacyStatus 
         ? Center(child: CircularProgressIndicator())
