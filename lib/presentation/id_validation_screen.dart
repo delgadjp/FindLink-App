@@ -55,49 +55,233 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
   void _showImageSourceDialog() {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Choose Image Source'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                GestureDetector(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.photo_library, color: Color(0xFF53C0FF)),
-                        SizedBox(width: 10),
-                        Text('Gallery'),
-                      ],
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Divider(),
-                ),
-                GestureDetector(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.camera_alt, color: Color(0xFF53C0FF)),
-                        SizedBox(width: 10),
-                        Text('Camera'),
-                      ],
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _pickImage(ImageSource.camera);
-                  },
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
                 ),
               ],
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon and title
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF2A5298).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.add_photo_alternate,
+                          color: Color(0xFF2A5298),
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Image Source',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2A5298),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Choose how to upload your ID',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 24),
+                  
+                  // Gallery option
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(ImageSource.gallery);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF53C0FF).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.photo_library_rounded,
+                                color: Color(0xFF53C0FF),
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Choose from Gallery',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF424242),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Select an existing photo',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.grey.shade400,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // Camera option
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(ImageSource.camera);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF53C0FF).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                color: Color(0xFF53C0FF),
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Take a Photo',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF424242),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Use your camera to capture',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.grey.shade400,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 20),
+                  
+                  // Cancel button
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
