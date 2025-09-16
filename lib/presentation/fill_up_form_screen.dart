@@ -1446,7 +1446,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                               ),
                               isExpanded: true,
                               dropdownColor: Colors.white,
-                              items: List.generate(25, (index) {
+                              items: List.generate(100, (index) {
                                 int year = DateTime.now().year - index;
                                 return DropdownMenuItem<int>(
                                   value: year,
@@ -1835,34 +1835,6 @@ class FillUpForm extends State<FillUpFormScreen> {
     );
   }  // Validate phone fields to prevent submission with invalid phone numbers
   Future<bool> _validatePhoneFields() async {
-    // Check reporting person home phone
-    final reportingHomePhone = _homePhoneReportingController.text.trim();
-    if (reportingHomePhone.isNotEmpty && 
-        reportingHomePhone.toLowerCase() != 'n/a' && 
-        reportingHomePhone.toLowerCase() != 'none') {
-      
-      // Philippines Cavite landline format validation
-      // Format: (046) XXX-XXXX or 046-XXX-XXXX or 046XXXXXXX
-      bool isValidFormat = false;
-      
-      if (RegExp(r'^\(046\)\s*\d{3}-\d{4}$').hasMatch(reportingHomePhone) || // (046) XXX-XXXX
-          RegExp(r'^046-\d{3}-\d{4}$').hasMatch(reportingHomePhone) ||        // 046-XXX-XXXX
-          RegExp(r'^046\d{7}$').hasMatch(reportingHomePhone)) {               // 046XXXXXXX
-        isValidFormat = true;
-      }
-      
-      if (!isValidFormat) {
-        await _scrollToFieldByController(_homePhoneReportingController);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please fix the reporting person home phone field before submitting. Enter valid Cavite landline format (046) XXX-XXXX or None.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return false;
-      }
-    }
-    
     // Check reporting person mobile phone
     final reportingMobilePhone = _mobilePhoneReportingController.text.trim();
     if (reportingMobilePhone.isNotEmpty && reportingMobilePhone.length < 10) {
@@ -1874,33 +1846,6 @@ class FillUpForm extends State<FillUpFormScreen> {
         ),
       );
       return false;
-    }
-      // Check victim home phone
-    final victimHomePhone = _homePhoneVictimController.text.trim();
-    if (victimHomePhone.isNotEmpty && 
-        victimHomePhone.toLowerCase() != 'n/a' && 
-        victimHomePhone.toLowerCase() != 'none') {
-      
-      // Philippines Cavite landline format validation
-      // Format: (046) XXX-XXXX or 046-XXX-XXXX or 046XXXXXXX
-      bool isValidFormat = false;
-      
-      if (RegExp(r'^\(046\)\s*\d{3}-\d{4}$').hasMatch(victimHomePhone) || // (046) XXX-XXXX
-          RegExp(r'^046-\d{3}-\d{4}$').hasMatch(victimHomePhone) ||        // 046-XXX-XXXX
-          RegExp(r'^046\d{7}$').hasMatch(victimHomePhone)) {               // 046XXXXXXX
-        isValidFormat = true;
-      }
-      
-      if (!isValidFormat) {
-        await _scrollToFieldByController(_homePhoneVictimController);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please fix the missing person home phone field before submitting. Enter valid Cavite landline format (046) XXX-XXXX or None.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return false;
-      }
     }
     
     // Check victim mobile phone
@@ -2061,17 +2006,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Place of Birth (Reporting Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    if (_homePhoneReportingController.text.trim().isEmpty) {
-      await _scrollToSpecificField('HOME PHONE');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Home Phone (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -2279,17 +2213,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    if (_homePhoneVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('HOME PHONE VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Home Phone (Missing Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
     if (_mobilePhoneVictimController.text.trim().isEmpty) {
       await _scrollToSpecificField('MOBILE PHONE VICTIM');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2453,7 +2376,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       _dateOfBirthReportingController: 'DATE OF BIRTH',
       _ageReportingController: 'AGE',
       _placeOfBirthReportingController: 'PLACE OF BIRTH',
-      _homePhoneReportingController: 'HOME PHONE',
       _mobilePhoneReportingController: 'MOBILE PHONE',
       _currentAddressReportingController: 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
       _villageSitioReportingController: 'VILLAGE/SITIO',
@@ -2472,7 +2394,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       _dateOfBirthVictimController: 'DATE OF BIRTH VICTIM',      
       _ageVictimController: 'AGE VICTIM',
       _placeOfBirthVictimController: 'PLACE OF BIRTH VICTIM',
-      _homePhoneVictimController: 'HOME PHONE VICTIM',
       _mobilePhoneVictimController: 'MOBILE PHONE VICTIM',      
       _currentAddressVictimController: 'CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM',
       _villageSitioVictimController: 'VILLAGE/SITIO VICTIM',
@@ -2926,11 +2847,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                         FormRowInputs(
                           fields: [
                             {
-                              'label': 'HOME PHONE',
-                              'required': true,
+                              'label': 'HOME PHONE (If Any)',
+                              'required': false,
                               'controller': _homePhoneReportingController,
                               'keyboardType': TextInputType.text,
-                              'hintText': 'Enter Home Phone Number or None',
+                              'hintText': 'Enter Home Phone Number or leave empty',
                               'key': _getOrCreateKey('HOME PHONE'),
                             },
                             {
@@ -3347,11 +3268,11 @@ class FillUpForm extends State<FillUpFormScreen> {
                         FormRowInputs(
                           fields: [
                             {
-                              'label': 'HOME PHONE',
-                              'required': true,
+                              'label': 'HOME PHONE (If Any)',
+                              'required': false,
                               'controller': _homePhoneVictimController,
                               'keyboardType': TextInputType.text,
-                              'hintText': 'Enter Home Phone Number or None',
+                              'hintText': 'Enter Home Phone Number or leave empty',
                               'key': _getOrCreateKey('HOME PHONE VICTIM'),
                             },
                             {
