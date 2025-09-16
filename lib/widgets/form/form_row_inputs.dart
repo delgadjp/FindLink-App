@@ -606,7 +606,7 @@ class FormRowInputs extends StatelessWidget {
                         
                         // Year dropdown
                         Expanded(
-                          flex: 4,
+                          flex: 5,
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
