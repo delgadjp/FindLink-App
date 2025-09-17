@@ -517,65 +517,26 @@ class IRFService {
         return false;
       }
 
-      // Generate formal document ID for saved reporting person data
-      String formalDocId = await _generateSavedDataDocumentId();
+      // Use user-specific document ID since each user should only have one saved data
+      String userDocId = 'user_${currentUserId}';
 
-      // Create a document in savedReportingPersonData collection with formal ID
+      // Create a document in savedReportingPersonData collection with user-specific ID
       await _firestore
           .collection('savedReportingPersonData')
-          .doc(formalDocId)
+          .doc(userDocId)
           .set({
         'userId': currentUserId,
-        'documentId': formalDocId,
+        'documentId': userDocId,
         'reportingPersonData': reportingPersonData,
         'savedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      print('Successfully saved reporting person data for user: $currentUserId with ID: $formalDocId');
+      print('Successfully saved reporting person data for user: $currentUserId with ID: $userDocId');
       return true;
     } catch (e) {
       print('Error saving reporting person data: $e');
       return false;
-    }
-  }
-
-  // Generate formal document ID for saved reporting person data: SRPD-YYYYMMDD-XXXX
-  Future<String> _generateSavedDataDocumentId() async {
-    final today = DateTime.now();
-    final dateStr = DateFormat('yyyyMMdd').format(today);
-    final idPrefix = 'SRPD-$dateStr-'; // SRPD = Saved Reporting Person Data
-
-    try {
-      // Get all documents with today's date prefix by document ID
-      final QuerySnapshot querySnapshot = await _firestore
-          .collection('savedReportingPersonData')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: idPrefix + '0001')
-          .where(FieldPath.documentId, isLessThanOrEqualTo: idPrefix + '9999')
-          .get();
-
-      // Find the highest sequential number by checking doc.id
-      int highestNumber = 0;
-      for (final doc in querySnapshot.docs) {
-        final String docId = doc.id;
-        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
-          final String seqPart = docId.substring(idPrefix.length);
-          final int? seqNum = int.tryParse(seqPart);
-          if (seqNum != null && seqNum > highestNumber) {
-            highestNumber = seqNum;
-          }
-        }
-      }
-
-      // Increment for next document
-      final int nextNumber = highestNumber + 1;
-      final String paddedNumber = nextNumber.toString().padLeft(4, '0');
-      final String newDocId = '$idPrefix$paddedNumber';
-      return newDocId;
-    } catch (e) {
-      // Fallback ID using current user ID for uniqueness
-      final String fallbackId = 'SRPD-${dateStr}-USER-${currentUserId?.substring(0, 8) ?? 'UNKNOWN'}';
-      return fallbackId;
     }
   }
 
@@ -587,15 +548,16 @@ class IRFService {
         return null;
       }
 
-      // Query by userId since we're no longer using userId as document ID
-      final QuerySnapshot querySnapshot = await _firestore
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
           .collection('savedReportingPersonData')
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
+          .doc(userDocId)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        final data = querySnapshot.docs.first.data() as Map<String, dynamic>;
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
         return data['reportingPersonData'] as Map<String, dynamic>?;
       }
 
@@ -611,14 +573,15 @@ class IRFService {
     try {
       if (currentUserId == null) return false;
 
-      // Query by userId since we're no longer using userId as document ID
-      final QuerySnapshot querySnapshot = await _firestore
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
           .collection('savedReportingPersonData')
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
+          .doc(userDocId)
           .get();
 
-      return querySnapshot.docs.isNotEmpty;
+      return doc.exists;
     } catch (e) {
       print('Error checking for saved reporting person data: $e');
       return false;
@@ -633,15 +596,19 @@ class IRFService {
         return false;
       }
 
-      // Query by userId to find the document to delete
-      final QuerySnapshot querySnapshot = await _firestore
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
           .collection('savedReportingPersonData')
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
+          .doc(userDocId)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        await querySnapshot.docs.first.reference.delete();
+      if (doc.exists) {
+        await _firestore
+            .collection('savedReportingPersonData')
+            .doc(userDocId)
+            .delete();
         print('Successfully cleared saved reporting person data for user: $currentUserId');
         return true;
       } else {
@@ -662,15 +629,19 @@ class IRFService {
         return false;
       }
 
-      // Query by userId to find the document to update
-      final QuerySnapshot querySnapshot = await _firestore
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
           .collection('savedReportingPersonData')
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
+          .doc(userDocId)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        await querySnapshot.docs.first.reference.update({
+      if (doc.exists) {
+        await _firestore
+            .collection('savedReportingPersonData')
+            .doc(userDocId)
+            .update({
           'reportingPersonData': reportingPersonData,
           'updatedAt': FieldValue.serverTimestamp(),
         });

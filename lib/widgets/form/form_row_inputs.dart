@@ -355,7 +355,7 @@ class FormRowInputs extends StatelessWidget {
         String day = selectedDay.toString().padLeft(2, '0');
         return '$month/$day/$selectedYear';
       }
-      return 'Date';
+      return 'Select';
     }
     
     return Expanded(
