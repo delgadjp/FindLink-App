@@ -97,33 +97,45 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
         _extractNationalIDData(ocrResult);
       }
       
-      // Check if any data was successfully extracted
-      bool hasExtractedData = extractedData['firstName']?.isNotEmpty == true ||
-                             extractedData['middleName']?.isNotEmpty == true ||
-                             extractedData['lastName']?.isNotEmpty == true ||
-                             extractedData['dateOfBirth'] != null;
+      // Check if any data was successfully extracted - ALL FIELDS ARE NOW REQUIRED
+      bool hasAllRequiredData = extractedData['firstName']?.isNotEmpty == true &&
+                               extractedData['middleName']?.isNotEmpty == true &&
+                               extractedData['lastName']?.isNotEmpty == true &&
+                               extractedData['dateOfBirth'] != null;
       
       // After extraction is complete, validate against registration data if in registration flow
       if (widget.isFromRegistration && widget.registrationData != null) {
-        if (hasExtractedData) {
+        if (hasAllRequiredData) {
           _validateDataMatch();
         } else {
-          // If no data was extracted, validation fails
+          // If not all required data was extracted, validation fails
+          List<String> missingFields = [];
+          if (extractedData['firstName']?.isEmpty != false) missingFields.add('First Name');
+          if (extractedData['middleName']?.isEmpty != false) missingFields.add('Middle Name');
+          if (extractedData['lastName']?.isEmpty != false) missingFields.add('Last Name');
+          if (extractedData['dateOfBirth'] == null) missingFields.add('Date of Birth');
+          
           setState(() {
             _isDataMatching = false;
             _hasOCRError = true;
             _showRetryOption = true;
-            _mismatchReason = "Could not extract enough information from your ID. This may be due to poor image quality, blur, or lighting issues. Please try retaking the photo with better conditions.";
+            _mismatchReason = "Could not extract all required information from your ID. Missing: ${missingFields.join(', ')}.\n\nAll fields are required for registration. This may be due to poor image quality, blur, or lighting issues. Please try retaking the photo with better conditions.";
           });
         }
       } else {
-        // If not in registration flow, success depends on having extracted data
+        // If not in registration flow, success depends on having extracted all required data
         setState(() {
-          _isDataMatching = hasExtractedData;
-          _hasOCRError = !hasExtractedData;
-          _showRetryOption = !hasExtractedData;
-          if (!hasExtractedData) {
-            _mismatchReason = "Could not extract information from your ID. Please upload a clearer image.";
+          _isDataMatching = hasAllRequiredData;
+          _hasOCRError = !hasAllRequiredData;
+          _showRetryOption = !hasAllRequiredData;
+          if (!hasAllRequiredData) {
+            List<String> missingFields = [];
+            if (extractedData['firstName']?.isEmpty != false) missingFields.add('First Name');
+            if (extractedData['middleName']?.isEmpty != false) missingFields.add('Middle Name');
+            if (extractedData['lastName']?.isEmpty != false) missingFields.add('Last Name');
+            if (extractedData['dateOfBirth'] == null) missingFields.add('Date of Birth');
+            
+            _mismatchReason = "Could not extract all required information from your ID. Missing: ${missingFields.join(', ')}. Please upload a clearer image.";
           }
         });
       }
@@ -885,36 +897,55 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       return;
     }
     
-    // Check if we have any extracted data first
-    bool hasExtractedData = extractedData['firstName']?.isNotEmpty == true ||
-                           extractedData['middleName']?.isNotEmpty == true ||
-                           extractedData['lastName']?.isNotEmpty == true ||
-                           extractedData['dateOfBirth'] != null;
-                           
-    if (!hasExtractedData) {
+    // Check if ALL required fields are extracted and not empty
+    List<String> missingFields = [];
+    
+    if (extractedData['firstName']?.isEmpty != false) {
+      missingFields.add('First Name');
+    }
+    if (extractedData['middleName']?.isEmpty != false) {
+      missingFields.add('Middle Name');
+    }
+    if (extractedData['lastName']?.isEmpty != false) {
+      missingFields.add('Last Name');
+    }
+    if (extractedData['dateOfBirth'] == null) {
+      missingFields.add('Date of Birth');
+    }
+    
+    // If ANY required field is missing, fail validation
+    if (missingFields.isNotEmpty) {
       setState(() {
         _isDataMatching = false;
         _hasOCRError = true;
         _showRetryOption = true;
-        _mismatchReason = "Could not extract information from your ID. This could be due to poor image quality, lighting, or blur. Please try retaking the photo with better lighting and ensure the ID is clearly visible.";
+        _mismatchReason = "Could not extract all required information from your ID. Missing: ${missingFields.join(', ')}.\n\nThis could be due to poor image quality, lighting, or blur. Please ensure all text on your ID is clearly visible and retake the photo with better lighting.";
       });
       return;
     }
     
-    // Check the quality of extracted data
-    int extractedFieldsCount = 0;
+    // Additional check to ensure no field contains "Not Found" or similar error text
+    List<String> fieldsWithErrors = [];
     
-    if (extractedData['firstName']?.isNotEmpty == true) extractedFieldsCount++;
-    if (extractedData['lastName']?.isNotEmpty == true) extractedFieldsCount++;
-    if (extractedData['dateOfBirth'] != null) extractedFieldsCount++;
+    if (extractedData['firstName']?.toLowerCase().contains('not found') == true ||
+        extractedData['firstName']?.toLowerCase().contains('error') == true) {
+      fieldsWithErrors.add('First Name');
+    }
+    if (extractedData['middleName']?.toLowerCase().contains('not found') == true ||
+        extractedData['middleName']?.toLowerCase().contains('error') == true) {
+      fieldsWithErrors.add('Middle Name');
+    }
+    if (extractedData['lastName']?.toLowerCase().contains('not found') == true ||
+        extractedData['lastName']?.toLowerCase().contains('error') == true) {
+      fieldsWithErrors.add('Last Name');
+    }
     
-    // If we extracted less than 2 out of 3 critical fields, consider it poor quality
-    if (extractedFieldsCount < 2) {
+    if (fieldsWithErrors.isNotEmpty) {
       setState(() {
         _isDataMatching = false;
         _hasOCRError = true;
         _showRetryOption = true;
-        _mismatchReason = "Only partial information could be extracted from your ID. Please ensure the image is clear, well-lit, and all text is readable. Try retaking the photo.";
+        _mismatchReason = "Error extracting the following fields from your ID: ${fieldsWithErrors.join(', ')}.\n\nPlease ensure the image is clear, well-lit, and all text is readable. Try retaking the photo.";
       });
       return;
     }
@@ -922,63 +953,55 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
     List<String> mismatches = [];
     List<String> criticalMismatches = []; // For first name, last name, DOB
     
-    // Check first name match if extracted
-    if (extractedData['firstName']?.isNotEmpty == true) {
-      String extractedFirstName = extractedData['firstName'].toLowerCase().trim();
-      String registeredFirstName = widget.registrationData!['firstName'].toLowerCase().trim();
-      
-      // Allow for minor OCR variations (remove common OCR substitutions)
-      extractedFirstName = _normalizeTextForComparison(extractedFirstName);
-      registeredFirstName = _normalizeTextForComparison(registeredFirstName);
-      
-      if (extractedFirstName != registeredFirstName) {
-        mismatches.add('First Name (ID: "${extractedData['firstName']}", Registered: "${widget.registrationData!['firstName']}")');
-        criticalMismatches.add('First Name');
-      }
+    // Check first name match (now required)
+    String extractedFirstName = extractedData['firstName'].toLowerCase().trim();
+    String registeredFirstName = widget.registrationData!['firstName'].toLowerCase().trim();
+    
+    // Allow for minor OCR variations (remove common OCR substitutions)
+    extractedFirstName = _normalizeTextForComparison(extractedFirstName);
+    registeredFirstName = _normalizeTextForComparison(registeredFirstName);
+    
+    if (extractedFirstName != registeredFirstName) {
+      mismatches.add('First Name (ID: "${extractedData['firstName']}", Registered: "${widget.registrationData!['firstName']}")');
+      criticalMismatches.add('First Name');
     }
     
-    // Check middle name match if extracted (more lenient as middle names can vary)
-    if (extractedData['middleName']?.isNotEmpty == true && 
-        widget.registrationData!['middleName']?.isNotEmpty == true) {
-      String extractedMiddleName = _normalizeTextForComparison(extractedData['middleName'].toLowerCase().trim());
-      String registeredMiddleName = _normalizeTextForComparison(widget.registrationData!['middleName'].toLowerCase().trim());
-      
-      if (extractedMiddleName != registeredMiddleName) {
-        mismatches.add('Middle Name (ID: "${extractedData['middleName']}", Registered: "${widget.registrationData!['middleName']}")');
-      }
+    // Check middle name match (now required)
+    String extractedMiddleName = _normalizeTextForComparison(extractedData['middleName'].toLowerCase().trim());
+    String registeredMiddleName = _normalizeTextForComparison(widget.registrationData!['middleName'].toLowerCase().trim());
+    
+    if (extractedMiddleName != registeredMiddleName) {
+      mismatches.add('Middle Name (ID: "${extractedData['middleName']}", Registered: "${widget.registrationData!['middleName']}")');
+      criticalMismatches.add('Middle Name');
     }
     
-    // Check last name match if extracted
-    if (extractedData['lastName']?.isNotEmpty == true) {
-      String extractedLastName = _normalizeTextForComparison(extractedData['lastName'].toLowerCase().trim());
-      String registeredLastName = _normalizeTextForComparison(widget.registrationData!['lastName'].toLowerCase().trim());
-      
-      if (extractedLastName != registeredLastName) {
-        mismatches.add('Last Name (ID: "${extractedData['lastName']}", Registered: "${widget.registrationData!['lastName']}")');
-        criticalMismatches.add('Last Name');
-      }
+    // Check last name match (required)
+    String extractedLastName = _normalizeTextForComparison(extractedData['lastName'].toLowerCase().trim());
+    String registeredLastName = _normalizeTextForComparison(widget.registrationData!['lastName'].toLowerCase().trim());
+    
+    if (extractedLastName != registeredLastName) {
+      mismatches.add('Last Name (ID: "${extractedData['lastName']}", Registered: "${widget.registrationData!['lastName']}")');
+      criticalMismatches.add('Last Name');
     }
     
-    // Check date of birth match if extracted
-    if (extractedData['dateOfBirth'] != null && widget.registrationData!['dateOfBirth'] != null) {
-      DateTime idDOB = extractedData['dateOfBirth'];
-      DateTime regDOB = widget.registrationData!['dateOfBirth'];
-      if (idDOB.year != regDOB.year || idDOB.month != regDOB.month || idDOB.day != regDOB.day) {
-        mismatches.add('Date of Birth (ID: "${DateFormat('MM/dd/yyyy').format(idDOB)}", Registered: "${DateFormat('MM/dd/yyyy').format(regDOB)}")');
-        criticalMismatches.add('Date of Birth');
-      }
+    // Check date of birth match (required)
+    DateTime idDOB = extractedData['dateOfBirth'];
+    DateTime regDOB = widget.registrationData!['dateOfBirth'];
+    if (idDOB.year != regDOB.year || idDOB.month != regDOB.month || idDOB.day != regDOB.day) {
+      mismatches.add('Date of Birth (ID: "${DateFormat('MM/dd/yyyy').format(idDOB)}", Registered: "${DateFormat('MM/dd/yyyy').format(regDOB)}")');
+      criticalMismatches.add('Date of Birth');
     }
     
     // Determine validation result and appropriate message
     setState(() {
       if (mismatches.isNotEmpty) {
         _isDataMatching = false;
-        _showRetryOption = criticalMismatches.length >= 2; // Show retry if 2+ critical fields mismatch
+        _showRetryOption = true; // Always show retry option when there are mismatches
         
-        if (criticalMismatches.length >= 2) {
-          _mismatchReason = "Multiple critical fields don't match between your ID and registration details:\n\n${mismatches.join('\n')}\n\nThis may be due to OCR errors. Please try retaking a clearer photo of your ID, or go back and verify your registration information is correct.";
+        if (mismatches.length == 1) {
+          _mismatchReason = "The following information from your ID doesn't match your registration details:\n\n${mismatches.join('\n')}\n\nAll fields must match exactly. Please retake a clearer photo of your ID, or go back and verify your registration information is correct.";
         } else {
-          _mismatchReason = "The following information from your ID doesn't match your registration details:\n\n${mismatches.join('\n')}\n\nPlease go back and update your registration information to match your ID, or retake a clearer photo if you believe this is an OCR error.";
+          _mismatchReason = "Multiple fields don't match between your ID and registration details:\n\n${mismatches.join('\n')}\n\nAll fields must match exactly. Please retake a clearer photo of your ID, or go back and verify your registration information is correct.";
         }
       } else {
         _isDataMatching = true;
@@ -1009,18 +1032,42 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
       await Future.delayed(Duration(seconds: 2));
       
       if (widget.isFromRegistration) {
-        if (!_isDataMatching || _hasOCRError) {
+        // Strict validation: ALL conditions must be met for registration
+        if (!_isDataMatching || _hasOCRError || !_isCorrectIDType || _isExpired) {
           // Show detailed error message based on the type of issue
           String errorMessage;
           if (_hasOCRError) {
-            errorMessage = 'ID verification failed: Unable to extract sufficient data from your ID. Please retake the photo with better quality.';
+            errorMessage = 'ID verification failed: Unable to extract all required information from your ID. All fields (First Name, Middle Name, Last Name, and Date of Birth) must be clearly readable. Please retake the photo with better quality.';
+          } else if (!_isCorrectIDType) {
+            errorMessage = 'ID verification failed: ${_mismatchReason ?? "Wrong ID type uploaded."}';
+          } else if (_isExpired) {
+            errorMessage = 'ID verification failed: ${_mismatchReason ?? "ID has expired."}';
           } else {
-            errorMessage = 'ID verification failed: ${_mismatchReason ?? "Data mismatch detected."}';
+            errorMessage = 'ID verification failed: ${_mismatchReason ?? "Data mismatch detected. All fields must match exactly."}';
           }
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          setState(() {
+            isSubmitting = false;
+          });
+          return;
+        }
+        
+        // Additional final check: Ensure all required fields are present and valid
+        if (extractedData['firstName']?.isEmpty != false ||
+            extractedData['middleName']?.isEmpty != false ||
+            extractedData['lastName']?.isEmpty != false ||
+            extractedData['dateOfBirth'] == null) {
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('ID verification failed: All fields (First Name, Middle Name, Last Name, Date of Birth) are required and must be extracted from your ID.'),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 4),
             ),
