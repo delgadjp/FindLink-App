@@ -1123,7 +1123,14 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
       ),
       elevation: 8,
       backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: 16, 
+        vertical: MediaQuery.of(context).viewInsets.bottom > 0 ? 16 : 80,
+      ),
       child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -1135,7 +1142,7 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
             ),
           ],
         ),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.all(24),
           child: Form(
             key: _formKey,
@@ -1189,6 +1196,10 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                 // Name field
                 TextFormField(
                   controller: _nameController,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Full Name',
                     prefixIcon: Icon(Icons.person, color: Color(0xFF0D47A1)),
@@ -1207,6 +1218,10 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                 // Email field
                 TextFormField(
                   controller: _emailController,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Email Address',
                     prefixIcon: Icon(Icons.email, color: Color(0xFF0D47A1)),

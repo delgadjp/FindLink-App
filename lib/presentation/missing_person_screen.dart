@@ -1,5 +1,6 @@
 import '/core/app_export.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 class MissingPersonScreen extends StatefulWidget {
   @override
@@ -14,23 +15,63 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   String statusFilter = 'All';
   String locationFilter = '';
   bool showAdvancedFilters = false;
+  
+  // Stream subscription for real-time updates
+  StreamSubscription<QuerySnapshot>? _missingPersonsSubscription;
+  List<MissingPerson> _allMissingPersons = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // Test method to check database access
-  Future<List<MissingPerson>> _testMissingPersonsAccess() async {
+  @override
+  void initState() {
+    super.initState();
+    _initializeMissingPersonsStream();
+  }
+
+  @override
+  void dispose() {
+    _missingPersonsSubscription?.cancel();
+    super.dispose();
+  }
+
+  // Initialize the stream for real-time updates
+  void _initializeMissingPersonsStream() {
     try {
-      print('Testing missing persons database access...');
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final stream = FirebaseFirestore.instance
           .collection('missingPersons')
-          .get()
-          .timeout(Duration(seconds: 10));
+          .snapshots();
       
-      print('Success: Retrieved ${snapshot.docs.length} documents');
-      return snapshot.docs
-          .map((doc) => MissingPerson.fromSnapshot(doc))
-          .toList();
+      _missingPersonsSubscription = stream.listen(
+        (QuerySnapshot snapshot) {
+          final persons = snapshot.docs
+              .map((doc) => MissingPerson.fromSnapshot(doc))
+              .toList();
+          
+          setState(() {
+            _allMissingPersons = persons;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        },
+        onError: (error) {
+          print('Error listening to missing persons stream: $error');
+          setState(() {
+            _isLoading = false;
+            _errorMessage = error.toString();
+          });
+        },
+      );
     } catch (e) {
-      print('Database access test failed: $e');
-      throw e;
+      print('Error setting up missing persons stream: $e');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
     }
   }
 
@@ -102,7 +143,10 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         ),
         child: RefreshIndicator(
           onRefresh: () async {
-            setState(() {});
+            // Reinitialize the stream to force a refresh
+            _initializeMissingPersonsStream();
+            // Wait a bit for the stream to fetch new data
+            await Future.delayed(Duration(milliseconds: 500));
           },
           child: Column(
             children: [
@@ -182,166 +226,241 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                   ),
                 ),
               Expanded(
-                child: FutureBuilder<List<MissingPerson>>(
-                  future: _testMissingPersonsAccess(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      print('FutureBuilder error: ${snapshot.error}');
-                      // Check if it's a permission error and show appropriate message
-                      if (snapshot.error.toString().contains('permission-denied')) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.lock, size: 64, color: Colors.grey),
-                              SizedBox(height: 16),
-                              Text(
-                                'Database Access Issue',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'There is a problem with the database rules.\nThe admin check is failing because user documents use custom IDs.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                              SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  // Force refresh
-                                  setState(() {});
-                                },
-                                child: Text('Retry'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
-                    }                    if (snapshot.hasData) {
-                      final persons = snapshot.data!;
-                      for (var person in persons) {
-                        person.debugPrint();
-                      }
-                      
-                      // Filter persons based on search query, status, location, and date range
-                      var filteredPersons = persons.where((person) {
-                        final searchLower = searchQuery.toLowerCase();
-                        bool matchesSearch = searchQuery.isEmpty ||
-                            person.name.toLowerCase().contains(searchLower) ||
-                            person.descriptions.toLowerCase().contains(searchLower) ||
-                            person.caseId.toLowerCase().contains(searchLower);
-
-                        // Status filter
-                        bool matchesStatus = statusFilter == 'All' ||
-                            person.status.toLowerCase().contains(statusFilter.toLowerCase());
-
-                        // Location filter
-                        bool matchesLocation = locationFilter.isEmpty ||
-                            person.address.toLowerCase().contains(locationFilter.toLowerCase()) ||
-                            person.placeLastSeen.toLowerCase().contains(locationFilter.toLowerCase());                        // Check date range filter
-                        bool matchesDateRange = true;
-                        if (startDate != null || endDate != null) {
-                          DateTime? personDate;
-                          try {
-                            personDate = DateTime.parse(person.datetimeReported.toString());
-                          } catch (e) {
-                            personDate = null;
-                          }
-                          
-                          if (personDate != null) {
-                            if (startDate != null && personDate.isBefore(startDate!)) {
-                              matchesDateRange = false;
-                            }
-                            if (endDate != null && personDate.isAfter(endDate!.add(Duration(days: 1)))) {
-                              matchesDateRange = false;
-                            }
-                          }
-                        }
-                        
-                        return matchesSearch && matchesStatus && matchesLocation && matchesDateRange;
-                      }).toList();                      // Sort persons based on selected sort option
-                      switch (sortBy) {
-                        case 'Name (A-Z)':
-                          filteredPersons.sort((a, b) => a.name.compareTo(b.name));
-                          break;
-                        case 'Name (Z-A)':
-                          filteredPersons.sort((a, b) => b.name.compareTo(a.name));
-                          break;
-                        case 'Status':
-                          filteredPersons.sort((a, b) => a.status.compareTo(b.status));
-                          break;
-                        case 'Location':
-                          filteredPersons.sort((a, b) => a.placeLastSeen.compareTo(b.placeLastSeen));
-                          break;
-                        case 'Date Last Seen':
-                          filteredPersons.sort((a, b) {
-                            DateTime? dateA = a.lastSeenDateTime;
-                            DateTime? dateB = b.lastSeenDateTime;
-                            
-                            if (dateA == null && dateB == null) return 0;
-                            if (dateA == null) return 1;
-                            if (dateB == null) return -1;
-                            
-                            return dateB.compareTo(dateA);
-                          });
-                          break;
-                        case 'Recent':
-                        default:
-                          // Use the parsed DateTime fields for more accurate sorting
-                          filteredPersons.sort((a, b) {
-                            DateTime? dateA = a.reportedDateTime;
-                            DateTime? dateB = b.reportedDateTime;
-                            
-                            // If parsed DateTime is null, fallback to string parsing
-                            if (dateA == null) {
-                              try {
-                                dateA = DateTime.parse(a.datetimeReported.toString());
-                              } catch (e) {
-                                dateA = null;
-                              }
-                            }
-                            
-                            if (dateB == null) {
-                              try {
-                                dateB = DateTime.parse(b.datetimeReported.toString());
-                              } catch (e) {
-                                dateB = null;
-                              }
-                            }
-                            
-                            // Handle null cases - put null dates at the end
-                            if (dateA == null && dateB == null) return 0;
-                            if (dateA == null) return 1;
-                            if (dateB == null) return -1;
-                            
-                            // Sort by most recent first (descending order)
-                            return dateB.compareTo(dateA);
-                          });
-                          break;
-                      }
-
-                      return ListView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: filteredPersons.length,
-                        itemBuilder: (context, index) {
-                          return MissingPersonCard(person: filteredPersons[index]);
-                        },
-                      );
-                    }
-
-                    return Center(child: CircularProgressIndicator());
-                  },
-                ),
+                child: _buildMissingPersonsList(),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // Build the missing persons list with filtering, sorting and real-time updates
+  Widget _buildMissingPersonsList() {
+    // Handle loading state
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    // Handle error state
+    if (_errorMessage != null) {
+      print('Error displaying missing persons: $_errorMessage');
+      // Check if it's a permission error and show appropriate message
+      if (_errorMessage!.contains('permission-denied')) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'Database Access Issue',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'There is a problem with the database rules.\nThe admin check is failing because user documents use custom IDs.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  // Retry by reinitializing the stream
+                  _initializeMissingPersonsStream();
+                },
+                child: Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      }
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error, size: 64, color: Colors.red),
+            SizedBox(height: 16),
+            Text(
+              'Error loading data',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                _initializeMissingPersonsStream();
+              },
+              child: Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Handle empty state
+    if (_allMissingPersons.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_search, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No missing persons found',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'There are currently no missing person cases.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Debug print (can be removed in production)
+    for (var person in _allMissingPersons) {
+      person.debugPrint();
+    }
+    
+    // Filter persons based on search query, status, location, and date range
+    var filteredPersons = _allMissingPersons.where((person) {
+      final searchLower = searchQuery.toLowerCase();
+      bool matchesSearch = searchQuery.isEmpty ||
+          person.name.toLowerCase().contains(searchLower) ||
+          person.descriptions.toLowerCase().contains(searchLower) ||
+          person.caseId.toLowerCase().contains(searchLower);
+
+      // Status filter
+      bool matchesStatus = statusFilter == 'All' ||
+          person.status.toLowerCase().contains(statusFilter.toLowerCase());
+
+      // Location filter
+      bool matchesLocation = locationFilter.isEmpty ||
+          person.address.toLowerCase().contains(locationFilter.toLowerCase()) ||
+          person.placeLastSeen.toLowerCase().contains(locationFilter.toLowerCase());
+
+      // Check date range filter
+      bool matchesDateRange = true;
+      if (startDate != null || endDate != null) {
+        DateTime? personDate;
+        try {
+          personDate = DateTime.parse(person.datetimeReported.toString());
+        } catch (e) {
+          personDate = null;
+        }
+        
+        if (personDate != null) {
+          if (startDate != null && personDate.isBefore(startDate!)) {
+            matchesDateRange = false;
+          }
+          if (endDate != null && personDate.isAfter(endDate!.add(Duration(days: 1)))) {
+            matchesDateRange = false;
+          }
+        }
+      }
+      
+      return matchesSearch && matchesStatus && matchesLocation && matchesDateRange;
+    }).toList();
+
+    // Sort persons based on selected sort option
+    switch (sortBy) {
+      case 'Name (A-Z)':
+        filteredPersons.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'Name (Z-A)':
+        filteredPersons.sort((a, b) => b.name.compareTo(a.name));
+        break;
+      case 'Status':
+        filteredPersons.sort((a, b) => a.status.compareTo(b.status));
+        break;
+      case 'Location':
+        filteredPersons.sort((a, b) => a.placeLastSeen.compareTo(b.placeLastSeen));
+        break;
+      case 'Date Last Seen':
+        filteredPersons.sort((a, b) {
+          DateTime? dateA = a.lastSeenDateTime;
+          DateTime? dateB = b.lastSeenDateTime;
+          
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          
+          return dateB.compareTo(dateA);
+        });
+        break;
+      case 'Recent':
+      default:
+        // Use the parsed DateTime fields for more accurate sorting
+        filteredPersons.sort((a, b) {
+          DateTime? dateA = a.reportedDateTime;
+          DateTime? dateB = b.reportedDateTime;
+          
+          // If parsed DateTime is null, fallback to string parsing
+          if (dateA == null) {
+            try {
+              dateA = DateTime.parse(a.datetimeReported.toString());
+            } catch (e) {
+              dateA = null;
+            }
+          }
+          
+          if (dateB == null) {
+            try {
+              dateB = DateTime.parse(b.datetimeReported.toString());
+            } catch (e) {
+              dateB = null;
+            }
+          }
+          
+          // Handle null cases - put null dates at the end
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          
+          // Sort by most recent first (descending order)
+          return dateB.compareTo(dateA);
+        });
+        break;
+    }
+
+    // Show filtered empty state if no results after filtering
+    if (filteredPersons.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No results found',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Try adjusting your search or filter criteria.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      itemCount: filteredPersons.length,
+      itemBuilder: (context, index) {
+        return MissingPersonCard(person: filteredPersons[index]);
+      },
     );
   }
 
