@@ -4311,6 +4311,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                 'controller': _surnameReportingController,
                                 'keyboardType': TextInputType.name,
                                 'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                                'readOnly': true,
                               },
                               {
                                 'label': 'FIRST NAME',
@@ -4318,6 +4319,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                 'controller': _firstNameReportingController,
                                 'keyboardType': TextInputType.name,
                                 'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                                'readOnly': true,
                               },
                               {
                                 'label': 'MIDDLE NAME',
@@ -4325,6 +4327,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                 'controller': _middleNameReportingController,
                                 'keyboardType': TextInputType.name,
                                 'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                                'readOnly': true,
                               },
                             ],
                             formState: formState,
@@ -4724,6 +4727,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                               'key': _getOrCreateKey('SURNAME VICTIM'),
+                              'readOnly': true,
                             },
                             {
                               'label': 'FIRST NAME',
@@ -4732,6 +4736,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                               'key': _getOrCreateKey('FIRST NAME VICTIM'),
+                              'readOnly': true,
                             },
                             {
                               'label': 'MIDDLE NAME',
@@ -4740,6 +4745,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'keyboardType': TextInputType.name,
                               'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
                               'key': _getOrCreateKey('MIDDLE NAME VICTIM'),
+                              'readOnly': true,
                             },
                           ],
                           formState: formState,
