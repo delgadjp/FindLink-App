@@ -2247,27 +2247,83 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Helper method to restore location data from saved reporting person data
   Future<void> _restoreLocationData(Map<String, dynamic> savedData) async {
     try {
-      // Note: This is a simplified version. In a complete implementation,
-      // you would need to handle the async loading of regions, provinces, etc.
-      // For now, we'll just store the names and they can be selected manually
-      
-      // Get stored location names for future reference
-      // String? regionName = savedData['regionName'];
-      // String? provinceName = savedData['provinceName'];
-      // String? municipalityName = savedData['municipalityName'];
+      // Get stored location names
+      String? regionName = savedData['regionName'];
+      String? provinceName = savedData['provinceName'];
+      String? municipalityName = savedData['municipalityName'];
       String? barangay = savedData['barangay'];
       
-      // You would need to implement proper restoration of the Region, Province, 
-      // Municipality objects here by calling the Philippines API or having them cached
-      
-      // For now, just set the barangay which is a string
-      reportingPersonBarangay = barangay;
+      // Restore main address location data
+      if (regionName != null) {
+        // Find the region by name
+        reportingPersonRegion = philippineRegions.firstWhere(
+          (region) => region.regionName == regionName,
+          orElse: () => philippineRegions.first,
+        );
+        
+        if (provinceName != null && reportingPersonRegion != null) {
+          // Find the province within the selected region
+          reportingPersonProvince = reportingPersonRegion!.provinces.firstWhere(
+            (province) => province.name == provinceName,
+            orElse: () => reportingPersonRegion!.provinces.first,
+          );
+          
+          if (municipalityName != null && reportingPersonProvince != null) {
+            // Find the municipality within the selected province
+            reportingPersonMunicipality = reportingPersonProvince!.municipalities.firstWhere(
+              (municipality) => municipality.name == municipalityName,
+              orElse: () => reportingPersonProvince!.municipalities.first,
+            );
+            
+            // Set the barangay if it exists in the municipality
+            if (barangay != null && reportingPersonMunicipality != null) {
+              if (reportingPersonMunicipality!.barangays.contains(barangay)) {
+                reportingPersonBarangay = barangay;
+              }
+            }
+          }
+        }
+      }
       
       // Handle other address data
       if (savedData['hasOtherAddress'] == true) {
         hasOtherAddressReporting = true;
-        reportingPersonOtherBarangay = savedData['otherBarangay'];
-        // Similar restoration needed for other address location objects
+        
+        String? otherRegionName = savedData['otherRegionName'];
+        String? otherProvinceName = savedData['otherProvinceName'];
+        String? otherMunicipalityName = savedData['otherMunicipalityName'];
+        String? otherBarangay = savedData['otherBarangay'];
+        
+        if (otherRegionName != null) {
+          // Find the other region by name
+          reportingPersonOtherRegion = philippineRegions.firstWhere(
+            (region) => region.regionName == otherRegionName,
+            orElse: () => philippineRegions.first,
+          );
+          
+          if (otherProvinceName != null && reportingPersonOtherRegion != null) {
+            // Find the other province within the selected region
+            reportingPersonOtherProvince = reportingPersonOtherRegion!.provinces.firstWhere(
+              (province) => province.name == otherProvinceName,
+              orElse: () => reportingPersonOtherRegion!.provinces.first,
+            );
+            
+            if (otherMunicipalityName != null && reportingPersonOtherProvince != null) {
+              // Find the other municipality within the selected province
+              reportingPersonOtherMunicipality = reportingPersonOtherProvince!.municipalities.firstWhere(
+                (municipality) => municipality.name == otherMunicipalityName,
+                orElse: () => reportingPersonOtherProvince!.municipalities.first,
+              );
+              
+              // Set the other barangay if it exists in the municipality
+              if (otherBarangay != null && reportingPersonOtherMunicipality != null) {
+                if (reportingPersonOtherMunicipality!.barangays.contains(otherBarangay)) {
+                  reportingPersonOtherBarangay = otherBarangay;
+                }
+              }
+            }
+          }
+        }
       }
       
       setState(() {}); // Trigger UI update
