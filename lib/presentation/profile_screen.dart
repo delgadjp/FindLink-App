@@ -2475,7 +2475,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                 
-                                // Dot indicators
+                                // Smart dot indicators with overflow protection
                                 if (_casesData.length > 1)
                                   Padding(
                                     padding: EdgeInsets.only(top: 8),
@@ -2485,37 +2485,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         final dotSize = screenWidth < 360 ? 8.0 : 10.0;
                                         final dotSpacing = screenWidth < 360 ? 3.0 : 4.0;
                                         
-                                        return Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: List.generate(
-                                            _casesData.length,
-                                            (index) => GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  _selectedCaseIndex = index;
-                                                });
-                                              },
-                                              child: AnimatedContainer(
-                                                duration: Duration(milliseconds: 200),
-                                                margin: EdgeInsets.symmetric(horizontal: dotSpacing),
-                                                width: index == _selectedCaseIndex ? dotSize + 2 : dotSize,
-                                                height: index == _selectedCaseIndex ? dotSize + 2 : dotSize,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: index == _selectedCaseIndex
-                                                      ? Color(0xFF0D47A1)
-                                                      : Colors.grey.shade400,
-                                                  boxShadow: index == _selectedCaseIndex ? [
-                                                    BoxShadow(
-                                                      color: Color(0xFF0D47A1).withOpacity(0.3),
-                                                      spreadRadius: 1,
-                                                      blurRadius: 3,
-                                                    ),
-                                                  ] : null,
+                                        // Calculate maximum dots that can fit without overflow
+                                        final availableWidth = constraints.maxWidth * 0.8; // Use 80% of available width
+                                        final singleDotWidth = (dotSize + 2) + (dotSpacing * 2); // Max dot size + spacing
+                                        final maxVisibleDots = (availableWidth / singleDotWidth).floor().clamp(3, 8);
+                                        
+                                        // If we have few cases, show all dots
+                                        if (_casesData.length <= maxVisibleDots) {
+                                          return Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: List.generate(
+                                              _casesData.length,
+                                              (index) => GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedCaseIndex = index;
+                                                  });
+                                                },
+                                                child: AnimatedContainer(
+                                                  duration: Duration(milliseconds: 200),
+                                                  margin: EdgeInsets.symmetric(horizontal: dotSpacing),
+                                                  width: index == _selectedCaseIndex ? dotSize + 2 : dotSize,
+                                                  height: index == _selectedCaseIndex ? dotSize + 2 : dotSize,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: index == _selectedCaseIndex
+                                                        ? Color(0xFF0D47A1)
+                                                        : Colors.grey.shade400,
+                                                    boxShadow: index == _selectedCaseIndex ? [
+                                                      BoxShadow(
+                                                        color: Color(0xFF0D47A1).withOpacity(0.3),
+                                                        spreadRadius: 1,
+                                                        blurRadius: 3,
+                                                      ),
+                                                    ] : null,
+                                                  ),
                                                 ),
                                               ),
                                             ),
-                                          ),
+                                          );
+                                        }
+                                        
+                                        // For many cases, show a progress bar with position indicator
+                                        return Column(
+                                          children: [
+                                            // Compact progress bar
+                                            Container(
+                                              width: availableWidth,
+                                              height: 6,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade300,
+                                                borderRadius: BorderRadius.circular(3),
+                                              ),
+                                              child: Stack(
+                                                children: [
+                                                  // Progress indicator
+                                                  AnimatedPositioned(
+                                                    duration: Duration(milliseconds: 300),
+                                                    left: (_selectedCaseIndex / (_casesData.length - 1)) * (availableWidth - 16),
+                                                    child: Container(
+                                                      width: 16,
+                                                      height: 6,
+                                                      decoration: BoxDecoration(
+                                                        color: Color(0xFF0D47A1),
+                                                        borderRadius: BorderRadius.circular(3),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Color(0xFF0D47A1).withOpacity(0.4),
+                                                            spreadRadius: 1,
+                                                            blurRadius: 3,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(height: 6),
+                                            // Position text
+                                            Text(
+                                              '${_selectedCaseIndex + 1} of ${_casesData.length}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade600,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         );
                                       },
                                     ),
