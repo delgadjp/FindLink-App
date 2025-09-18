@@ -594,10 +594,12 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                                 ),
                               ),
                               title: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Expanded(
                                     child: Text(
                                       device['name'],
+                                      textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
@@ -622,54 +624,17 @@ class _FindMyDevicesScreenState extends State<FindMyDevicesScreen> {
                                   ),
                                 ],
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (lastLocation?.address != null) ...[
-                                    SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 16,
-                                          color: Colors.grey[600],
-                                        ),
-                                        SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            lastLocation!.address!,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
+                              trailing: device['findMeEnabled']
+                                  ? Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    )
+                                  : Icon(
+                                      Icons.location_disabled,
+                                      color: Colors.grey,
                                     ),
-                                  ],
-                                ],
-                              ),
-                              trailing: Container(
-                                decoration: BoxDecoration(
-                                  color: device['findMeEnabled']
-                                      ? Color(0xFF0D47A1).withOpacity(0.1)
-                                      : Colors.grey.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  icon: Icon(
-                                    device['findMeEnabled']
-                                        ? Icons.more_vert
-                                        : Icons.location_disabled,
-                                    color: device['findMeEnabled']
-                                        ? Color(0xFF0D47A1)
-                                        : Colors.grey,
-                                  ),
-                                  onPressed: () => _showDeviceActions(device),
-                                ),
-                              ),
+                              onTap: () => _showDeviceActions(device),
                             ),
                           );
                         },

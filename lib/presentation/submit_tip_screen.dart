@@ -996,15 +996,15 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             // Show a snackbar notification
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Image removed - no person detected'),
+                content: Text('Image removed - no clear person detected'),
                 backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
+                duration: Duration(seconds: 4),
               ),
             );
           } else {
             // Human detected - keep the image and show confirmation
             setState(() {
-              _validationMessage = 'Person detected in image!';
+              _validationMessage = 'Person clearly detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
             });

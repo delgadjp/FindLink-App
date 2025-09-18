@@ -12,7 +12,6 @@ import 'dart:math'; // Import math library for distance calculations
 class TipService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final Uuid _uuid = Uuid();
   
   // Google Vision API key
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
@@ -183,50 +182,180 @@ class TipService {
         // Check for human-related labels
         final annotations = jsonResponse['responses'][0];
         
-        // Check face detection results
+        // Define minimum confidence thresholds
+        const double MIN_FACE_CONFIDENCE = 0.7; // 70% confidence for face detection
+        const double MIN_LABEL_CONFIDENCE = 0.75; // 75% confidence for label detection
+        const double MIN_OBJECT_CONFIDENCE = 0.8; // 80% confidence for object detection
+        
+        // Track detection details for scoring system
+        Map<String, dynamic> detectionDetails = {
+          'faceDetected': false,
+          'personLabelDetected': false,
+          'humanObjectDetected': false,
+          'humanRelatedLabels': <String>[],
+          'confidences': <double>[],
+        };
+        
+        // Check face detection results with improved validation
         if (annotations.containsKey('faceAnnotations') && 
             annotations['faceAnnotations'] != null &&
             annotations['faceAnnotations'].isNotEmpty) {
-          containsHuman = true;
-          confidence = annotations['faceAnnotations'][0]['detectionConfidence'] * 100;
+          
+          for (var face in annotations['faceAnnotations']) {
+            double faceConfidence = face['detectionConfidence'] ?? 0.0;
+            
+            // Check if face detection meets minimum confidence threshold
+            if (faceConfidence >= MIN_FACE_CONFIDENCE) {
+              // Additional validation: check face quality indicators
+              bool hasGoodQuality = true;
+              
+              // Check if key facial features are detected with good likelihood
+              if (face.containsKey('landmarkingConfidence') && 
+                  face['landmarkingConfidence'] < 0.5) {
+                hasGoodQuality = false;
+              }
+              
+              // Check for face detection quality indicators
+              final String joyLikelihood = face['joyLikelihood'] ?? 'UNKNOWN';
+              final String sorrowLikelihood = face['sorrowLikelihood'] ?? 'UNKNOWN';
+              final String angerLikelihood = face['angerLikelihood'] ?? 'UNKNOWN';
+              final String surpriseLikelihood = face['surpriseLikelihood'] ?? 'UNKNOWN';
+              
+              // If all emotions are UNKNOWN or VERY_UNLIKELY, it might be a false positive
+              if (joyLikelihood == 'UNKNOWN' && sorrowLikelihood == 'UNKNOWN' && 
+                  angerLikelihood == 'UNKNOWN' && surpriseLikelihood == 'UNKNOWN') {
+                hasGoodQuality = false;
+              }
+              
+              if (hasGoodQuality) {
+                detectionDetails['faceDetected'] = true;
+                detectionDetails['confidences'].add(faceConfidence);
+                containsHuman = true;
+                confidence = faceConfidence * 100;
+                break; // Use the first high-confidence face
+              }
+            }
+          }
         }
         
-        // Check label detection results if no face found
-        if (!containsHuman && annotations.containsKey('labelAnnotations')) {
+        // Check label detection results with stricter criteria
+        if (annotations.containsKey('labelAnnotations')) {
           final List<dynamic> labels = annotations['labelAnnotations'];
           for (var label in labels) {
             String description = label['description'].toString().toLowerCase();
-            if (description.contains('person') || 
-                description.contains('human') || 
-                description.contains('people') ||
-                description.contains('face') ||
-                description.contains('man') ||
-                description.contains('woman') ||
-                description.contains('child')) {
-              containsHuman = true;
-              confidence = label['score'] * 100;  // Convert to percentage
-              break;
+            double labelScore = (label['score'] ?? 0.0);
+            
+            // Only consider high-confidence labels
+            if (labelScore >= MIN_LABEL_CONFIDENCE) {
+              // More specific human-related terms (removed broad terms)
+              if (description == 'person' || 
+                  description == 'human' || 
+                  description == 'people' ||
+                  description == 'man' ||
+                  description == 'woman' ||
+                  description == 'child' ||
+                  description == 'boy' ||
+                  description == 'girl' ||
+                  description == 'adult' ||
+                  description == 'human face' ||
+                  description == 'human body') {
+                
+                detectionDetails['personLabelDetected'] = true;
+                detectionDetails['humanRelatedLabels'].add(description);
+                detectionDetails['confidences'].add(labelScore);
+                
+                if (!containsHuman || confidence < labelScore * 100) {
+                  containsHuman = true;
+                  confidence = labelScore * 100;
+                }
+              }
+              
+              // Check for contextual human indicators (clothing, body parts)
+              else if (description == 'clothing' || 
+                       description == 'shirt' ||
+                       description == 'dress' ||
+                       description == 'pants' ||
+                       description == 'hair' ||
+                       description == 'hand' ||
+                       description == 'arm' ||
+                       description == 'leg' ||
+                       description == 'eye' ||
+                       description == 'nose' ||
+                       description == 'mouth') {
+                detectionDetails['humanRelatedLabels'].add(description);
+              }
             }
           }
         }
         
-        // Check object localization results if still no human found
-        if (!containsHuman && annotations.containsKey('localizedObjectAnnotations')) {
+        // Check object localization results with highest confidence threshold
+        if (annotations.containsKey('localizedObjectAnnotations')) {
           final List<dynamic> objects = annotations['localizedObjectAnnotations'];
           for (var object in objects) {
             String name = object['name'].toString().toLowerCase();
-            if (name.contains('person') || 
-                name.contains('human') ||
-                name.contains('face') ||
-                name.contains('man') ||
-                name.contains('woman') ||
-                name.contains('child')) {
-              containsHuman = true;
-              confidence = object['score'] * 100;  // Convert to percentage
-              break;
+            double objectScore = (object['score'] ?? 0.0);
+            
+            // Only consider very high-confidence object detections
+            if (objectScore >= MIN_OBJECT_CONFIDENCE) {
+              if (name == 'person' || 
+                  name == 'human' ||
+                  name == 'man' ||
+                  name == 'woman' ||
+                  name == 'child') {
+                
+                detectionDetails['humanObjectDetected'] = true;
+                detectionDetails['confidences'].add(objectScore);
+                
+                if (!containsHuman || confidence < objectScore * 100) {
+                  containsHuman = true;
+                  confidence = objectScore * 100;
+                }
+              }
             }
           }
         }
+        
+        // Implement multiple validation layers - require multiple positive indicators for high accuracy
+        bool finalHumanDetection = false;
+        double finalConfidence = 0.0;
+        
+        // Calculate detection score based on multiple factors
+        int detectionScore = 0;
+        List<double> allConfidences = detectionDetails['confidences'];
+        
+        if (detectionDetails['faceDetected']) detectionScore += 3; // Face detection is strongest indicator
+        if (detectionDetails['personLabelDetected']) detectionScore += 2; // Person label is strong
+        if (detectionDetails['humanObjectDetected']) detectionScore += 2; // Object detection is strong
+        if (detectionDetails['humanRelatedLabels'].length >= 2) detectionScore += 1; // Multiple contextual clues
+        
+        // Require higher score for final confirmation
+        if (detectionScore >= 3 && allConfidences.isNotEmpty) {
+          finalHumanDetection = true;
+          // Use the average of the top confidences for final score
+          allConfidences.sort((a, b) => b.compareTo(a));
+          finalConfidence = allConfidences.take(2).reduce((a, b) => a + b) / 2 * 100;
+        }
+        
+        // Override with single high-confidence face detection
+        if (detectionDetails['faceDetected'] && allConfidences.isNotEmpty && 
+            allConfidences.any((conf) => conf >= 0.85)) {
+          finalHumanDetection = true;
+          finalConfidence = allConfidences.where((conf) => conf >= 0.85).first * 100;
+        }
+        
+        containsHuman = finalHumanDetection;
+        confidence = finalConfidence;
+        
+        // Add debug logging to help understand detection results
+        print('=== HUMAN DETECTION ANALYSIS ===');
+        print('Face detected: ${detectionDetails['faceDetected']}');
+        print('Person label detected: ${detectionDetails['personLabelDetected']}');
+        print('Human object detected: ${detectionDetails['humanObjectDetected']}');
+        print('Human-related labels found: ${detectionDetails['humanRelatedLabels']}');
+        print('All confidences: ${detectionDetails['confidences']}');
+        print('Detection score: $detectionScore (minimum required: 3)');
+        print('Final decision: $finalHumanDetection (confidence: ${finalConfidence.toStringAsFixed(1)}%)');
+        print('================================');
         
         result = {
           'isValid': true,
@@ -306,11 +435,12 @@ class TipService {
         }
       } catch (e) {
         print('Error fetching missing person name: $e');
-      }// Format coordinates as GeoPoint for Firestore
+      }
+      
+      // Format coordinates as GeoPoint for Firestore
       final GeoPoint coordinates = GeoPoint(lat, lng);
 
       // Format dateTimeLastSeen and timestamp
-      final DateTime now = DateTime.now();
       final Timestamp createdAtTimestamp = Timestamp.now();
       final Timestamp dateTimeLastSeenTimestamp = Timestamp.fromDate(DateTime.parse(dateLastSeen + 'T' + timeLastSeen));
 
@@ -367,32 +497,6 @@ class TipService {
       }
       throw e;
     }
-  }
-
-  // Helper to format DateTime as 'May 13, 2025 at 10:28:00 PM UTC+8'
-  String _formatDateTime(DateTime dt) {
-    final String month = _monthName(dt.month);
-    final String day = dt.day.toString();
-    final String year = dt.year.toString();
-    final int hour12 = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final String time =
-      "${hour12.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
-    final String timezone = 'UTC${_timezoneOffset(dt)}';
-    return "$month $day, $year at $time $timezone";
-  }
-  String _monthName(int month) {
-    const months = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month];
-  }
-  String _timezoneOffset(DateTime dt) {
-    final offset = dt.timeZoneOffset;
-    final hours = offset.inHours;
-    final minutes = offset.inMinutes.remainder(60);
-    final sign = hours >= 0 ? '+' : '-';
-    return '$sign${hours.abs()}${minutes != 0 ? ':${minutes.abs().toString().padLeft(2, '0')}' : ''}';
   }
 
   Future<List<Map<String, dynamic>>> getAllReports() async {
