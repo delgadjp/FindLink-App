@@ -1687,18 +1687,19 @@ class FillUpForm extends State<FillUpFormScreen> {
             } else if (!validationResult['containsHuman']) {
               _imageFile = null;
               _webImage = null;
-              _validationMessage = 'No person detected in the image. Image has been removed.';
+              _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been removed.';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.noHuman;
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Image removed - no person detected'),
+                  content: Text('Image removed - no reliable human detection (${_validationConfidence}% confidence)'),
                   backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 4),
                 ),
               );
             } else {
-              _validationMessage = 'Person detected in image!';
+              _validationMessage = validationResult['message'] ?? 'Person detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
               
@@ -1708,9 +1709,9 @@ class FillUpForm extends State<FillUpFormScreen> {
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Image uploaded and validated successfully!'),
+                  content: Text('Image uploaded and validated successfully! (${_validationConfidence}% confidence)'),
                   backgroundColor: Colors.green,
-                  duration: Duration(seconds: 2),
+                  duration: Duration(seconds: 3),
                 ),
               );
             }

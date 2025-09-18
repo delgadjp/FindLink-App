@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:io' show File;
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import '/core/app_export.dart';
 
@@ -75,7 +76,7 @@ class IRFService {
     }
   }
 
-  // Add method to validate image using Google Vision API
+  // Add method to validate image using Google Vision API with improved accuracy
   Future<Map<String, dynamic>> validateImageWithGoogleVision(dynamic imageData) async {
     try {
       Map<String, dynamic> result = {
@@ -128,9 +129,10 @@ class IRFService {
               'content': base64Image
             },
             'features': [
-              {'type': 'LABEL_DETECTION', 'maxResults': 10},
-              {'type': 'FACE_DETECTION', 'maxResults': 5},
-              {'type': 'OBJECT_LOCALIZATION', 'maxResults': 10}
+              {'type': 'LABEL_DETECTION', 'maxResults': 15},
+              {'type': 'FACE_DETECTION', 'maxResults': 10},
+              {'type': 'OBJECT_LOCALIZATION', 'maxResults': 15},
+              {'type': 'SAFE_SEARCH_DETECTION'}
             ]
           }]
         })
@@ -138,35 +140,17 @@ class IRFService {
       
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        bool containsHuman = false;
-        double confidence = 0.0;
-        
         final annotations = jsonResponse['responses'][0];
         
-        if (annotations.containsKey('faceAnnotations')) {
-          containsHuman = true;
-          confidence = annotations['faceAnnotations'][0]['detectionConfidence'] * 100;
-        }
-        
-        if (!containsHuman && annotations.containsKey('labelAnnotations')) {
-          for (var label in annotations['labelAnnotations']) {
-            String description = label['description'].toString().toLowerCase();
-            if (description.contains('person') || description.contains('human') || 
-                description.contains('face') || description.contains('people')) {
-              containsHuman = true;
-              confidence = label['score'] * 100;
-              break;
-            }
-          }
-        }
+        // Use improved multi-criteria validation
+        final validationResult = _analyzeHumanDetection(annotations);
         
         result = {
           'isValid': true,
-          'containsHuman': containsHuman,
-          'confidence': confidence.round() / 100,
-          'message': containsHuman 
-              ? 'Image validated successfully. Human detected with ${confidence.toStringAsFixed(1)}% confidence.'
-              : 'No human detected in the image.'
+          'containsHuman': validationResult['containsHuman'],
+          'confidence': validationResult['confidence'],
+          'message': validationResult['message'],
+          'details': validationResult['details'], // Add detailed breakdown
         };
       }
       
@@ -180,6 +164,143 @@ class IRFService {
         'message': 'Error validating image: $e'
       };
     }
+  }
+
+  // Improved human detection analysis with multiple validation criteria
+  Map<String, dynamic> _analyzeHumanDetection(Map<String, dynamic> annotations) {
+    double faceScore = 0.0;
+    double objectScore = 0.0;
+    double labelScore = 0.0;
+    double totalConfidence = 0.0;
+    
+    List<String> detectedFeatures = [];
+    List<String> detailBreakdown = [];
+    
+    // 1. Face Detection Analysis (Highest weight - most reliable)
+    if (annotations.containsKey('faceAnnotations') && 
+        annotations['faceAnnotations'] is List && 
+        annotations['faceAnnotations'].isNotEmpty) {
+      
+      for (var face in annotations['faceAnnotations']) {
+        double faceConfidence = face['detectionConfidence']?.toDouble() ?? 0.0;
+        
+        // Only count faces with high confidence (>0.7)
+        if (faceConfidence > 0.7) {
+          faceScore = math.max(faceScore, faceConfidence);
+          detectedFeatures.add('High-confidence face (${(faceConfidence * 100).toStringAsFixed(1)}%)');
+        } else if (faceConfidence > 0.5) {
+          // Medium confidence faces get lower weight
+          faceScore = math.max(faceScore, faceConfidence * 0.7);
+          detectedFeatures.add('Medium-confidence face (${(faceConfidence * 100).toStringAsFixed(1)}%)');
+        }
+      }
+    }
+    
+    // 2. Object Localization Analysis (Medium weight)
+    if (annotations.containsKey('localizedObjectAnnotations') && 
+        annotations['localizedObjectAnnotations'] is List) {
+      
+      for (var obj in annotations['localizedObjectAnnotations']) {
+        String objName = (obj['name']?.toString() ?? '').toLowerCase();
+        double objConfidence = obj['score']?.toDouble() ?? 0.0;
+        
+        // Only consider high-confidence person objects
+        if (objName == 'person' && objConfidence > 0.8) {
+          objectScore = math.max(objectScore, objConfidence);
+          detectedFeatures.add('Person object (${(objConfidence * 100).toStringAsFixed(1)}%)');
+        }
+      }
+    }
+    
+    // 3. Label Detection Analysis (Lowest weight - most prone to false positives)
+    if (annotations.containsKey('labelAnnotations') && 
+        annotations['labelAnnotations'] is List) {
+      
+      // Define strict human-related labels with confidence requirements
+      final Map<String, double> humanLabels = {
+        'human face': 0.8,
+        'facial expression': 0.8,
+        'human': 0.85,
+        'people': 0.8,
+        'human head': 0.8,
+        'human eye': 0.75,
+        'human hair': 0.75,
+        'human nose': 0.75,
+        'human mouth': 0.75,
+        'portrait': 0.7,
+        'selfie': 0.8,
+      };
+      
+      // Exclude ambiguous labels that often cause false positives
+      final Set<String> excludeLabels = {
+        'person', // Too generic - can match statues, drawings, etc.
+        'face', // Too generic - can match drawings, photos, etc.
+        'human body', // Can match mannequins, statues
+        'art', 'artwork', 'drawing', 'painting', 'illustration',
+        'statue', 'sculpture', 'mannequin', 'toy', 'doll',
+        'photo', 'photograph', 'image', 'picture',
+        'poster', 'sign', 'text', 'logo'
+      };
+      
+      for (var label in annotations['labelAnnotations']) {
+        String description = (label['description']?.toString() ?? '').toLowerCase();
+        double labelConfidence = label['score']?.toDouble() ?? 0.0;
+        
+        // Skip excluded labels
+        if (excludeLabels.contains(description)) {
+          detailBreakdown.add('Excluded: $description (${(labelConfidence * 100).toStringAsFixed(1)}%)');
+          continue;
+        }
+        
+        // Check for specific human labels with required confidence
+        for (String humanLabel in humanLabels.keys) {
+          double requiredConfidence = humanLabels[humanLabel]!;
+          if (description.contains(humanLabel) && labelConfidence >= requiredConfidence) {
+            labelScore = math.max(labelScore, labelConfidence);
+            detectedFeatures.add('$humanLabel (${(labelConfidence * 100).toStringAsFixed(1)}%)');
+            break;
+          }
+        }
+      }
+    }
+    
+    // 4. Calculate weighted final score
+    // Face detection: 60% weight (most reliable)
+    // Object detection: 30% weight (moderately reliable) 
+    // Label detection: 10% weight (least reliable)
+    totalConfidence = (faceScore * 0.6) + (objectScore * 0.3) + (labelScore * 0.1);
+    
+    // Require minimum confidence threshold of 0.65 for positive detection
+    bool containsHuman = totalConfidence >= 0.65;
+    
+    // Generate detailed message
+    String message;
+    if (containsHuman) {
+      message = 'Human detected with ${(totalConfidence * 100).toStringAsFixed(1)}% confidence.';
+      if (detectedFeatures.isNotEmpty) {
+        message += '\nDetected features: ${detectedFeatures.join(', ')}';
+      }
+    } else {
+      message = 'No reliable human detection. Confidence: ${(totalConfidence * 100).toStringAsFixed(1)}%';
+      if (detectedFeatures.isNotEmpty) {
+        message += '\nWeak features found: ${detectedFeatures.join(', ')}';
+      } else {
+        message += '\nNo human features detected.';
+      }
+    }
+    
+    return {
+      'containsHuman': containsHuman,
+      'confidence': totalConfidence,
+      'message': message,
+      'details': {
+        'faceScore': faceScore,
+        'objectScore': objectScore,
+        'labelScore': labelScore,
+        'detectedFeatures': detectedFeatures,
+        'breakdown': detailBreakdown,
+      }
+    };
   }
   // Collection reference - Uses only incidents collection now
   CollectionReference get irfCollection => _firestore.collection('incidents');
