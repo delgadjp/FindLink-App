@@ -1905,12 +1905,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: GridView.builder(
                       shrinkWrap: true,
                       physics: NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: MediaQuery.of(context).size.width > 800 ? 2 : 1,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 1.1,
-                      ),
+                      gridDelegate: () {
+                        final width = MediaQuery.of(context).size.width;
+                        final twoCols = width > 800;
+                        // For single column, increase aspectRatio (w/h) to reduce height.
+                        // Increase single-column height slightly to avoid overflow while keeping minimal empty space
+                        final aspect = twoCols ? 0.95 : 1.05; 
+                        return SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: twoCols ? 2 : 1,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: aspect,
+                        );
+                      }(),
                       itemCount: paginatedForms.length,
                       itemBuilder: (context, index) {
                         final form = paginatedForms[index];
@@ -2022,16 +2029,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           border: Border.all(color: Color(0xFFe3e8ff), width: 1),
         ),
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(16,16,16,12),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Removed spaceBetween to allow natural sizing and avoid overflow in tight heights
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              // Top content (image + meta)
               Column(
                 children: [
                   // Circular image with better styling
                   Container(
-                    width: 100,
-                    height: 100,
+                    // Reduced size to prevent RenderFlex overflow in grid tiles
+                    width: 84,
+                    height: 84,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Color(0xFF2c2c78), width: 3),
@@ -2048,7 +2059,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: _buildModalFormImage(form),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 12),
                   
                   // Name with better typography
                   Text(
@@ -2056,7 +2067,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: TextStyle(
                       color: Color(0xFF2c2c78),
                       fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                      fontSize: 15,
                       letterSpacing: 0.3,
                       height: 1.2,
                     ),
@@ -2065,7 +2076,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   
-                  SizedBox(height: 8),
+                  SizedBox(height: 4),
                   
                   // Date info with icon
                   Row(
@@ -2089,11 +2100,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-              
+              SizedBox(height: 4),
               // Action button with improved styling
               Container(
                 width: double.infinity,
-                margin: EdgeInsets.only(top: 12),
+                // Reduced top margin and button vertical padding to fit within constraints
+                margin: EdgeInsets.only(top: 4),
                 child: ElevatedButton.icon(
                   onPressed: () => onFormSelected(form),
                   icon: Icon(Icons.visibility, size: 16),
@@ -2101,18 +2113,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'View Details',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2c2c78),
                     foregroundColor: Colors.white,
-                    elevation: 2,
+                    elevation: 1,
                     shadowColor: Color(0xFF2c2c78).withOpacity(0.3),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: EdgeInsets.symmetric(vertical: 10),
+                    padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    minimumSize: Size(double.infinity, 32),
                   ),
                 ),
               ),
@@ -3299,12 +3312,24 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
                           GridView.builder(
                             shrinkWrap: true,
                             physics: NeverScrollableScrollPhysics(),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
-                              crossAxisSpacing: 24,
-                              mainAxisSpacing: 24,
-                              childAspectRatio: 1.2,
-                            ),
+                            gridDelegate: () {
+                              final width = MediaQuery.of(context).size.width;
+                              final twoCols = width > 600;
+                              // Estimate content height ~230; width per tile ~ (width - padding)/cols
+                              // Choose aspect so height ~= needed
+                              // aspect = widthPerTile / targetHeight
+                              final totalHorizontalPadding = 0.0; // already outside padding considered
+                              final innerWidth = width - totalHorizontalPadding;
+                              final widthPerTile = twoCols ? (innerWidth / 2) - 32 : innerWidth - 0; // subtract spacing approximation
+                              final targetHeight = twoCols ? 250.0 : 235.0;
+                              final aspect = (widthPerTile / targetHeight).clamp(1.0, 1.8);
+                              return SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: twoCols ? 2 : 1,
+                                crossAxisSpacing: 24,
+                                mainAxisSpacing: 24,
+                                childAspectRatio: aspect,
+                              );
+                            }(),
                             itemCount: _paginatedForms.length,
                             itemBuilder: (context, index) {
                               final form = _paginatedForms[index];
@@ -3394,16 +3419,20 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
           border: Border.all(color: Color(0xFFe3e8ff), width: 1),
         ),
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(20,20,20,14),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Avoid spaceBetween to reduce forced expansion causing overflow
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Column(
+              Flexible(
+                fit: FlexFit.loose,
+                child: Column(
                 children: [
                   // Circular image
                   Container(
-                    width: 140,
-                    height: 140,
+                    width: 120, // Reduced size to fit smaller tiles
+                    height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Color(0xFF2c2c78), width: 3),
@@ -3420,13 +3449,13 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
                       child: _buildFormImage(form),
                     ),
                   ),
-                  SizedBox(height: 14),
+                  SizedBox(height: 10),
                   Text(
                     form['missingPersonName'] ?? 'Unknown Person',
                     style: TextStyle(
                       color: Color(0xFF2c2c78),
                       fontWeight: FontWeight.w600,
-                      fontSize: 18,
+                      fontSize: 16,
                       letterSpacing: 0.5,
                     ),
                     textAlign: TextAlign.center,
@@ -3434,7 +3463,8 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
+              )),
+              SizedBox(height: 6),
               Container(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -3442,17 +3472,18 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2c2c78),
                     foregroundColor: Colors.white,
-                    elevation: 2,
+                    elevation: 1,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    minimumSize: Size(double.infinity, 36),
                   ),
                   child: Text(
                     'View Details',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                      fontSize: 14,
                     ),
                   ),
                 ),
