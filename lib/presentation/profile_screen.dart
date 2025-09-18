@@ -1930,67 +1930,156 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Pagination controls (only show if more than 1 page)
                 if (totalPages > 1)
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    margin: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      gradient: LinearGradient(
+                        colors: [Colors.white, Colors.grey.shade50],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    margin: EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        // Previous button
-                        ElevatedButton.icon(
-                          onPressed: currentPage > 1
-                              ? () => setModalState(() => currentPage--)
-                              : null,
-                          icon: Icon(Icons.chevron_left, size: 18),
-                          label: Text('Prev'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: currentPage > 1 ? Color(0xFF2c2c78) : Colors.grey.shade300,
-                            foregroundColor: currentPage > 1 ? Colors.white : Colors.grey.shade500,
-                            elevation: currentPage > 1 ? 2 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
-                        ),
-                        
-                        // Page indicator
+                        // Page indicator at top
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Color(0xFF2c2c78).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Page $currentPage of $totalPages',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2c2c78),
-                              fontSize: 14,
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF2c2c78), Color(0xFF4c4ca8)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF2c2c78).withOpacity(0.3),
+                                spreadRadius: 1,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.description, size: 16, color: Colors.white),
+                              SizedBox(width: 6),
+                              Text(
+                                'Page $currentPage of $totalPages',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         
-                        // Next button
-                        ElevatedButton.icon(
-                          onPressed: currentPage < totalPages
-                              ? () => setModalState(() => currentPage++)
-                              : null,
-                          icon: Icon(Icons.chevron_right, size: 18),
-                          label: Text('Next'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: currentPage < totalPages ? Color(0xFF2c2c78) : Colors.grey.shade300,
-                            foregroundColor: currentPage < totalPages ? Colors.white : Colors.grey.shade500,
-                            elevation: currentPage < totalPages ? 2 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        SizedBox(height: 12),
+                        
+                        // Navigation buttons row
+                        Row(
+                          children: [
+                            // Previous button
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                child: ElevatedButton(
+                                  onPressed: currentPage > 1
+                                      ? () => setModalState(() => currentPage--)
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: currentPage > 1 
+                                        ? Color(0xFF2c2c78) 
+                                        : Colors.grey.shade300,
+                                    foregroundColor: currentPage > 1 
+                                        ? Colors.white 
+                                        : Colors.grey.shade500,
+                                    elevation: currentPage > 1 ? 3 : 0,
+                                    shadowColor: currentPage > 1 
+                                        ? Color(0xFF2c2c78).withOpacity(0.4) 
+                                        : Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.chevron_left, size: 20),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Previous',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
+                            
+                            SizedBox(width: 12),
+                            
+                            // Next button
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                child: ElevatedButton(
+                                  onPressed: currentPage < totalPages
+                                      ? () => setModalState(() => currentPage++)
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: currentPage < totalPages 
+                                        ? Color(0xFF2c2c78) 
+                                        : Colors.grey.shade300,
+                                    foregroundColor: currentPage < totalPages 
+                                        ? Colors.white 
+                                        : Colors.grey.shade500,
+                                    elevation: currentPage < totalPages ? 3 : 0,
+                                    shadowColor: currentPage < totalPages 
+                                        ? Color(0xFF2c2c78).withOpacity(0.4) 
+                                        : Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Next',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.chevron_right, size: 20),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
