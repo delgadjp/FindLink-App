@@ -17,6 +17,7 @@ class AppRoutes {
   static const String forgotPassword = '/forgot-password'; // Added forgot password route
   static const String findMeSettings = '/find-me-settings'; // FindMe settings route
   static const String findMyDevices = '/find-my-devices'; // Find My Devices screen
+  static const String irfDetails = '/irf-details'; // IRF Details screen
 
   static Map<String, WidgetBuilder> routes = {
     home: (context) => HomeScreen(),

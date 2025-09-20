@@ -4,6 +4,7 @@ import '/core/app_export.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:findlink/presentation/irf_details_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -3067,46 +3068,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }  // Helper method to build a case card
   Widget _buildCaseCard(int index) {
-    if (index >= _casesData.length) return Container();
-    
-    final caseData = _casesData[index];
-    
-    // Determine card color and icon based on status
-    Color statusColor;
-    IconData statusIcon;
-    
-    switch(caseData['status']) {
-      case 'In Progress':
-        statusColor = Colors.orange;
-        statusIcon = Icons.sync;
-        break;
-      case 'Evidence Submitted':
-        statusColor = Colors.teal;
-        statusIcon = Icons.upload_file;
-        break;
-      case 'Resolved Case':
-      case 'Resolved':
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        break;
-      case 'Under Review':
-        statusColor = Colors.blue;
-        statusIcon = Icons.visibility;
-        break;
-      case 'Case Verified':
-        statusColor = Colors.purple;
-        statusIcon = Icons.verified;
-        break;
-      case 'Unresolved Case':
-        statusColor = Colors.red;
-        statusIcon = Icons.error_outline;
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.info_outline;
-    }
-    
-    return AnimatedContainer(
+  if (index >= _casesData.length) return Container();
+
+  final caseData = _casesData[index];
+
+  // Determine card color and icon based on status
+  Color statusColor;
+  IconData statusIcon;
+
+  switch (caseData['status']) {
+    case 'In Progress':
+      statusColor = Colors.orange;
+      statusIcon = Icons.sync;
+      break;
+    case 'Evidence Submitted':
+      statusColor = Colors.teal;
+      statusIcon = Icons.upload_file;
+      break;
+    case 'Resolved Case':
+    case 'Resolved':
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
+      break;
+    case 'Under Review':
+      statusColor = Colors.blue;
+      statusIcon = Icons.visibility;
+      break;
+    case 'Case Verified':
+      statusColor = Colors.purple;
+      statusIcon = Icons.verified;
+      break;
+    case 'Unresolved Case':
+      statusColor = Colors.red;
+      statusIcon = Icons.error_outline;
+      break;
+    default:
+      statusColor = Colors.grey;
+      statusIcon = Icons.info_outline;
+  }
+
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IRFDetailsScreen(
+            caseData: caseData,
+          ),
+        ),
+      );
+    },
+    child: AnimatedContainer(
       duration: Duration(milliseconds: 300),
       margin: EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -3126,304 +3138,284 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(8), // Further reduced padding from 12 to 8
-        child: SingleChildScrollView( // Added scrollable container
+        padding: EdgeInsets.all(8),
+        child: SingleChildScrollView(
           physics: ClampingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-            // Status badge with icon
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Further reduced padding
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: statusColor, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    statusIcon,
-                    size: 10, // Further reduced from 11
-                    color: statusColor,
-                  ),
-                  SizedBox(width: 2), // Reduced from 3
-                  Text(
-                    caseData['status'],
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 9, // Reduced from 10
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 6), // Reduced from 8
-            
-            // Case ID with copy button
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    "Case ID: ${caseData['caseNumber']}",
-                    style: TextStyle(
-                      fontSize: 17, // Reduced from 16
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D47A1),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    final data = ClipboardData(text: caseData['caseNumber'] ?? '');
-                    Clipboard.setData(data);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Case ID copied to clipboard'),
-                        duration: Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(3), // Reduced from 4
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.copy_outlined,
-                      size: 12, // Reduced from 14
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 6), // Reduced from 8
-              // Missing Person info with enhanced styling
-            Container(
-              height: 60, // Reduced height from 70 to 60
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Further reduced padding
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200, width: 1),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(4), // Reduced from 5
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue.shade300, Colors.blue.shade700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.shade300.withOpacity(0.3),
-                          spreadRadius: 1,
-                          blurRadius: 3,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.person_search,
-                      size: 11, // Reduced from 12
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 6), // Reduced from 8
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Missing Person",
-                          style: TextStyle(
-                            fontSize: 11, // Reduced font size from 16
-                            color: Colors.blue.shade800,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 1),
-                        Flexible( // Added Flexible to prevent overflow
-                          child: Text(
-                            caseData['name'],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13, // Reduced from 16
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black.withOpacity(0.85),
-                              height: 1.1,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            SizedBox(height: 4), // Reduced from 6
-            
-            // Date reported with styled badge
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2), // Further reduced padding
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 9, // Reduced from 10
-                    color: Colors.grey[700],
-                  ),
-                  SizedBox(width: 2), // Reduced from 3
-                  Text(
-                    "Reported: ${caseData['dateCreated']}",
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 10, // Reduced from 12
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Upload Evidence button (only show when status is "In Progress")
-            if (caseData['status'] == 'In Progress') ...[
-              SizedBox(height: 8), // Reduced from 12
-              Flexible( // Added Flexible to prevent overflow
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Get screen dimensions
-                    final screenWidth = MediaQuery.of(context).size.width;
-                    final screenHeight = MediaQuery.of(context).size.height;
-                    final orientation = MediaQuery.of(context).orientation;
-                    
-                    // Dynamic sizing based on screen size - more aggressive reduction
-                    double buttonHeight = screenHeight < 600 ? 28 : 32; // Further reduced height
-                    double iconSize = screenWidth < 360 ? 14 : 16; // Reduced icon size
-                    double fontSize = screenWidth < 360 ? 10 : 12; // Smaller font
-                    double horizontalPadding = screenWidth < 360 ? 6 : 8; // Less padding
-                    double verticalPadding = 4; // Fixed smaller vertical padding
-                    
-                    // Adjust for landscape orientation
-                    if (orientation == Orientation.landscape) {
-                      buttonHeight = 26; // Even smaller height in landscape
-                      fontSize = 11; // Smaller font in landscape
-                    }
-                    
-                    return Container(
-                      width: double.infinity,
-                      constraints: BoxConstraints(
-                        minHeight: buttonHeight,
-                        maxHeight: buttonHeight + 4, // Smaller flexibility range
-                      ),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EvidenceSubmissionScreen(
-                                caseId: caseData['id'],
-                                caseNumber: caseData['caseNumber'],
-                                caseName: caseData['name'],
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icon(
-                          Icons.upload_file, 
-                          size: iconSize,
-                        ),
-                        label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Upload Evidence',
-                            style: TextStyle(
-                              fontSize: fontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                          elevation: 1, // Reduced elevation
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6), // Smaller radius
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            vertical: verticalPadding, 
-                            horizontal: horizontalPadding,
-                          ),
-                          minimumSize: Size(double.infinity, buttonHeight),
-                          maximumSize: Size(double.infinity, buttonHeight + 4),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-            
-            // Show Evidence Submitted status with action button
-            if (caseData['status'] == 'Evidence Submitted') ...[
-              SizedBox(height: 8), // Reduced from 12
+              // Status badge with icon
               Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6), // Reduced padding
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.teal.shade50,
-                  borderRadius: BorderRadius.circular(6), // Smaller radius
-                  border: Border.all(color: Colors.teal.shade200, width: 1),
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor, width: 1),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.teal.shade600,
-                      size: 16, // Reduced from 18
-                    ),
-                    SizedBox(width: 6), // Reduced from 8
-                    Expanded(
-                      child: Text(
-                        'Evidence has been submitted and is under review',
-                        style: TextStyle(
-                          color: Colors.teal.shade700,
-                          fontSize: 11, // Reduced from 13
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Icon(statusIcon, size: 10, color: statusColor),
+                    SizedBox(width: 2),
+                    Text(
+                      caseData['status'],
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
                       ),
                     ),
                   ],
                 ),
               ),
-            ], // Close the if condition array for Evidence Submitted status
-          ], // Close the children array of the Column
-        ), // Close SingleChildScrollView
-      ), 
-      )// Close Padding
-    ); // Close AnimatedContainer
-  } // Close _buildCaseCard method
+              SizedBox(height: 6),
+
+              // Case ID with copy button
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Case ID: ${caseData['caseNumber']}",
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D47A1),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      final data = ClipboardData(text: caseData['caseNumber'] ?? '');
+                      Clipboard.setData(data);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Case ID copied to clipboard'),
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.copy_outlined,
+                        size: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 6),
+
+              // Missing Person info
+              Container(
+                height: 60,
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade300, Colors.blue.shade700],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.shade300.withOpacity(0.3),
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Icon(Icons.person_search, size: 11, color: Colors.white),
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Missing Person",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 1),
+                          Flexible(
+                            child: Text(
+                              caseData['name'],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black.withOpacity(0.85),
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 4),
+
+              // Date reported
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_today, size: 9, color: Colors.grey[700]),
+                    SizedBox(width: 2),
+                    Text(
+                      "Reported: ${caseData['dateCreated']}",
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Upload Evidence button (only when "In Progress")
+              if (caseData['status'] == 'In Progress') ...[
+                SizedBox(height: 8),
+                Flexible(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final screenHeight = MediaQuery.of(context).size.height;
+                      final orientation = MediaQuery.of(context).orientation;
+
+                      double buttonHeight = screenHeight < 600 ? 28 : 32;
+                      double iconSize = screenWidth < 360 ? 14 : 16;
+                      double fontSize = screenWidth < 360 ? 10 : 12;
+                      double horizontalPadding = screenWidth < 360 ? 6 : 8;
+                      double verticalPadding = 4;
+
+                      if (orientation == Orientation.landscape) {
+                        buttonHeight = 26;
+                        fontSize = 11;
+                      }
+
+                      return Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          minHeight: buttonHeight,
+                          maxHeight: buttonHeight + 4,
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EvidenceSubmissionScreen(
+                                  caseId: caseData['id'],
+                                  caseNumber: caseData['caseNumber'],
+                                  caseName: caseData['name'],
+                                ),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.upload_file, size: iconSize),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Upload Evidence',
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            elevation: 1,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: verticalPadding,
+                              horizontal: horizontalPadding,
+                            ),
+                            minimumSize: Size(double.infinity, buttonHeight),
+                            maximumSize: Size(double.infinity, buttonHeight + 4),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+
+              // Show Evidence Submitted status
+              if (caseData['status'] == 'Evidence Submitted') ...[
+                SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.teal.shade200, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.teal.shade600, size: 16),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Evidence has been submitted and is under review',
+                          style: TextStyle(
+                            color: Colors.teal.shade700,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
   
   // Helper method to format flash alarm date
   String _formatFlashAlarmDate(dynamic flashAlarmDate) {
