@@ -26,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Lifting form notifications
   int _unreadLiftingFormsCount = 0;
   List<Map<String, dynamic>> _liftingForms = [];
+  Set<String> _viewedLiftingFormIds = {}; // Track viewed lifting form IDs
   
   // Stream subscriptions for real-time updates
   List<StreamSubscription<QuerySnapshot>> _streamSubscriptions = [];
@@ -57,6 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _fetchUserData();
     _initializeCaseStreams();
     _updateLiftingFormNotifications();
+    _setupViewedLiftingFormsListener();
   }
 
   @override
@@ -164,6 +166,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _streamSubscriptions.add(
       liftingFormStream.listen((snapshot) => _updateLiftingFormNotifications())
     );
+  }
+
+  // Set up listener for viewed lifting forms
+  void _setupViewedLiftingFormsListener() {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final viewedStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('viewedLiftingForms')
+        .snapshots();
+
+    _streamSubscriptions.add(
+      viewedStream.listen((snapshot) {
+        final viewedIds = snapshot.docs.map((doc) => doc.id).toSet();
+        setState(() {
+          _viewedLiftingFormIds = viewedIds;
+          // Recalculate unread count based on viewed forms
+          _updateUnreadCount();
+        });
+      })
+    );
+  }
+
+  // Update unread count based on viewed forms
+  void _updateUnreadCount() {
+    final unreadForms = _liftingForms.where((form) => 
+        !_viewedLiftingFormIds.contains(form['id'])).toList();
+    _unreadLiftingFormsCount = unreadForms.length;
+  }
+
+  // Mark lifting form as viewed
+  Future<void> _markLiftingFormAsViewed(String liftingFormId) async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('viewedLiftingForms')
+          .doc(liftingFormId)
+          .set({
+        'viewedAt': FieldValue.serverTimestamp(),
+        'liftingFormId': liftingFormId,
+      });
+    } catch (e) {
+      print('Error marking lifting form as viewed: $e');
+    }
   }
 
   // Initialize all case streams
@@ -385,7 +437,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {
         _liftingForms = liftingForms;
-        _unreadLiftingFormsCount = liftingForms.length;
+        // Update unread count based on viewed forms
+        _updateUnreadCount();
       });
     } catch (e) {
       print('Error updating lifting form notifications: $e');
@@ -814,10 +867,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Expanded(
                             child: TextButton.icon(
                               onPressed: () {
-                                // Clear notification count when closing
-                                this.setState(() {
-                                  _unreadLiftingFormsCount = 0;
-                                });
                                 Navigator.of(context).pop();
                               },
                               icon: Icon(Icons.close, size: 20),
@@ -913,10 +962,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   // Show lifting form details modal (improved version)
   void _showLiftingFormDetails(Map<String, dynamic> form) {
-    // Clear the notification count when viewing details
-    setState(() {
-      _unreadLiftingFormsCount = 0;
-    });
+    // Mark this form as viewed when opening details
+    _markLiftingFormAsViewed(form['id']);
     
     showDialog(
       context: context,
