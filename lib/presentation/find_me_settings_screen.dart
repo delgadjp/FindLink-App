@@ -330,62 +330,349 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('FindMe Feature Consent'),
-          content: SingleChildScrollView(
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'By enabling the FindMe feature, you consent to:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                // Header Section
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'FindMe Feature',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Privacy & Consent Agreement',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(height: 12),
-                Text('• True background location tracking (continues when app is closed)'),
-                Text('• Real-time location sharing with family members'),
-                Text('• Remote device actions (play sound, etc.)'),
-                Text('• Sharing your location with designated trusted contacts'),
-                Text('• Storing location data for up to 30 days'),
-                Text('• Last known location when device goes offline'),
-                SizedBox(height: 12),
-                Text(
-                  'Features:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                
+                // Content Section
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Introduction
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200, width: 1),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: Color(0xFF0D47A1),
+                                size: 20,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'By enabling FindMe, you consent to the following data collection and sharing:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0D47A1),
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        
+                        // Data Collection Section
+                        _buildConsentSection(
+                          'Data Collection & Tracking',
+                          Icons.track_changes,
+                          Color(0xFFE57373),
+                          [
+                            'True background location tracking (continues when app is closed)',
+                            'Real-time location sharing with family members',
+                            'Battery and network status monitoring',
+                            'Storing location data for up to 30 days',
+                            'Last known location when device goes offline',
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Features Section
+                        _buildConsentSection(
+                          'Enhanced Features',
+                          Icons.star,
+                          Color(0xFF66BB6A),
+                          [
+                            'Live location tracking even when app is closed',
+                            'Battery-efficient motion-based tracking',
+                            'Remote sound alerts and device management',
+                            'Offline location history',
+                            'Emergency location broadcast',
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Privacy Controls Section
+                        _buildConsentSection(
+                          'Privacy Controls',
+                          Icons.security,
+                          Color(0xFF42A5F5),
+                          [
+                            'Location shared ONLY with permitted trusted contacts',
+                            'You control who can access your location',
+                            'Explicit sharing required for location access',
+                            'Can be disabled anytime in settings',
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        
+                        // Legal Compliance
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300, width: 1),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.gavel,
+                                color: Colors.grey.shade600,
+                                size: 20,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'This feature complies with the Data Privacy Act of 2012. Your data is encrypted and securely stored.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade700,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                Text('• Live location tracking even when app is closed'),
-                Text('• Battery-efficient motion-based tracking'),
-                Text('• Remote sound alerts and device management'),
-                Text('• Battery and network status monitoring'),
-                Text('• Offline location history'),
-                SizedBox(height: 12),
-                Text(
-                  'Your location will ONLY be shared when:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text('• Trusted contacts have location access permission'),
-                Text('• You explicitly share your location'),
-                SizedBox(height: 12),
-                Text(
-                  'This feature complies with the Data Privacy Act of 2012. You can disable it anytime.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                
+                // Actions Section
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.close, size: 18, color: Colors.grey.shade600),
+                              SizedBox(width: 8),
+                              Text(
+                                'Decline',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF0D47A1),
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle, size: 18, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'I Consent',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Decline'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text('I Consent'),
-            ),
-          ],
         );
       },
     ) ?? false;
+  }
+
+  Widget _buildConsentSection(String title, IconData icon, Color color, List<String> items) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 18,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          ...items.map((item) => Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  margin: EdgeInsets.only(top: 6, right: 10),
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+        ],
+      ),
+    );
   }
 
   Future<void> _updateContactPermission(String contactId, String permission, bool value) async {
