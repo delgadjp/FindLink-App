@@ -8,7 +8,6 @@ import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:ui'; // Added import for ImageFilter
-import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 class FillUpFormScreen extends StatefulWidget {
@@ -1628,12 +1627,20 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
 
-  // Image picking and validation
+  // Image picking and validation with enhanced camera settings
   Future<void> _pickImage(ImageSource source) async {
     try {
       setState(() => _isProcessingImage = true);
       
-      final pickedFile = await picker.pickImage(source: source);
+      // Enhanced image picker settings for better quality
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,          // Optimal resolution for Vision API
+        maxHeight: 1024,
+        imageQuality: 90,        // High quality for better detection
+        preferredCameraDevice: CameraDevice.rear, // Rear camera typically better quality
+      );
+      
       if (pickedFile != null) {
         Uint8List imageBytes;
         

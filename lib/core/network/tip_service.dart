@@ -8,6 +8,7 @@ import 'dart:typed_data';  // Add this for web support
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math'; // Import math library for distance calculations
+import '../../presentation/utils/image_processor.dart'; // Import the new image processor
 
 class TipService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -102,7 +103,7 @@ class TipService {
     }
   }
 
-  // New method to validate image using Google Vision API
+  // Enhanced method to validate image using Google Vision API with preprocessing
   Future<Map<String, dynamic>> validateImageWithGoogleVision(dynamic imageData) async {
     try {
       // Default response
@@ -113,46 +114,52 @@ class TipService {
         'message': 'Image validation failed'
       };
       
-      // Convert image data to base64 format needed for Vision API
-      String base64Image;
+      print('Starting enhanced image validation with preprocessing...');
       
-      if (kIsWeb) {
-        if (imageData is Uint8List) {
-          base64Image = base64Encode(imageData);
-        } else if (imageData is String) {
-          // If it's already a base64 string from web
-          if (imageData.startsWith('data:image')) {
-            base64Image = imageData.split(',')[1];
+      // Process the image for optimal detection
+      Uint8List processedImageBytes;
+      try {
+        processedImageBytes = await ImageProcessor.processImageForDetection(imageData);
+        print('Image preprocessing completed successfully');
+      } catch (e) {
+        print('Image preprocessing failed, using original: $e');
+        // Fall back to original image processing if enhancement fails
+        if (kIsWeb) {
+          if (imageData is Uint8List) {
+            processedImageBytes = imageData;
+          } else if (imageData is String) {
+            if (imageData.startsWith('data:image')) {
+              processedImageBytes = Uint8List.fromList(
+                Uri.parse(imageData).data!.contentAsBytes()
+              );
+            } else {
+              throw Exception('Unsupported string format for web image');
+            }
           } else {
-            // Try to decode the string as bytes
-            final Uint8List bytes = Uri.parse(imageData).data!.contentAsBytes();
-            base64Image = base64Encode(bytes);
+            throw Exception('Unsupported image data type for web validation');
           }
         } else {
-          throw Exception('Unsupported image data type for web validation');
-        }
-      } else {
-        // For mobile platforms
-        if (imageData is File) {
-          final bytes = await imageData.readAsBytes();
-          base64Image = base64Encode(bytes);
-        } else if (imageData is String && imageData.isNotEmpty) {
-          // Assume it's a file path
-          final File file = File(imageData);
-          if (await file.exists()) {
-            final bytes = await file.readAsBytes();
-            base64Image = base64Encode(bytes);
+          if (imageData is File) {
+            processedImageBytes = await imageData.readAsBytes();
+          } else if (imageData is String && imageData.isNotEmpty) {
+            final File file = File(imageData);
+            if (await file.exists()) {
+              processedImageBytes = await file.readAsBytes();
+            } else {
+              throw Exception('File does not exist at path: $imageData');
+            }
+          } else if (imageData is Uint8List) {
+            processedImageBytes = imageData;
           } else {
-            throw Exception('File does not exist at path: $imageData');
+            throw Exception('Unsupported image data type for mobile validation');
           }
-        } else if (imageData is Uint8List) {
-          base64Image = base64Encode(imageData);
-        } else {
-          throw Exception('Unsupported image data type for mobile validation');
         }
       }
       
-      // Prepare request to Google Vision API
+      // Convert processed image to base64 for Vision API
+      final String base64Image = base64Encode(processedImageBytes);
+      
+      // Prepare request to Google Vision API with enhanced feature detection
       final response = await http.post(
         Uri.parse('https://vision.googleapis.com/v1/images:annotate?key=$_visionApiKey'),
         headers: {'Content-Type': 'application/json'},
@@ -163,9 +170,9 @@ class TipService {
                 'content': base64Image
               },
               'features': [
-                {'type': 'LABEL_DETECTION', 'maxResults': 10},
-                {'type': 'FACE_DETECTION', 'maxResults': 5},
-                {'type': 'OBJECT_LOCALIZATION', 'maxResults': 10}
+                {'type': 'FACE_DETECTION', 'maxResults': 10}, // Increased for better detection
+                {'type': 'OBJECT_LOCALIZATION', 'maxResults': 15}, // Increased objects
+                {'type': 'LABEL_DETECTION', 'maxResults': 20}, // Increased labels
               ]
             }
           ]
@@ -174,29 +181,30 @@ class TipService {
       
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        print('Vision API response: ${jsonResponse.toString()}');
+        print('Enhanced Vision API response received successfully');
         
         bool containsHuman = false;
         double confidence = 0.0;
         
-        // Check for human-related labels
+        // Check for human-related annotations
         final annotations = jsonResponse['responses'][0];
         
-        // Define minimum confidence thresholds
-        const double MIN_FACE_CONFIDENCE = 0.7; // 70% confidence for face detection
-        const double MIN_LABEL_CONFIDENCE = 0.75; // 75% confidence for label detection
-        const double MIN_OBJECT_CONFIDENCE = 0.8; // 80% confidence for object detection
+        // Enhanced confidence thresholds for better accuracy
+        const double MIN_FACE_CONFIDENCE = 0.75; // Increased from 0.7
+        const double MIN_LABEL_CONFIDENCE = 0.80; // Increased from 0.75
+        const double MIN_OBJECT_CONFIDENCE = 0.85; // Increased from 0.8
         
-        // Track detection details for scoring system
+        // Track detection details for comprehensive scoring
         Map<String, dynamic> detectionDetails = {
           'faceDetected': false,
           'personLabelDetected': false,
           'humanObjectDetected': false,
           'humanRelatedLabels': <String>[],
           'confidences': <double>[],
+          'highConfidenceDetections': 0, // Track number of high-confidence detections
         };
         
-        // Check face detection results with improved validation
+        // Enhanced face detection with quality checks
         if (annotations.containsKey('faceAnnotations') && 
             annotations['faceAnnotations'] != null &&
             annotations['faceAnnotations'].isNotEmpty) {
@@ -204,107 +212,84 @@ class TipService {
           for (var face in annotations['faceAnnotations']) {
             double faceConfidence = face['detectionConfidence'] ?? 0.0;
             
-            // Check if face detection meets minimum confidence threshold
             if (faceConfidence >= MIN_FACE_CONFIDENCE) {
-              // Additional validation: check face quality indicators
+              // Enhanced face quality validation
               bool hasGoodQuality = true;
               
-              // Check if key facial features are detected with good likelihood
+              // Check landmark confidence
               if (face.containsKey('landmarkingConfidence') && 
-                  face['landmarkingConfidence'] < 0.5) {
+                  face['landmarkingConfidence'] < 0.4) {
                 hasGoodQuality = false;
               }
               
-              // Check for face detection quality indicators
-              final String joyLikelihood = face['joyLikelihood'] ?? 'UNKNOWN';
-              final String sorrowLikelihood = face['sorrowLikelihood'] ?? 'UNKNOWN';
-              final String angerLikelihood = face['angerLikelihood'] ?? 'UNKNOWN';
-              final String surpriseLikelihood = face['surpriseLikelihood'] ?? 'UNKNOWN';
+              // Check for realistic emotion detection (not all UNKNOWN)
+              final emotions = ['joyLikelihood', 'sorrowLikelihood', 'angerLikelihood', 'surpriseLikelihood'];
+              int unknownEmotions = 0;
+              for (String emotion in emotions) {
+                if (face[emotion] == 'UNKNOWN' || face[emotion] == null) {
+                  unknownEmotions++;
+                }
+              }
               
-              // If all emotions are UNKNOWN or VERY_UNLIKELY, it might be a false positive
-              if (joyLikelihood == 'UNKNOWN' && sorrowLikelihood == 'UNKNOWN' && 
-                  angerLikelihood == 'UNKNOWN' && surpriseLikelihood == 'UNKNOWN') {
+              // If more than 2 emotions are unknown, it might be a false positive
+              if (unknownEmotions > 2) {
                 hasGoodQuality = false;
               }
               
               if (hasGoodQuality) {
                 detectionDetails['faceDetected'] = true;
                 detectionDetails['confidences'].add(faceConfidence);
+                detectionDetails['highConfidenceDetections']++;
                 containsHuman = true;
-                confidence = faceConfidence * 100;
-                break; // Use the first high-confidence face
+                if (confidence < faceConfidence * 100) {
+                  confidence = faceConfidence * 100;
+                }
               }
             }
           }
         }
         
-        // Check label detection results with stricter criteria
+        // Enhanced label detection with stricter human-specific terms
         if (annotations.containsKey('labelAnnotations')) {
           final List<dynamic> labels = annotations['labelAnnotations'];
           for (var label in labels) {
             String description = label['description'].toString().toLowerCase();
             double labelScore = (label['score'] ?? 0.0);
             
-            // Only consider high-confidence labels
             if (labelScore >= MIN_LABEL_CONFIDENCE) {
-              // More specific human-related terms (removed broad terms)
-              if (description == 'person' || 
-                  description == 'human' || 
-                  description == 'people' ||
-                  description == 'man' ||
-                  description == 'woman' ||
-                  description == 'child' ||
-                  description == 'boy' ||
-                  description == 'girl' ||
-                  description == 'adult' ||
-                  description == 'human face' ||
-                  description == 'human body') {
-                
+              // Primary human indicators (highest priority)
+              if (['person', 'human', 'people', 'man', 'woman', 'child', 'boy', 'girl', 'adult'].contains(description)) {
                 detectionDetails['personLabelDetected'] = true;
                 detectionDetails['humanRelatedLabels'].add(description);
                 detectionDetails['confidences'].add(labelScore);
+                detectionDetails['highConfidenceDetections']++;
                 
                 if (!containsHuman || confidence < labelScore * 100) {
                   containsHuman = true;
                   confidence = labelScore * 100;
                 }
               }
-              
-              // Check for contextual human indicators (clothing, body parts)
-              else if (description == 'clothing' || 
-                       description == 'shirt' ||
-                       description == 'dress' ||
-                       description == 'pants' ||
-                       description == 'hair' ||
-                       description == 'hand' ||
-                       description == 'arm' ||
-                       description == 'leg' ||
-                       description == 'eye' ||
-                       description == 'nose' ||
-                       description == 'mouth') {
+              // Secondary human indicators (supporting evidence)
+              else if (['human face', 'human body', 'human head', 'portrait', 'selfie'].contains(description)) {
                 detectionDetails['humanRelatedLabels'].add(description);
+                detectionDetails['confidences'].add(labelScore);
               }
             }
           }
         }
         
-        // Check object localization results with highest confidence threshold
+        // Enhanced object localization with stricter criteria
         if (annotations.containsKey('localizedObjectAnnotations')) {
           final List<dynamic> objects = annotations['localizedObjectAnnotations'];
           for (var object in objects) {
             String name = object['name'].toString().toLowerCase();
             double objectScore = (object['score'] ?? 0.0);
             
-            // Only consider very high-confidence object detections
             if (objectScore >= MIN_OBJECT_CONFIDENCE) {
-              if (name == 'person' || 
-                  name == 'human' ||
-                  name == 'man' ||
-                  name == 'woman' ||
-                  name == 'child') {
-                
+              if (['person', 'human', 'man', 'woman', 'child'].contains(name)) {
                 detectionDetails['humanObjectDetected'] = true;
                 detectionDetails['confidences'].add(objectScore);
+                detectionDetails['highConfidenceDetections']++;
                 
                 if (!containsHuman || confidence < objectScore * 100) {
                   containsHuman = true;
@@ -315,69 +300,78 @@ class TipService {
           }
         }
         
-        // Implement multiple validation layers - require multiple positive indicators for high accuracy
+        // Enhanced multi-factor validation with weighted scoring
         bool finalHumanDetection = false;
         double finalConfidence = 0.0;
         
-        // Calculate detection score based on multiple factors
+        // Calculate weighted detection score
         int detectionScore = 0;
         List<double> allConfidences = detectionDetails['confidences'];
         
-        if (detectionDetails['faceDetected']) detectionScore += 3; // Face detection is strongest indicator
-        if (detectionDetails['personLabelDetected']) detectionScore += 2; // Person label is strong
-        if (detectionDetails['humanObjectDetected']) detectionScore += 2; // Object detection is strong
-        if (detectionDetails['humanRelatedLabels'].length >= 2) detectionScore += 1; // Multiple contextual clues
+        // Weighted scoring system
+        if (detectionDetails['faceDetected']) detectionScore += 4; // Face detection is strongest
+        if (detectionDetails['personLabelDetected']) detectionScore += 3; // Person label is strong
+        if (detectionDetails['humanObjectDetected']) detectionScore += 3; // Object detection is strong
+        if (detectionDetails['humanRelatedLabels'].length >= 2) detectionScore += 2; // Multiple contextual clues
+        if (detectionDetails['highConfidenceDetections'] >= 2) detectionScore += 1; // Multiple high-confidence detections
         
-        // Require higher score for final confirmation
-        if (detectionScore >= 3 && allConfidences.isNotEmpty) {
+        // Enhanced threshold for final confirmation (stricter)
+        if (detectionScore >= 4 && allConfidences.isNotEmpty) {
           finalHumanDetection = true;
-          // Use the average of the top confidences for final score
+          // Use weighted average of top confidences
           allConfidences.sort((a, b) => b.compareTo(a));
-          finalConfidence = allConfidences.take(2).reduce((a, b) => a + b) / 2 * 100;
+          int topCount = (allConfidences.length / 2).ceil().clamp(1, 3);
+          finalConfidence = allConfidences.take(topCount).reduce((a, b) => a + b) / topCount * 100;
         }
         
-        // Override with single high-confidence face detection
-        if (detectionDetails['faceDetected'] && allConfidences.isNotEmpty && 
-            allConfidences.any((conf) => conf >= 0.85)) {
-          finalHumanDetection = true;
-          finalConfidence = allConfidences.where((conf) => conf >= 0.85).first * 100;
+        // Special case: Very high confidence single detection
+        if (!finalHumanDetection && allConfidences.isNotEmpty) {
+          double maxConfidence = allConfidences.reduce((a, b) => a > b ? a : b);
+          if (maxConfidence >= 0.90) { // 90% confidence threshold
+            finalHumanDetection = true;
+            finalConfidence = maxConfidence * 100;
+          }
         }
         
         containsHuman = finalHumanDetection;
         confidence = finalConfidence;
         
-        // Add debug logging to help understand detection results
-        print('=== HUMAN DETECTION ANALYSIS ===');
+        // Enhanced debug logging
+        print('=== ENHANCED HUMAN DETECTION ANALYSIS ===');
         print('Face detected: ${detectionDetails['faceDetected']}');
         print('Person label detected: ${detectionDetails['personLabelDetected']}');
         print('Human object detected: ${detectionDetails['humanObjectDetected']}');
         print('Human-related labels found: ${detectionDetails['humanRelatedLabels']}');
-        print('All confidences: ${detectionDetails['confidences']}');
-        print('Detection score: $detectionScore (minimum required: 3)');
+        print('High confidence detections: ${detectionDetails['highConfidenceDetections']}');
+        print('All confidences: ${detectionDetails['confidences'].map((c) => '${(c * 100).toStringAsFixed(1)}%').join(', ')}');
+        print('Detection score: $detectionScore (minimum required: 4)');
         print('Final decision: $finalHumanDetection (confidence: ${finalConfidence.toStringAsFixed(1)}%)');
-        print('================================');
+        print('==========================================');
         
         result = {
           'isValid': true,
           'containsHuman': containsHuman,
           'confidence': confidence.round() / 100,  // Round to 2 decimal places
           'message': containsHuman 
-              ? 'Image validated successfully. Human detected with ${confidence.toStringAsFixed(1)}% confidence.' 
-              : 'No human detected in the image.'
+              ? 'Enhanced validation: Human detected with ${confidence.toStringAsFixed(1)}% confidence.' 
+              : 'Enhanced validation: No human detected in the processed image.',
+          'processingApplied': true, // Indicate that preprocessing was used
+          'detectionDetails': detectionDetails, // Include detailed analysis
         };
       } else {
         print('Error calling Google Vision API: ${response.statusCode}, ${response.body}');
-        result['message'] = 'Error calling image validation service: ${response.statusCode}';
+        result['message'] = 'Error calling enhanced image validation service: ${response.statusCode}';
       }
       
       return result;
     } catch (e) {
-      print('Exception in validateImageWithGoogleVision: $e');
+      print('Exception in enhanced validateImageWithGoogleVision: $e');
       return {
         'isValid': false,
         'containsHuman': false,
         'confidence': 0.0,
-        'message': 'Error validating image: $e'
+        'message': 'Error in enhanced image validation: $e',
+        'processingApplied': false,
       };
     }
   }

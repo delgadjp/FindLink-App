@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http; // Add HTTP package for API calls
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart'; // Add url launcher
 import 'dart:math';
+import 'utils/image_processor.dart'; // Import the image processor
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -2372,7 +2373,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     );
   }
 
-  // Add a method to show image source options with improved UI
+  // Enhanced method to show image source options with photo tips and improved UI
   void _showImageSourceOptions() {
     showDialog(
       context: context,
@@ -2386,64 +2387,80 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           backgroundColor: Colors.transparent,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, Colors.blue.shade50],
+              ),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
-                ),
-              ],
+              border: Border.all(color: Color(0xFF0D47A1), width: 2),
             ),
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with icon and title
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF2A5298).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                  // Header
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF0D47A1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.camera_alt, color: Colors.white, size: 24),
+                        SizedBox(width: 8),
+                        Text(
+                          'Add Photo',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.add_photo_alternate,
-                          color: Color(0xFF2A5298),
-                          size: 28,
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+
+                  // Photo Tips Section
+                  Container(
+                    padding: EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
+                            Icon(Icons.lightbulb, color: Colors.green.shade700, size: 18),
+                            SizedBox(width: 6),
                             Text(
-                              'Select Image Source',
+                              'Tips for Better Detection',
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2A5298),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Choose how to upload your photo',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        SizedBox(height: 10),
+                        _buildPhotoTip(Icons.person, 'Ensure the person is clearly visible'),
+                        _buildPhotoTip(Icons.wb_sunny, 'Use good lighting conditions'),
+                        _buildPhotoTip(Icons.center_focus_strong, 'Keep person centered in frame'),
+                        _buildPhotoTip(Icons.photo_size_select_large, 'Person should fill 25%+ of image'),
+                        _buildPhotoTip(Icons.hd, 'Use high resolution (1024px+ recommended)'),
+                      ],
+                    ),
                   ),
-                  SizedBox(height: 24),
-                  
+                  SizedBox(height: 16),
+
                   // Gallery option
                   Material(
                     color: Colors.transparent,
@@ -2455,27 +2472,27 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
                           borderRadius: BorderRadius.circular(12),
-                          color: Colors.grey.shade50,
+                          color: Colors.white,
                         ),
                         child: Row(
                           children: [
                             Container(
-                              padding: EdgeInsets.all(10),
+                              padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Color(0xFF53C0FF).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
+                                color: Color(0xFF0D47A1).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
                                 Icons.photo_library_rounded,
-                                color: Color(0xFF53C0FF),
-                                size: 24,
+                                color: Color(0xFF0D47A1),
+                                size: 20,
                               ),
                             ),
-                            SizedBox(width: 16),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2483,12 +2500,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                   Text(
                                     'Choose from Gallery',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF424242),
                                     ),
                                   ),
-                                  SizedBox(height: 2),
                                   Text(
                                     'Select an existing photo',
                                     style: TextStyle(
@@ -2502,7 +2518,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                             Icon(
                               Icons.arrow_forward_ios,
                               color: Colors.grey.shade400,
-                              size: 16,
+                              size: 14,
                             ),
                           ],
                         ),
@@ -2510,7 +2526,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     ),
                   ),
                   
-                  SizedBox(height: 12),
+                  SizedBox(height: 10),
                   
                   // Camera option
                   Material(
@@ -2523,27 +2539,26 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade200),
+                          color: Color(0xFF0D47A1),
                           borderRadius: BorderRadius.circular(12),
-                          color: Colors.grey.shade50,
                         ),
                         child: Row(
                           children: [
                             Container(
-                              padding: EdgeInsets.all(10),
+                              padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Color(0xFF53C0FF).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
                                 Icons.camera_alt_rounded,
-                                color: Color(0xFF53C0FF),
-                                size: 24,
+                                color: Colors.white,
+                                size: 20,
                               ),
                             ),
-                            SizedBox(width: 16),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2551,17 +2566,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                   Text(
                                     'Take a Photo',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF424242),
+                                      color: Colors.white,
                                     ),
                                   ),
-                                  SizedBox(height: 2),
                                   Text(
-                                    'Use your camera to capture',
+                                    'Use camera for best results',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: Colors.white.withOpacity(0.8),
                                     ),
                                   ),
                                 ],
@@ -2569,8 +2583,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                             ),
                             Icon(
                               Icons.arrow_forward_ios,
-                              color: Colors.grey.shade400,
-                              size: 16,
+                              color: Colors.white.withOpacity(0.7),
+                              size: 14,
                             ),
                           ],
                         ),
@@ -2578,7 +2592,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     ),
                   ),
                   
-                  SizedBox(height: 20),
+                  SizedBox(height: 12),
                   
                   // Cancel button
                   SizedBox(
@@ -2586,7 +2600,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -2595,7 +2609,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         'Cancel',
                         style: TextStyle(
                           color: Colors.grey.shade600,
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -2607,6 +2621,29 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
         );
       },
+    );
+  }
+
+  // Helper method to build photo tips
+  Widget _buildPhotoTip(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: Colors.green.shade600),
+          SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.green.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
