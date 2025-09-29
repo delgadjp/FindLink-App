@@ -725,15 +725,20 @@ class FillUpForm extends State<FillUpFormScreen> {
             content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Failed to save information. Please try again.'),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Failed to save information. Please try again.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
               ],
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -747,15 +752,20 @@ class FillUpForm extends State<FillUpFormScreen> {
           content: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Error saving information: $e')),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error saving information: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -772,15 +782,20 @@ class FillUpForm extends State<FillUpFormScreen> {
           content: Row(
             children: [
               Icon(Icons.info_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text('No saved reporting person data found.'),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No saved reporting person data found.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.orange.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 3),
         ),
       );
       return;
@@ -1113,15 +1128,20 @@ class FillUpForm extends State<FillUpFormScreen> {
             content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Failed to clear saved information. Please try again.'),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Failed to clear saved information. Please try again.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
               ],
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -1135,15 +1155,20 @@ class FillUpForm extends State<FillUpFormScreen> {
           content: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Error clearing information: $e')),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error clearing information: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -1317,15 +1342,20 @@ class FillUpForm extends State<FillUpFormScreen> {
           content: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Error loading saved information: $e')),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error loading saved information: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -1658,8 +1688,22 @@ class FillUpForm extends State<FillUpFormScreen> {
         if (isDuplicate) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('This image has already been uploaded previously. Please use a different image.'),
-              backgroundColor: Colors.red,
+              content: Row(
+                children: [
+                  Icon(Icons.photo_library, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'This image has already been uploaded previously. Please use a different image.',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(16),
               duration: Duration(seconds: 4),
             ),
           );
@@ -1700,8 +1744,22 @@ class FillUpForm extends State<FillUpFormScreen> {
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Image removed - no reliable human detection (${_validationConfidence}% confidence)'),
-                  backgroundColor: Colors.orange,
+                  content: Row(
+                    children: [
+                      Icon(Icons.person_off, color: Colors.white),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Image removed - no reliable human detection (${_validationConfidence}% confidence)',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  margin: EdgeInsets.all(16),
                   duration: Duration(seconds: 4),
                 ),
               );
@@ -1716,8 +1774,22 @@ class FillUpForm extends State<FillUpFormScreen> {
               
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Image uploaded and validated successfully! (${_validationConfidence}% confidence)'),
-                  backgroundColor: Colors.green,
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Image uploaded and validated successfully! (${_validationConfidence}% confidence)',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.green.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  margin: EdgeInsets.all(16),
                   duration: Duration(seconds: 3),
                 ),
               );
@@ -1745,7 +1817,25 @@ class FillUpForm extends State<FillUpFormScreen> {
     } catch (e) {
       print('Error picking image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error accessing image: ${e.toString()}')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.camera_alt, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error accessing image: ${e.toString()}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
       );
     } finally {
       setState(() => _isProcessingImage = false);
@@ -2760,8 +2850,23 @@ class FillUpForm extends State<FillUpFormScreen> {
             // Show a message to inform the user
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Future time not allowed. Using current time instead.'),
-                duration: Duration(seconds: 2),
+                content: Row(
+                  children: [
+                    Icon(Icons.access_time, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Future time not allowed. Using current time instead.',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.orange.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 3),
               ),
             );
             return;
@@ -3144,8 +3249,22 @@ class FillUpForm extends State<FillUpFormScreen> {
                             if (selectedDateTime.isAfter(now)) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Future date/time not allowed. Please select a past date and time.'),
-                                  backgroundColor: Colors.red,
+                                  content: Row(
+                                    children: [
+                                      Icon(Icons.schedule, color: Colors.white),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Future date/time not allowed. Please select a past date and time.',
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.red.shade600,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  margin: EdgeInsets.all(16),
                                   duration: Duration(seconds: 3),
                                 ),
                               );
@@ -3210,8 +3329,23 @@ class FillUpForm extends State<FillUpFormScreen> {
     if (_educationReportingController.text.isEmpty || _educationVictimController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select education level for both reporting person and missing person'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.school, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please select education level for both reporting person and missing person',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return false;
@@ -3379,8 +3513,23 @@ class FillUpForm extends State<FillUpFormScreen> {
       await _scrollToFieldByController(_mobilePhoneReportingController);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please fix the reporting person mobile phone field before submitting. Invalid number format.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.phone_android, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please fix the reporting person mobile phone field before submitting. Invalid number format.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return false;
@@ -3411,8 +3560,23 @@ class FillUpForm extends State<FillUpFormScreen> {
         await _scrollToFieldByController(_mobilePhoneVictimController);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please fix the missing person mobile phone field before submitting. Invalid number format.'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.phone_android, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Please fix the missing person mobile phone field before submitting. Invalid number format.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
           ),
         );
         return false;
@@ -3432,8 +3596,22 @@ class FillUpForm extends State<FillUpFormScreen> {
       await _scrollToSpecificField('SURNAME');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Surname (Reporting Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.person, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Surname (Reporting Person) is required and cannot be empty.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
           duration: Duration(seconds: 3),
         ),
       );
@@ -3961,8 +4139,23 @@ class FillUpForm extends State<FillUpFormScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please upload an image. It is required.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.photo_camera, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please upload an image. It is required.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return;
@@ -3972,8 +4165,22 @@ class FillUpForm extends State<FillUpFormScreen> {
     if (!_validateReportingPersonNotSelf()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('You cannot report yourself as a missing person. Please check the reporting person and missing person details.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.person_off, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'You cannot report yourself as a missing person. Please check the reporting person and missing person details.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
           duration: Duration(seconds: 4),
         ),
       );
@@ -3984,8 +4191,23 @@ class FillUpForm extends State<FillUpFormScreen> {
     if (await _checkDuplicateMissingPerson()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('A form for this missing person already exists.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'A form for this missing person already exists.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return;
