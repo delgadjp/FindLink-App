@@ -160,6 +160,26 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
     }
   }
 
+  // Helper method to scroll to validation section
+  void _scrollToValidationSection() {
+    if (_validationSectionKey.currentContext != null) {
+      final RenderObject? renderObject = _validationSectionKey.currentContext?.findRenderObject();
+      if (renderObject != null) {
+        final RenderBox renderBox = renderObject as RenderBox;
+        final position = renderBox.localToGlobal(Offset.zero);
+        
+        // Calculate scroll position with offset
+        final scrollPosition = _scrollController.offset + position.dy - 100;
+        
+        _scrollController.animateTo(
+          scrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
   Future<void> _pickImages() async {
     try {
       final List<XFile>? images = await _picker.pickMultiImage(
@@ -176,23 +196,37 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         });
 
         List<File> validImages = [];
+        List<String> rejectedReasons = [];
+        
         for (var image in images) {
           if (_selectedImages.length + validImages.length < 5) {
             final file = File(image.path);
             
-            // Validate each image with OCR
+            // Validate each image with enhanced OCR
             try {
               final TipService tipService = TipService();
               Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(file);
               
-              if (validationResult['isValid'] && validationResult['containsHuman']) {
-                validImages.add(file);
+              print('Enhanced validation result for image: $validationResult');
+              
+              if (!validationResult['isValid']) {
+                rejectedReasons.add('Validation error: ${validationResult['message']}');
               } else if (!validationResult['containsHuman']) {
-                _showErrorSnackBar('One or more images were rejected - no person detected');
+                // Enhanced rejection feedback with details
+                String reason = 'No person detected';
+                if (validationResult['details'] != null && 
+                    validationResult['details']['detectedFeatures'] != null &&
+                    validationResult['details']['detectedFeatures'].isNotEmpty) {
+                  List<String> features = List<String>.from(validationResult['details']['detectedFeatures']);
+                  reason += ' (weak features: ${features.take(2).join(', ')})';
+                }
+                rejectedReasons.add(reason);
+              } else {
+                validImages.add(file);
               }
             } catch (e) {
               print('Error validating image: $e');
-              _showErrorSnackBar('Error validating image: $e');
+              rejectedReasons.add('Validation error: $e');
             }
           }
         }
@@ -202,11 +236,85 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
           if (validImages.isNotEmpty) {
             _validationStatus = ValidationStatus.humanDetected;
             _validationMessage = '${validImages.length} valid image(s) added with person detection confirmed';
+            if (rejectedReasons.isNotEmpty) {
+              _validationMessage += '\n\n${rejectedReasons.length} image(s) rejected: ${rejectedReasons.take(2).join(', ')}';
+            }
           } else {
             _validationStatus = ValidationStatus.noHuman;
             _validationMessage = 'No valid images with persons detected';
+            if (rejectedReasons.isNotEmpty) {
+              _validationMessage += '\n\nReasons: ${rejectedReasons.take(3).join(', ')}';
+            }
           }
         });
+
+        // Scroll to validation section to show results
+        Future.delayed(Duration(milliseconds: 100), () {
+          _scrollToValidationSection();
+        });
+
+        // Show detailed feedback in snackbar
+        if (validImages.isNotEmpty && rejectedReasons.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '${validImages.length} image(s) added, ${rejectedReasons.length} rejected',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (rejectedReasons.isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 8, left: 32),
+                      child: Text(
+                        'Rejected: ${rejectedReasons.take(2).join(', ')}',
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                    ),
+                ],
+              ),
+              backgroundColor: Colors.orange.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 6),
+            ),
+          );
+        } else if (validImages.isEmpty) {
+          _showErrorSnackBar('All images were rejected - no persons detected');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${validImages.length} image(s) with persons detected successfully added',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() {
@@ -235,30 +343,132 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
         final file = File(image.path);
         
-        // Validate the image with OCR
+        // Validate the image with enhanced OCR
         try {
           final TipService tipService = TipService();
           Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(file);
+          
+          print('Enhanced camera validation result: $validationResult');
           
           if (!validationResult['isValid']) {
             setState(() {
               _validationStatus = ValidationStatus.error;
               _validationMessage = 'Error validating image: ${validationResult['message']}';
             });
+            _showErrorSnackBar('Error validating image: ${validationResult['message']}');
           } else if (!validationResult['containsHuman']) {
+            // Enhanced rejection feedback with detected features
+            String detailMessage = validationResult['message'] ?? 'No person detected in the image. Please take another photo.';
+            
             setState(() {
               _validationStatus = ValidationStatus.noHuman;
-              _validationMessage = 'No person detected in the image. Please take another photo.';
+              _validationMessage = detailMessage;
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
             });
-            _showErrorSnackBar('Image rejected - no person detected');
+            
+            // Scroll to validation section to show results
+            Future.delayed(Duration(milliseconds: 100), () {
+              _scrollToValidationSection();
+            });
+            
+            // Show detailed rejection snackbar
+            List<String> detectedFeatures = [];
+            if (validationResult['details'] != null && 
+                validationResult['details']['detectedFeatures'] != null) {
+              detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.person_off, color: Colors.white),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Image rejected - no person detected (${_validationConfidence}% confidence)',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (detectedFeatures.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8, left: 32),
+                        child: Text(
+                          'Weak features found: ${detectedFeatures.take(2).join(', ')}',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ),
+                  ],
+                ),
+                backgroundColor: Colors.orange.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 6),
+              ),
+            );
           } else {
+            // Person detected - add image and show detailed success
             setState(() {
               _selectedImages.add(file);
               _validationStatus = ValidationStatus.humanDetected;
-              _validationMessage = 'Person detected in image!';
+              _validationMessage = validationResult['message'] ?? 'Person detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
             });
+            
+            // Scroll to validation section to show results
+            Future.delayed(Duration(milliseconds: 100), () {
+              _scrollToValidationSection();
+            });
+            
+            // Show detailed success snackbar
+            List<String> detectedFeatures = [];
+            if (validationResult['details'] != null && 
+                validationResult['details']['detectedFeatures'] != null) {
+              detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Person detected! (${_validationConfidence}% confidence)',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (detectedFeatures.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8, left: 32),
+                        child: Text(
+                          'Features: ${detectedFeatures.take(3).join(', ')}',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ),
+                  ],
+                ),
+                backgroundColor: Colors.green.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 5),
+              ),
+            );
           }
         } catch (e) {
           print('Error validating image: $e');
@@ -266,10 +476,32 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
             _validationStatus = ValidationStatus.warning;
             _validationMessage = 'Image validation error: ${e.toString()}';
           });
-          // Still add the image if validation fails
+          // Still add the image if validation fails with a warning
           setState(() {
             _selectedImages.add(file);
           });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Image validation failed, but image was saved',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.amber.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 4),
+            ),
+          );
         }
       }
     } catch (e) {
