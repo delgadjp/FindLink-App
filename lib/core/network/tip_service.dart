@@ -481,6 +481,8 @@ class TipService {
   Future<void> submitTip({
     required String dateLastSeen,
     required String timeLastSeen,
+    required String gender,
+    String ageRange = "Unknown", 
     String heightRange = "Unknown", 
     required String hairColor,
     required String clothing,
@@ -540,12 +542,14 @@ class TipService {
 
       // Prepare the data map
       final Map<String, dynamic> reportData = {
+        'age': ageRange,
         'clothing': clothing,
         'coordinates': coordinates,
         'createdAt': createdAtTimestamp,
         'dateTimeLastSeen': dateTimeLastSeenTimestamp,
         'description': description,
         'features': features,
+        'gender': gender,
         'hairColor': hairColor,
         'height': heightRange,
         'imageUrl': null, // Will be set after upload
