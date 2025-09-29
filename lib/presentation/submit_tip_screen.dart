@@ -241,7 +241,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           _searchResults = [];
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error searching for places. Please try again.')),
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Error searching for places. Please try again.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
+          ),
         );
       }
     } catch (e) {
@@ -251,7 +269,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _searchResults = [];
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error searching for places. Please check your internet connection.')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.wifi_off, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error searching for places. Please check your internet connection.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 5),
+        ),
       );
     }
   }
@@ -285,7 +321,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   Future<void> _openStreetView() async {
     if (selectedLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a location first')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.location_disabled, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please select a location first',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 3),
+        ),
       );
       return;
     }
@@ -299,12 +353,48 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open Google Maps')),
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.open_in_new, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Could not open Google Maps',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening Street View: $e')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error opening Street View: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
       );
     }
   }
@@ -395,7 +485,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       } else {
         // Show error message if permission is denied
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location permission is required to show your location on the map')),
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.location_off, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Location permission is required to show your location on the map',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 5),
+          ),
         );
         setState(() {
           _isGettingAddress = false;
@@ -404,7 +512,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     } catch (e) {
       print('Error getting location: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting location. Please try again.')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.location_searching, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error getting location. Please try again.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
       );
       setState(() {
         _isGettingAddress = false;
@@ -916,15 +1042,33 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         }
         
         if (!cameraStatus.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Camera permission is required to take photos'),
-              action: SnackBarAction(
-                label: 'Settings',
-                onPressed: openAppSettings,
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.settings, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Camera permission is required to take photos',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.orange.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Settings',
+                  textColor: Colors.white,
+                  backgroundColor: Colors.orange.shade800,
+                  onPressed: openAppSettings,
+                ),
               ),
-            ),
-          );
+            );
           return;
         }
       }
@@ -982,8 +1126,22 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             // Show a snackbar notification
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Image removed - no clear person detected'),
-                backgroundColor: Colors.orange,
+                content: Row(
+                  children: [
+                    Icon(Icons.person_off, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Image removed - no clear person detected',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.orange.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
                 duration: Duration(seconds: 4),
               ),
             );
@@ -1006,7 +1164,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     } catch (e) {
       print('Error picking image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error accessing camera: ${e.toString()}')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.camera_alt, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error accessing camera: ${e.toString()}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
       );
     }
   }
@@ -1017,9 +1193,27 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     if (_auth.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('You must be logged in to submit a tip.'),
+          content: Row(
+            children: [
+              Icon(Icons.login, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'You must be logged in to submit a tip.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 5),
           action: SnackBarAction(
             label: 'Sign In',
+            textColor: Colors.white,
+            backgroundColor: Colors.orange.shade800,
             onPressed: () {
               // Navigate to login screen
               Navigator.pushNamed(context, '/login');
@@ -1051,8 +1245,23 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         // Show error message for incomplete date
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please select a complete date (month, day, and year)'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Please select a complete date (month, day, and year)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 3),
           ),
         );
         return;
@@ -1062,8 +1271,23 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       if (!timeValid) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please select a time'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.access_time, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Please select a time',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 3),
           ),
         );
         return;
@@ -1100,9 +1324,23 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       // Show error message to user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Please fix the highlighted errors in the form"),
-          backgroundColor: Colors.red.shade700,
-          duration: Duration(seconds: 2),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Please fix the highlighted errors in the form",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 3),
         ),
       );
       
@@ -1119,8 +1357,22 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     if (duplicateExists) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('A tip for "${personName}" already exists within 100 meters of this location.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'A tip for "${personName}" already exists within 100 meters of this location.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
           duration: Duration(seconds: 4),
         ),
       );
@@ -1185,8 +1437,23 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tip submitted successfully!'),
-            backgroundColor: Colors.green,
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Tip submitted successfully!',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 3),
           ),
         );
         
