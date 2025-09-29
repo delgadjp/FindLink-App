@@ -1742,25 +1742,46 @@ class FillUpForm extends State<FillUpFormScreen> {
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.noHuman;
               
+              // Show detailed snackbar with detected features
+              List<String> detectedFeatures = [];
+              if (validationResult['details'] != null && 
+                  validationResult['details']['detectedFeatures'] != null) {
+                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+              }
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Row(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.person_off, color: Colors.white),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Image removed - no reliable human detection (${_validationConfidence}% confidence)',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.person_off, color: Colors.white),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Image removed - no reliable human detection (${_validationConfidence}% confidence)',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (detectedFeatures.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 8, left: 32),
+                          child: Text(
+                            'Weak features found: ${detectedFeatures.take(2).join(', ')}',
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ),
+                        ),
                     ],
                   ),
                   backgroundColor: Colors.orange.shade600,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   margin: EdgeInsets.all(16),
-                  duration: Duration(seconds: 4),
+                  duration: Duration(seconds: 6),
                 ),
               );
             } else {
@@ -1772,25 +1793,46 @@ class FillUpForm extends State<FillUpFormScreen> {
               // Keep the computed hash in memory so submit can perform duplicate-check and store it organized.
               _selectedImageHash = imageHash;
               
+              // Show detailed success snackbar with detected features
+              List<String> detectedFeatures = [];
+              if (validationResult['details'] != null && 
+                  validationResult['details']['detectedFeatures'] != null) {
+                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+              }
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Row(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Image uploaded and validated successfully! (${_validationConfidence}% confidence)',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Image uploaded and validated successfully! (${_validationConfidence}% confidence)',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (detectedFeatures.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 8, left: 32),
+                          child: Text(
+                            'Features: ${detectedFeatures.take(3).join(', ')}',
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ),
+                        ),
                     ],
                   ),
                   backgroundColor: Colors.green.shade600,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   margin: EdgeInsets.all(16),
-                  duration: Duration(seconds: 3),
+                  duration: Duration(seconds: 5),
                 ),
               );
             }

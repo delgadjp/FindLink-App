@@ -1102,10 +1102,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           });
         }
         
-        // Immediately validate the image with Google Vision
+        // Immediately validate the image with enhanced Google Vision
         try {
           final TipService tipService = TipService();
           Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(imageData);
+          
+          print('Enhanced validation result: $validationResult');
           
           if (!validationResult['isValid']) {
             setState(() {
@@ -1113,53 +1115,138 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               _validationStatus = ValidationStatus.error;
             });
           } else if (!validationResult['containsHuman']) {
-            // If no human is detected, clear the image and show notification
+            // If no human is detected, clear the image and show detailed notification
             setState(() {
               _imageFile = null;
               _webImage = null;
               tipData['image'] = '';
-              _validationMessage = 'No person detected in the image. Image has been automatically removed.';
+              _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been automatically removed.';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.noHuman;
             });
             
-            // Show a snackbar notification
+            // Show a detailed snackbar notification with more information
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Row(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.person_off, color: Colors.white),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Image removed - no clear person detected',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.person_off, color: Colors.white),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Image removed - no clear person detected',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (validationResult['details'] != null && 
+                        validationResult['details']['detectedFeatures'].isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8, left: 32),
+                        child: Text(
+                          'Weak features found: ${validationResult['details']['detectedFeatures'].take(2).join(', ')}',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ),
                   ],
                 ),
                 backgroundColor: Colors.orange.shade600,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 margin: EdgeInsets.all(16),
-                duration: Duration(seconds: 4),
+                duration: Duration(seconds: 6),
               ),
             );
           } else {
-            // Human detected - keep the image and show confirmation
+            // Human detected - keep the image and show detailed confirmation
             setState(() {
-              _validationMessage = 'Person clearly detected in image!';
+              String detailMessage = validationResult['message'] ?? 'Person clearly detected in image!';
+              _validationMessage = detailMessage;
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
             });
+            
+            // Show a success snackbar with detected features
+            List<String> detectedFeatures = [];
+            if (validationResult['details'] != null && 
+                validationResult['details']['detectedFeatures'] != null) {
+              detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Person detected! (${_validationConfidence}% confidence)',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (detectedFeatures.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8, left: 32),
+                        child: Text(
+                          'Features: ${detectedFeatures.take(3).join(', ')}',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ),
+                  ],
+                ),
+                backgroundColor: Colors.green.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 5),
+              ),
+            );
           }
         } catch (e) {
-          print('Error during image validation: $e');
+          print('Error during enhanced image validation: $e');
           setState(() {
             _validationMessage = 'Image validation error: ${e.toString()}';
             _validationStatus = ValidationStatus.warning;
           });
+          
+          // Show error snackbar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Image validation failed, but image was saved',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.amber.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 4),
+            ),
+          );
         }
+        
+        // Scroll to validation section to show results
+        _scrollToValidationSection();
       }
     } catch (e) {
       print('Error picking image: $e');
