@@ -13,7 +13,6 @@ import 'package:http/http.dart' as http; // Add HTTP package for API calls
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart'; // Add url launcher
 import 'dart:math';
-import 'utils/image_processor.dart'; // Import the image processor
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -58,8 +57,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final Map<String, GlobalKey<FormFieldState>> _fieldKeys = {
     'dateLastSeen': GlobalKey<FormFieldState>(),
     'timeLastSeen': GlobalKey<FormFieldState>(),
-    'gender': GlobalKey<FormFieldState>(),
-    'ageRange': GlobalKey<FormFieldState>(),
     'heightRange': GlobalKey<FormFieldState>(),
     'clothing': GlobalKey<FormFieldState>(),
     'features': GlobalKey<FormFieldState>(),
@@ -80,7 +77,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   final TextEditingController _dateLastSeenController = TextEditingController();
   final TextEditingController _timeLastSeenController = TextEditingController();
-  final TextEditingController _genderController = TextEditingController();
   final TextEditingController _clothingController = TextEditingController();
   final TextEditingController _featuresController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
@@ -96,9 +92,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
   final DateFormat _timeFormatter = DateFormat('HH:mm');
 
-  String? selectedGender;
   String? selectedHairColor;
-  String? selectedAgeRange;
   String? selectedHeightRange; // Add selected height range
   
   // Date dropdown variables for date last seen
@@ -106,16 +100,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   int? selectedMonth;
   int? selectedYear;
 
-  final List<String> genderOptions = ['Male', 'Female', 'Prefer not to say'];
   final List<String> hairColors = [
     'Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White',
     'Dark Brown', 'Light Brown', 'Auburn', 'Strawberry Blonde', 'Unknown'
-  ];
-  
-  // Define age range options
-  final List<String> ageRanges = [
-    'Under 12', '12-17', '18-24', '25-34', '35-44', 
-    '45-54', '55-64', '65 and older', 'Unknown'
   ];
   
   // Define height range options
@@ -133,8 +120,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   Map<String, String> tipData = {
     'dateLastSeen': '',
     'timeLastSeen': '',
-    'gender': '',
-    'ageRange': '',
     'heightRange': '', // Add height range to tipData
     'clothing': '',
     'features': '',
@@ -1406,11 +1391,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       
       // Additional validation for dropdown fields that might not have keys
       if (firstErrorKey == null) {
-        if (selectedGender == null) {
-          firstErrorKey = _fieldKeys['gender'];
-        } else if (selectedAgeRange == null) {
-          firstErrorKey = _fieldKeys['ageRange'];
-        } else if (selectedHeightRange == null) {
+        if (selectedHeightRange == null) {
           firstErrorKey = _fieldKeys['heightRange']; 
         } else if (selectedHairColor == null) {
           firstErrorKey = _fieldKeys['hairColor'];
@@ -1519,8 +1500,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         await tipService.submitTip(
           dateLastSeen: _dateLastSeenController.text,
           timeLastSeen: _timeLastSeenController.text,
-          gender: selectedGender ?? '',
-          ageRange: selectedAgeRange ?? 'Unknown',
           heightRange: selectedHeightRange ?? 'Unknown',
           hairColor: selectedHairColor ?? '',
           clothing: _clothingController.text,
@@ -2281,21 +2260,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSectionHeader("Physical Description"),
-                        _buildDropdownField(
-                          "Gender",
-                          selectedGender,
-                          genderOptions,
-                          (value) => setState(() => selectedGender = value),
-                          Icons.person_outline,
-                        ),
-                        // Add age range dropdown
-                        _buildDropdownField(
-                          "Age Range",
-                          selectedAgeRange,
-                          ageRanges,
-                          (value) => setState(() => selectedAgeRange = value),
-                          Icons.cake,
-                        ),
                         // Replace height text field with dropdown
                         _buildDropdownField(
                           "Height Range",
@@ -2618,12 +2582,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     // Map label to correct key in _fieldKeys
     String? keyName;
     switch (label) {
-      case "Gender":
-        keyName = 'gender';
-        break;
-      case "Age Range":
-        keyName = 'ageRange';
-        break;
       case "Height Range":
         keyName = 'heightRange';
         break;
