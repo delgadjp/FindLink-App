@@ -15,6 +15,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   String statusFilter = 'All';
   String locationFilter = '';
   bool showAdvancedFilters = false;
+  int _currentPage = 0;
+  static const int _itemsPerPage = 8;
   
   // Stream subscription for real-time updates
   StreamSubscription<QuerySnapshot>? _missingPersonsSubscription;
@@ -56,10 +58,11 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
             _allMissingPersons = persons;
             _isLoading = false;
             _errorMessage = null;
+            _currentPage = 0;
           });
         },
         onError: (error) {
-          print('Error listening to missing persons stream: $error');
+          debugPrint('Error listening to missing persons stream: $error');
           setState(() {
             _isLoading = false;
             _errorMessage = error.toString();
@@ -67,7 +70,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         },
       );
     } catch (e) {
-      print('Error setting up missing persons stream: $e');
+  debugPrint('Error setting up missing persons stream: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
@@ -157,6 +160,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                   onChanged: (value) {
                     setState(() {
                       searchQuery = value;
+                      _currentPage = 0;
                     });
                   },
                   decoration: InputDecoration(
@@ -169,6 +173,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                             onPressed: () {
                               setState(() {
                                 searchQuery = '';
+                                _currentPage = 0;
                               });
                             },
                           )
@@ -211,6 +216,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                             startDate = null;
                             endDate = null;
                             showAdvancedFilters = false;
+                            _currentPage = 0;
                           });
                         },
                         child: Text(
@@ -244,7 +250,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
 
     // Handle error state
     if (_errorMessage != null) {
-      print('Error displaying missing persons: $_errorMessage');
+  debugPrint('Error displaying missing persons: $_errorMessage');
       // Check if it's a permission error and show appropriate message
       if (_errorMessage!.contains('permission-denied')) {
         return Center(
@@ -326,11 +332,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
       );
     }
 
-    // Debug print (can be removed in production)
-    for (var person in _allMissingPersons) {
-      person.debugPrint();
-    }
-    
     // Filter persons based on search query, status, location, and date range
     var filteredPersons = _allMissingPersons.where((person) {
       final searchLower = searchQuery.toLowerCase();
@@ -455,12 +456,53 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      itemCount: filteredPersons.length,
+    final totalItems = filteredPersons.length;
+    final totalPages = (totalItems / _itemsPerPage).ceil();
+
+    int targetPage = _currentPage;
+    if (totalPages == 0) {
+      targetPage = 0;
+    } else if (_currentPage > totalPages - 1) {
+      targetPage = totalPages - 1;
+    }
+
+    if (targetPage != _currentPage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _currentPage = targetPage;
+        });
+      });
+    }
+
+    final startIndex = targetPage * _itemsPerPage;
+    final displayedPersons = filteredPersons
+        .skip(startIndex)
+        .take(_itemsPerPage)
+        .toList();
+
+    final showPagination = totalPages > 1;
+    final listView = ListView.builder(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, showPagination ? 120 : 16),
+      physics: AlwaysScrollableScrollPhysics(),
+      itemCount: displayedPersons.length,
       itemBuilder: (context, index) {
-        return MissingPersonCard(person: filteredPersons[index]);
+        return MissingPersonCard(person: displayedPersons[index]);
       },
+    );
+
+    if (!showPagination) {
+      return listView;
+    }
+
+    return Stack(
+      children: [
+        listView,
+        _buildPaginationControls(
+          totalPages: totalPages,
+          totalItems: totalItems,
+        ),
+      ],
     );
   }
 
@@ -630,6 +672,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                     setState(() {
                                       statusFilter = newValue ?? 'All';
                                     });
+                                    this.setState(() {
+                                      _currentPage = 0;
+                                    });
                                   },
                                 ),
                               ),
@@ -644,6 +689,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   locationFilter = value;
+                                });
+                                this.setState(() {
+                                  _currentPage = 0;
                                 });
                               },
                               style: TextStyle(color: Colors.black),
@@ -740,7 +788,12 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                     child: _buildDatePicker(
                                       'Start Date',
                                       startDate,
-                                      (date) => setState(() => startDate = date),
+                                      (date) {
+                                        setState(() => startDate = date);
+                                        this.setState(() {
+                                          _currentPage = 0;
+                                        });
+                                      },
                                     ),
                                   ),
                                   SizedBox(width: 12),
@@ -748,7 +801,12 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                     child: _buildDatePicker(
                                       'End Date',
                                       endDate,
-                                      (date) => setState(() => endDate = date),
+                                      (date) {
+                                        setState(() => endDate = date);
+                                        this.setState(() {
+                                          _currentPage = 0;
+                                        });
+                                      },
                                     ),
                                   ),
                                 ],
@@ -764,6 +822,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                         setState(() {
                                           startDate = null;
                                           endDate = null;
+                                        });
+                                        this.setState(() {
+                                          _currentPage = 0;
                                         });
                                       },
                                       icon: Icon(Icons.clear, size: 18),
@@ -803,6 +864,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                   endDate = null;
                                   showAdvancedFilters = false;
                                 });
+                                this.setState(() {
+                                  _currentPage = 0;
+                                });
                               },
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Color(0xFF0D47A1)),
@@ -823,7 +887,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 this.setState(() {
-                                  // Apply the filters by updating the main widget state
+                                  _currentPage = 0;
                                 });
                                 Navigator.pop(context);
                               },
@@ -869,6 +933,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         if (selected) {
           setState(() {
             sortBy = label;
+          });
+          this.setState(() {
+            _currentPage = 0;
           });
         }
       },
@@ -983,6 +1050,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
               break;
           }
         });
+        this.setState(() {
+          _currentPage = 0;
+        });
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1052,6 +1122,90 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+  
+  Widget _buildPaginationControls({required int totalPages, required int totalItems}) {
+    const Color primaryColor = Color(0xFF0D47A1);
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, bottom: 16),
+        child: Material(
+          color: primaryColor,
+          elevation: 6,
+          borderRadius: BorderRadius.circular(32),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPaginationArrowButton(
+                  icon: Icons.chevron_left,
+                  onPressed: _currentPage > 0
+                      ? () {
+                          setState(() {
+                            _currentPage--;
+                          });
+                        }
+                      : null,
+                ),
+                SizedBox(width: 12),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Page ${_currentPage + 1} of $totalPages',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '$totalItems case${totalItems == 1 ? '' : 's'}',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(width: 12),
+                _buildPaginationArrowButton(
+                  icon: Icons.chevron_right,
+                  onPressed: (_currentPage + 1) < totalPages
+                      ? () {
+                          setState(() {
+                            _currentPage++;
+                          });
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationArrowButton({required IconData icon, required VoidCallback? onPressed}) {
+    final bool enabled = onPressed != null;
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white.withOpacity(enabled ? 0.22 : 0.1),
+        disabledBackgroundColor: Colors.white.withOpacity(0.08),
+        foregroundColor: Colors.white,
+        disabledForegroundColor: Colors.white54,
+        padding: EdgeInsets.all(8),
+        minimumSize: Size(40, 40),
+        shape: CircleBorder(),
       ),
     );
   }
