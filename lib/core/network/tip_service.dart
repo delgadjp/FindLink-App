@@ -7,12 +7,12 @@ import '/core/app_export.dart';
 import 'dart:typed_data';  // Add this for web support
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:math'; // Import math library for distance calculations
+import 'dart:math' as math; // Import math library for distance calculations and image processing
+import 'package:image/image.dart' as img; // Import image package for optimization
 
 class TipService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final Uuid _uuid = Uuid();
   
   // Google Vision API key
   final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
@@ -103,10 +103,54 @@ class TipService {
     }
   }
 
-  // New method to validate image using Google Vision API
+  // Helper method to optimize image quality before Vision API call
+  Future<Uint8List> _optimizeImageForVision(Uint8List imageBytes) async {
+    try {
+      // Decode image to check dimensions and quality
+      img.Image? image = img.decodeImage(imageBytes);
+      if (image == null) return imageBytes;
+      
+      // Check and optimize resolution (ideal: 640-1024px on longest side)
+      int maxDimension = math.max(image.width, image.height);
+      if (maxDimension > 1024) {
+        // Resize maintaining aspect ratio
+        double scale = 1024.0 / maxDimension;
+        int newWidth = (image.width * scale).round();
+        int newHeight = (image.height * scale).round();
+        image = img.copyResize(image, width: newWidth, height: newHeight);
+      } else if (maxDimension < 400) {
+        // If too small, upscale slightly for better detection
+        double scale = 400.0 / maxDimension;
+        int newWidth = (image.width * scale).round();
+        int newHeight = (image.height * scale).round();
+        image = img.copyResize(image, width: newWidth, height: newHeight);
+      }
+      
+      // Enhance contrast and brightness for better detection
+      image = img.adjustColor(image, 
+        contrast: 1.1,    // Slight contrast boost
+        brightness: 1.05, // Slight brightness boost
+        saturation: 1.1   // Slight saturation boost
+      );
+      
+      // Apply subtle sharpening for better edge detection
+      image = img.convolution(image, filter: [
+        0, -1, 0,
+        -1, 5, -1,
+        0, -1, 0
+      ]);
+      
+      // Convert back to bytes with optimal quality
+      return Uint8List.fromList(img.encodeJpg(image, quality: 85));
+    } catch (e) {
+      print('Error optimizing image: $e');
+      return imageBytes; // Return original if optimization fails
+    }
+  }
+
+  // Enhanced method to validate image using Google Vision API with preprocessing
   Future<Map<String, dynamic>> validateImageWithGoogleVision(dynamic imageData) async {
     try {
-      // Default response
       Map<String, dynamic> result = {
         'isValid': false,
         'containsHuman': false,
@@ -114,131 +158,77 @@ class TipService {
         'message': 'Image validation failed'
       };
       
-      // Convert image data to base64 format needed for Vision API
-      String base64Image;
+      Uint8List imageBytes;
       
       if (kIsWeb) {
         if (imageData is Uint8List) {
-          base64Image = base64Encode(imageData);
+          imageBytes = imageData;
         } else if (imageData is String) {
-          // If it's already a base64 string from web
           if (imageData.startsWith('data:image')) {
-            base64Image = imageData.split(',')[1];
+            imageBytes = base64Decode(imageData.split(',')[1]);
           } else {
-            // Try to decode the string as bytes
             final Uint8List bytes = Uri.parse(imageData).data!.contentAsBytes();
-            base64Image = base64Encode(bytes);
+            imageBytes = bytes;
           }
         } else {
           throw Exception('Unsupported image data type for web validation');
         }
       } else {
-        // For mobile platforms
         if (imageData is File) {
-          final bytes = await imageData.readAsBytes();
-          base64Image = base64Encode(bytes);
+          imageBytes = await imageData.readAsBytes();
         } else if (imageData is String && imageData.isNotEmpty) {
-          // Assume it's a file path
           final File file = File(imageData);
           if (await file.exists()) {
-            final bytes = await file.readAsBytes();
-            base64Image = base64Encode(bytes);
+            imageBytes = await file.readAsBytes();
           } else {
             throw Exception('File does not exist at path: $imageData');
           }
         } else if (imageData is Uint8List) {
-          base64Image = base64Encode(imageData);
+          imageBytes = imageData;
         } else {
           throw Exception('Unsupported image data type for mobile validation');
         }
       }
       
-      // Prepare request to Google Vision API
+      // Optimize image for better Vision API accuracy
+      final optimizedBytes = await _optimizeImageForVision(imageBytes);
+      final base64Image = base64Encode(optimizedBytes);
+      
       final response = await http.post(
         Uri.parse('https://vision.googleapis.com/v1/images:annotate?key=$_visionApiKey'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'requests': [
-            {
-              'image': {
-                'content': base64Image
-              },
-              'features': [
-                {'type': 'LABEL_DETECTION', 'maxResults': 10},
-                {'type': 'FACE_DETECTION', 'maxResults': 5},
-                {'type': 'OBJECT_LOCALIZATION', 'maxResults': 10}
-              ]
-            }
-          ]
+          'requests': [{
+            'image': {
+              'content': base64Image
+            },
+            'features': [
+              {'type': 'LABEL_DETECTION', 'maxResults': 20},
+              {'type': 'FACE_DETECTION', 'maxResults': 10},
+              {'type': 'OBJECT_LOCALIZATION', 'maxResults': 20},
+              {'type': 'SAFE_SEARCH_DETECTION'},
+              {'type': 'TEXT_DETECTION', 'maxResults': 5}, // Can help identify context
+              {'type': 'CROP_HINTS', 'maxResults': 3}, // Helps identify main subject
+              {'type': 'IMAGE_PROPERTIES'} // Color analysis for better context
+            ]
+          }]
         })
       );
       
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        print('Vision API response: ${jsonResponse.toString()}');
-        
-        bool containsHuman = false;
-        double confidence = 0.0;
-        
-        // Check for human-related labels
         final annotations = jsonResponse['responses'][0];
         
-        // Check face detection results
-        if (annotations.containsKey('faceAnnotations') && 
-            annotations['faceAnnotations'] != null &&
-            annotations['faceAnnotations'].isNotEmpty) {
-          containsHuman = true;
-          confidence = annotations['faceAnnotations'][0]['detectionConfidence'] * 100;
-        }
-        
-        // Check label detection results if no face found
-        if (!containsHuman && annotations.containsKey('labelAnnotations')) {
-          final List<dynamic> labels = annotations['labelAnnotations'];
-          for (var label in labels) {
-            String description = label['description'].toString().toLowerCase();
-            if (description.contains('person') || 
-                description.contains('human') || 
-                description.contains('people') ||
-                description.contains('face') ||
-                description.contains('man') ||
-                description.contains('woman') ||
-                description.contains('child')) {
-              containsHuman = true;
-              confidence = label['score'] * 100;  // Convert to percentage
-              break;
-            }
-          }
-        }
-        
-        // Check object localization results if still no human found
-        if (!containsHuman && annotations.containsKey('localizedObjectAnnotations')) {
-          final List<dynamic> objects = annotations['localizedObjectAnnotations'];
-          for (var object in objects) {
-            String name = object['name'].toString().toLowerCase();
-            if (name.contains('person') || 
-                name.contains('human') ||
-                name.contains('face') ||
-                name.contains('man') ||
-                name.contains('woman') ||
-                name.contains('child')) {
-              containsHuman = true;
-              confidence = object['score'] * 100;  // Convert to percentage
-              break;
-            }
-          }
-        }
+        // Use improved multi-criteria validation
+        final validationResult = _analyzeHumanDetection(annotations);
         
         result = {
           'isValid': true,
-          'containsHuman': containsHuman,
-          'confidence': confidence.round() / 100,  // Round to 2 decimal places
-          'message': containsHuman 
-              ? 'Image validated successfully. Human detected with ${confidence.toStringAsFixed(1)}% confidence.' 
-              : 'No human detected in the image.'
+          'containsHuman': validationResult['containsHuman'],
+          'confidence': validationResult['confidence'],
+          'message': validationResult['message'],
+          'details': validationResult['details'], // Add detailed breakdown
         };
-      } else {
-        print('Error calling Google Vision API: ${response.statusCode}, ${response.body}');
-        result['message'] = 'Error calling image validation service: ${response.statusCode}';
       }
       
       return result;
@@ -253,11 +243,244 @@ class TipService {
     }
   }
 
+  // Improved human detection analysis with multiple validation criteria
+  Map<String, dynamic> _analyzeHumanDetection(Map<String, dynamic> annotations) {
+    double faceScore = 0.0;
+    double objectScore = 0.0;
+    double labelScore = 0.0;
+    double contextScore = 0.0; // New context scoring
+    double totalConfidence = 0.0;
+    
+    List<String> detectedFeatures = [];
+    List<String> detailBreakdown = [];
+    
+    // 1. Face Detection Analysis (Highest weight - most reliable)
+    if (annotations.containsKey('faceAnnotations') && 
+        annotations['faceAnnotations'] is List && 
+        annotations['faceAnnotations'].isNotEmpty) {
+      
+      for (var face in annotations['faceAnnotations']) {
+        double faceConfidence = face['detectionConfidence']?.toDouble() ?? 0.0;
+        
+        // Enhanced face quality assessment
+        String joyLikelihood = face['joyLikelihood'] ?? 'UNKNOWN';
+        String angerLikelihood = face['angerLikelihood'] ?? 'UNKNOWN';
+        String surpriseLikelihood = face['surpriseLikelihood'] ?? 'UNKNOWN';
+        String blurredLikelihood = face['blurredLikelihood'] ?? 'UNKNOWN';
+        
+        // Boost confidence for faces with clear emotional expressions
+        double emotionBoost = 0.0;
+        if (joyLikelihood == 'LIKELY' || joyLikelihood == 'VERY_LIKELY' ||
+            angerLikelihood == 'LIKELY' || angerLikelihood == 'VERY_LIKELY' ||
+            surpriseLikelihood == 'LIKELY' || surpriseLikelihood == 'VERY_LIKELY') {
+          emotionBoost = 0.1; // 10% boost for emotional expressions
+        }
+        
+        // Penalize for blurred faces
+        double blurPenalty = 0.0;
+        if (blurredLikelihood == 'LIKELY' || blurredLikelihood == 'VERY_LIKELY') {
+          blurPenalty = 0.2; // 20% penalty for blurred faces
+        }
+        
+        double adjustedConfidence = faceConfidence + emotionBoost - blurPenalty;
+        
+        // Only count faces with high confidence (>0.6 after adjustments)
+        if (adjustedConfidence > 0.6) {
+          faceScore = math.max(faceScore, adjustedConfidence);
+          detectedFeatures.add('High-quality face (${(adjustedConfidence * 100).toStringAsFixed(1)}%)');
+        } else if (adjustedConfidence > 0.4) {
+          // Medium confidence faces get lower weight
+          faceScore = math.max(faceScore, adjustedConfidence * 0.7);
+          detectedFeatures.add('Medium-quality face (${(adjustedConfidence * 100).toStringAsFixed(1)}%)');
+        }
+      }
+    }
+    
+    // 2. Object Localization Analysis (Medium weight)
+    if (annotations.containsKey('localizedObjectAnnotations') && 
+        annotations['localizedObjectAnnotations'] is List) {
+      
+      for (var obj in annotations['localizedObjectAnnotations']) {
+        String objName = (obj['name']?.toString() ?? '').toLowerCase();
+        double objConfidence = obj['score']?.toDouble() ?? 0.0;
+        
+        // Analyze bounding box for size validation
+        if (obj.containsKey('boundingPoly') && obj['boundingPoly'].containsKey('normalizedVertices')) {
+          var vertices = obj['boundingPoly']['normalizedVertices'];
+          if (vertices is List && vertices.length >= 4) {
+            double width = (vertices[1]['x'] ?? 0.0) - (vertices[0]['x'] ?? 0.0);
+            double height = (vertices[2]['y'] ?? 0.0) - (vertices[0]['y'] ?? 0.0);
+            double area = width * height;
+            
+            // Boost confidence for larger objects (likely to be main subjects)
+            if (area > 0.1) { // Object takes up >10% of image
+              objConfidence *= 1.2;
+            }
+          }
+        }
+        
+        // Only consider high-confidence person objects
+        if ((objName == 'person' || objName == 'human') && objConfidence > 0.75) {
+          objectScore = math.max(objectScore, objConfidence);
+          detectedFeatures.add('Person object (${(objConfidence * 100).toStringAsFixed(1)}%)');
+        }
+      }
+    }
+    
+    // 3. Context Analysis using Crop Hints and Text Detection
+    if (annotations.containsKey('cropHintsAnnotation') && 
+        annotations['cropHintsAnnotation'].containsKey('cropHints')) {
+      var cropHints = annotations['cropHintsAnnotation']['cropHints'];
+      if (cropHints is List && cropHints.isNotEmpty) {
+        // If crop hints suggest a portrait-style crop, boost context score
+        var firstHint = cropHints[0];
+        if (firstHint.containsKey('boundingPoly')) {
+          contextScore += 0.2; // 20% boost for portrait-style composition
+          detectedFeatures.add('Portrait composition detected');
+        }
+      }
+    }
+    
+    // Text detection context (avoid photos of photos/documents)
+    bool hasSuspiciousText = false;
+    if (annotations.containsKey('textAnnotations') && 
+        annotations['textAnnotations'] is List &&
+        annotations['textAnnotations'].isNotEmpty) {
+      
+      String fullText = '';
+      for (var textAnnotation in annotations['textAnnotations']) {
+        String description = (textAnnotation['description']?.toString() ?? '').toLowerCase();
+        fullText += '$description ';
+      }
+      
+      // Check for suspicious text that indicates photos of documents/IDs
+      List<String> suspiciousTerms = [
+        'driver', 'license', 'passport', 'id card', 'identification',
+        'birth certificate', 'social security', 'voter', 'employee',
+        'student id', 'membership', 'card', 'official', 'government'
+      ];
+      
+      for (String term in suspiciousTerms) {
+        if (fullText.contains(term)) {
+          hasSuspiciousText = true;
+          detailBreakdown.add('Suspicious text detected: $term');
+          break;
+        }
+      }
+    }
+    
+    // 4. Label Detection Analysis (Lowest weight - most prone to false positives)
+    if (annotations.containsKey('labelAnnotations') && 
+        annotations['labelAnnotations'] is List) {
+      
+      // Enhanced human-related labels with confidence requirements
+      final Map<String, double> humanLabels = {
+        'human face': 0.85,
+        'facial expression': 0.8,
+        'human': 0.9,
+        'people': 0.85,
+        'human head': 0.8,
+        'human eye': 0.8,
+        'human hair': 0.75,
+        'human nose': 0.8,
+        'human mouth': 0.8,
+        'portrait': 0.7,
+        'selfie': 0.85,
+        'smile': 0.75,
+        'skin': 0.8,
+        'forehead': 0.8,
+        'cheek': 0.8,
+        'eyebrow': 0.8
+      };
+      
+      // Expanded exclude labels for better filtering
+      final Set<String> excludeLabels = {
+        'person', 'face', 'human body', // Too generic
+        'art', 'artwork', 'drawing', 'painting', 'illustration', 'sketch',
+        'statue', 'sculpture', 'mannequin', 'toy', 'doll', 'figure',
+        'photo', 'photograph', 'image', 'picture', 'selfie',
+        'poster', 'sign', 'text', 'logo', 'document',
+        'screen', 'monitor', 'display', 'television', 'phone'
+      };
+      
+      for (var label in annotations['labelAnnotations']) {
+        String description = (label['description']?.toString() ?? '').toLowerCase();
+        double labelConfidence = label['score']?.toDouble() ?? 0.0;
+        
+        // Skip excluded labels
+        if (excludeLabels.contains(description)) {
+          detailBreakdown.add('Excluded: $description (${(labelConfidence * 100).toStringAsFixed(1)}%)');
+          continue;
+        }
+        
+        // Check for specific human labels with required confidence
+        for (String humanLabel in humanLabels.keys) {
+          double requiredConfidence = humanLabels[humanLabel]!;
+          if (description.contains(humanLabel) && labelConfidence >= requiredConfidence) {
+            labelScore = math.max(labelScore, labelConfidence);
+            detectedFeatures.add('$humanLabel (${(labelConfidence * 100).toStringAsFixed(1)}%)');
+            break;
+          }
+        }
+      }
+    }
+    
+    // 5. Calculate enhanced weighted final score
+    // Face detection: 50% weight (most reliable)
+    // Object detection: 25% weight (moderately reliable) 
+    // Label detection: 15% weight (least reliable)
+    // Context score: 10% weight (composition and quality indicators)
+    totalConfidence = (faceScore * 0.5) + (objectScore * 0.25) + (labelScore * 0.15) + (contextScore * 0.1);
+    
+    // Apply penalties for suspicious content
+    if (hasSuspiciousText) {
+      totalConfidence *= 0.7; // 30% penalty for document-like content
+      detailBreakdown.add('Applied penalty for document-like content');
+    }
+    
+    // Require minimum confidence threshold of 0.7 for positive detection (increased from 0.65)
+    bool containsHuman = totalConfidence >= 0.7 && !hasSuspiciousText;
+    
+    // Generate detailed message
+    String message;
+    if (containsHuman) {
+      message = 'Human detected with ${(totalConfidence * 100).toStringAsFixed(1)}% confidence.';
+      if (detectedFeatures.isNotEmpty) {
+        message += '\nDetected features: ${detectedFeatures.take(3).join(', ')}';
+        if (detectedFeatures.length > 3) {
+          message += ' and ${detectedFeatures.length - 3} more...';
+        }
+      }
+    } else {
+      message = 'No reliable human detection. Confidence: ${(totalConfidence * 100).toStringAsFixed(1)}%';
+      if (hasSuspiciousText) {
+        message += '\nImage appears to be a document or ID photo.';
+      } else if (detectedFeatures.isNotEmpty) {
+        message += '\nWeak features found: ${detectedFeatures.take(2).join(', ')}';
+      } else {
+        message += '\nNo clear human features detected.';
+      }
+    }
+    
+    return {
+      'containsHuman': containsHuman,
+      'confidence': totalConfidence,
+      'message': message,
+      'details': {
+        'faceScore': faceScore,
+        'objectScore': objectScore,
+        'labelScore': labelScore,
+        'contextScore': contextScore,
+        'hasSuspiciousText': hasSuspiciousText,
+        'detectedFeatures': detectedFeatures,
+        'breakdown': detailBreakdown,
+      }
+    };
+  }
+
   Future<void> submitTip({
     required String dateLastSeen,
     required String timeLastSeen,
-    required String gender,
-    String ageRange = "Unknown", 
     String heightRange = "Unknown", 
     required String hairColor,
     required String clothing,
@@ -306,24 +529,23 @@ class TipService {
         }
       } catch (e) {
         print('Error fetching missing person name: $e');
-      }// Format coordinates as GeoPoint for Firestore
+      }
+      
+      // Format coordinates as GeoPoint for Firestore
       final GeoPoint coordinates = GeoPoint(lat, lng);
 
       // Format dateTimeLastSeen and timestamp
-      final DateTime now = DateTime.now();
       final Timestamp createdAtTimestamp = Timestamp.now();
       final Timestamp dateTimeLastSeenTimestamp = Timestamp.fromDate(DateTime.parse(dateLastSeen + 'T' + timeLastSeen));
 
       // Prepare the data map
       final Map<String, dynamic> reportData = {
-        'age': ageRange,
         'clothing': clothing,
         'coordinates': coordinates,
         'createdAt': createdAtTimestamp,
         'dateTimeLastSeen': dateTimeLastSeenTimestamp,
         'description': description,
         'features': features,
-        'gender': gender,
         'hairColor': hairColor,
         'height': heightRange,
         'imageUrl': null, // Will be set after upload
@@ -367,32 +589,6 @@ class TipService {
       }
       throw e;
     }
-  }
-
-  // Helper to format DateTime as 'May 13, 2025 at 10:28:00 PM UTC+8'
-  String _formatDateTime(DateTime dt) {
-    final String month = _monthName(dt.month);
-    final String day = dt.day.toString();
-    final String year = dt.year.toString();
-    final int hour12 = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final String time =
-      "${hour12.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
-    final String timezone = 'UTC${_timezoneOffset(dt)}';
-    return "$month $day, $year at $time $timezone";
-  }
-  String _monthName(int month) {
-    const months = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month];
-  }
-  String _timezoneOffset(DateTime dt) {
-    final offset = dt.timeZoneOffset;
-    final hours = offset.inHours;
-    final minutes = offset.inMinutes.remainder(60);
-    final sign = hours >= 0 ? '+' : '-';
-    return '$sign${hours.abs()}${minutes != 0 ? ':${minutes.abs().toString().padLeft(2, '0')}' : ''}';
   }
 
   Future<List<Map<String, dynamic>>> getAllReports() async {
@@ -491,16 +687,16 @@ class TipService {
     final double dLat = lat2Rad - lat1Rad;
     final double dLon = lon2Rad - lon1Rad;
     final double a = 
-        sin(dLat/2) * sin(dLat/2) +
-        cos(lat1Rad) * cos(lat2Rad) * 
-        sin(dLon/2) * sin(dLon/2);
-    final double c = 2 * atan2(sqrt(a), sqrt(1-a));
+        math.sin(dLat/2) * math.sin(dLat/2) +
+        math.cos(lat1Rad) * math.cos(lat2Rad) * 
+        math.sin(dLon/2) * math.sin(dLon/2);
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a));
     
     return earthRadius * c; // Distance in meters
   }
   
   // Helper to convert degrees to radians
   double _degreesToRadians(double degrees) {
-    return degrees * (pi / 180);
+    return degrees * (math.pi / 180);
   }
 }

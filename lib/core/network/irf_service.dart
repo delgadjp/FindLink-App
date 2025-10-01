@@ -1,13 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import '../../models/irf_model.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:io' show File;
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
+import '/core/app_export.dart';
 
 class IRFService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -76,7 +77,52 @@ class IRFService {
     }
   }
 
-  // Add method to validate image using Google Vision API
+  // Helper method to optimize image quality before Vision API call
+  Future<Uint8List> _optimizeImageForVision(Uint8List imageBytes) async {
+    try {
+      // Decode image to check dimensions and quality
+      img.Image? image = img.decodeImage(imageBytes);
+      if (image == null) return imageBytes;
+      
+      // Check and optimize resolution (ideal: 640-1024px on longest side)
+      int maxDimension = math.max(image.width, image.height);
+      if (maxDimension > 1024) {
+        // Resize maintaining aspect ratio
+        double scale = 1024.0 / maxDimension;
+        int newWidth = (image.width * scale).round();
+        int newHeight = (image.height * scale).round();
+        image = img.copyResize(image, width: newWidth, height: newHeight);
+      } else if (maxDimension < 400) {
+        // If too small, upscale slightly for better detection
+        double scale = 400.0 / maxDimension;
+        int newWidth = (image.width * scale).round();
+        int newHeight = (image.height * scale).round();
+        image = img.copyResize(image, width: newWidth, height: newHeight);
+      }
+      
+      // Enhance contrast and brightness for better detection
+      image = img.adjustColor(image, 
+        contrast: 1.1,    // Slight contrast boost
+        brightness: 1.05, // Slight brightness boost
+        saturation: 1.1   // Slight saturation boost
+      );
+      
+      // Apply subtle sharpening for better edge detection
+      image = img.convolution(image, filter: [
+        0, -1, 0,
+        -1, 5, -1,
+        0, -1, 0
+      ]);
+      
+      // Convert back to bytes with optimal quality
+      return Uint8List.fromList(img.encodeJpg(image, quality: 85));
+    } catch (e) {
+      print('Error optimizing image: $e');
+      return imageBytes; // Return original if optimization fails
+    }
+  }
+
+  // Add method to validate image using Google Vision API with improved accuracy
   Future<Map<String, dynamic>> validateImageWithGoogleVision(dynamic imageData) async {
     try {
       Map<String, dynamic> result = {
@@ -86,39 +132,41 @@ class IRFService {
         'message': 'Image validation failed'
       };
       
-      String base64Image;
+      Uint8List imageBytes;
       
       if (kIsWeb) {
         if (imageData is Uint8List) {
-          base64Image = base64Encode(imageData);
+          imageBytes = imageData;
         } else if (imageData is String) {
           if (imageData.startsWith('data:image')) {
-            base64Image = imageData.split(',')[1];
+            imageBytes = base64Decode(imageData.split(',')[1]);
           } else {
             final Uint8List bytes = Uri.parse(imageData).data!.contentAsBytes();
-            base64Image = base64Encode(bytes);
+            imageBytes = bytes;
           }
         } else {
           throw Exception('Unsupported image data type for web validation');
         }
       } else {
         if (imageData is File) {
-          final bytes = await imageData.readAsBytes();
-          base64Image = base64Encode(bytes);
+          imageBytes = await imageData.readAsBytes();
         } else if (imageData is String && imageData.isNotEmpty) {
           final File file = File(imageData);
           if (await file.exists()) {
-            final bytes = await file.readAsBytes();
-            base64Image = base64Encode(bytes);
+            imageBytes = await file.readAsBytes();
           } else {
             throw Exception('File does not exist at path: $imageData');
           }
         } else if (imageData is Uint8List) {
-          base64Image = base64Encode(imageData);
+          imageBytes = imageData;
         } else {
           throw Exception('Unsupported image data type for mobile validation');
         }
       }
+      
+      // Optimize image for better Vision API accuracy
+      final optimizedBytes = await _optimizeImageForVision(imageBytes);
+      final base64Image = base64Encode(optimizedBytes);
       
       final response = await http.post(
         Uri.parse('https://vision.googleapis.com/v1/images:annotate?key=$_visionApiKey'),
@@ -129,9 +177,13 @@ class IRFService {
               'content': base64Image
             },
             'features': [
-              {'type': 'LABEL_DETECTION', 'maxResults': 10},
-              {'type': 'FACE_DETECTION', 'maxResults': 5},
-              {'type': 'OBJECT_LOCALIZATION', 'maxResults': 10}
+              {'type': 'LABEL_DETECTION', 'maxResults': 20},
+              {'type': 'FACE_DETECTION', 'maxResults': 10},
+              {'type': 'OBJECT_LOCALIZATION', 'maxResults': 20},
+              {'type': 'SAFE_SEARCH_DETECTION'},
+              {'type': 'TEXT_DETECTION', 'maxResults': 5}, // Can help identify context
+              {'type': 'CROP_HINTS', 'maxResults': 3}, // Helps identify main subject
+              {'type': 'IMAGE_PROPERTIES'} // Color analysis for better context
             ]
           }]
         })
@@ -139,35 +191,17 @@ class IRFService {
       
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        bool containsHuman = false;
-        double confidence = 0.0;
-        
         final annotations = jsonResponse['responses'][0];
         
-        if (annotations.containsKey('faceAnnotations')) {
-          containsHuman = true;
-          confidence = annotations['faceAnnotations'][0]['detectionConfidence'] * 100;
-        }
-        
-        if (!containsHuman && annotations.containsKey('labelAnnotations')) {
-          for (var label in annotations['labelAnnotations']) {
-            String description = label['description'].toString().toLowerCase();
-            if (description.contains('person') || description.contains('human') || 
-                description.contains('face') || description.contains('people')) {
-              containsHuman = true;
-              confidence = label['score'] * 100;
-              break;
-            }
-          }
-        }
+        // Use improved multi-criteria validation
+        final validationResult = _analyzeHumanDetection(annotations);
         
         result = {
           'isValid': true,
-          'containsHuman': containsHuman,
-          'confidence': confidence.round() / 100,
-          'message': containsHuman 
-              ? 'Image validated successfully. Human detected with ${confidence.toStringAsFixed(1)}% confidence.'
-              : 'No human detected in the image.'
+          'containsHuman': validationResult['containsHuman'],
+          'confidence': validationResult['confidence'],
+          'message': validationResult['message'],
+          'details': validationResult['details'], // Add detailed breakdown
         };
       }
       
@@ -181,6 +215,241 @@ class IRFService {
         'message': 'Error validating image: $e'
       };
     }
+  }
+
+  // Improved human detection analysis with multiple validation criteria
+  Map<String, dynamic> _analyzeHumanDetection(Map<String, dynamic> annotations) {
+    double faceScore = 0.0;
+    double objectScore = 0.0;
+    double labelScore = 0.0;
+    double contextScore = 0.0; // New context scoring
+    double totalConfidence = 0.0;
+    
+    List<String> detectedFeatures = [];
+    List<String> detailBreakdown = [];
+    
+    // 1. Face Detection Analysis (Highest weight - most reliable)
+    if (annotations.containsKey('faceAnnotations') && 
+        annotations['faceAnnotations'] is List && 
+        annotations['faceAnnotations'].isNotEmpty) {
+      
+      for (var face in annotations['faceAnnotations']) {
+        double faceConfidence = face['detectionConfidence']?.toDouble() ?? 0.0;
+        
+        // Enhanced face quality assessment
+        String joyLikelihood = face['joyLikelihood'] ?? 'UNKNOWN';
+        String angerLikelihood = face['angerLikelihood'] ?? 'UNKNOWN';
+        String surpriseLikelihood = face['surpriseLikelihood'] ?? 'UNKNOWN';
+        String blurredLikelihood = face['blurredLikelihood'] ?? 'UNKNOWN';
+        
+        // Boost confidence for faces with clear emotional expressions
+        double emotionBoost = 0.0;
+        if (joyLikelihood == 'LIKELY' || joyLikelihood == 'VERY_LIKELY' ||
+            angerLikelihood == 'LIKELY' || angerLikelihood == 'VERY_LIKELY' ||
+            surpriseLikelihood == 'LIKELY' || surpriseLikelihood == 'VERY_LIKELY') {
+          emotionBoost = 0.1; // 10% boost for emotional expressions
+        }
+        
+        // Penalize for blurred faces
+        double blurPenalty = 0.0;
+        if (blurredLikelihood == 'LIKELY' || blurredLikelihood == 'VERY_LIKELY') {
+          blurPenalty = 0.2; // 20% penalty for blurred faces
+        }
+        
+        double adjustedConfidence = faceConfidence + emotionBoost - blurPenalty;
+        
+        // Only count faces with high confidence (>0.6 after adjustments)
+        if (adjustedConfidence > 0.6) {
+          faceScore = math.max(faceScore, adjustedConfidence);
+          detectedFeatures.add('High-quality face (${(adjustedConfidence * 100).toStringAsFixed(1)}%)');
+        } else if (adjustedConfidence > 0.4) {
+          // Medium confidence faces get lower weight
+          faceScore = math.max(faceScore, adjustedConfidence * 0.7);
+          detectedFeatures.add('Medium-quality face (${(adjustedConfidence * 100).toStringAsFixed(1)}%)');
+        }
+      }
+    }
+    
+    // 2. Object Localization Analysis (Medium weight)
+    if (annotations.containsKey('localizedObjectAnnotations') && 
+        annotations['localizedObjectAnnotations'] is List) {
+      
+      for (var obj in annotations['localizedObjectAnnotations']) {
+        String objName = (obj['name']?.toString() ?? '').toLowerCase();
+        double objConfidence = obj['score']?.toDouble() ?? 0.0;
+        
+        // Analyze bounding box for size validation
+        if (obj.containsKey('boundingPoly') && obj['boundingPoly'].containsKey('normalizedVertices')) {
+          var vertices = obj['boundingPoly']['normalizedVertices'];
+          if (vertices is List && vertices.length >= 4) {
+            double width = (vertices[1]['x'] ?? 0.0) - (vertices[0]['x'] ?? 0.0);
+            double height = (vertices[2]['y'] ?? 0.0) - (vertices[0]['y'] ?? 0.0);
+            double area = width * height;
+            
+            // Boost confidence for larger objects (likely to be main subjects)
+            if (area > 0.1) { // Object takes up >10% of image
+              objConfidence *= 1.2;
+            }
+          }
+        }
+        
+        // Only consider high-confidence person objects
+        if ((objName == 'person' || objName == 'human') && objConfidence > 0.75) {
+          objectScore = math.max(objectScore, objConfidence);
+          detectedFeatures.add('Person object (${(objConfidence * 100).toStringAsFixed(1)}%)');
+        }
+      }
+    }
+    
+    // 3. Context Analysis using Crop Hints and Text Detection
+    if (annotations.containsKey('cropHintsAnnotation') && 
+        annotations['cropHintsAnnotation'].containsKey('cropHints')) {
+      var cropHints = annotations['cropHintsAnnotation']['cropHints'];
+      if (cropHints is List && cropHints.isNotEmpty) {
+        // If crop hints suggest a portrait-style crop, boost context score
+        var firstHint = cropHints[0];
+        if (firstHint.containsKey('boundingPoly')) {
+          contextScore += 0.2; // 20% boost for portrait-style composition
+          detectedFeatures.add('Portrait composition detected');
+        }
+      }
+    }
+    
+    // Text detection context (avoid photos of photos/documents)
+    bool hasSuspiciousText = false;
+    if (annotations.containsKey('textAnnotations') && 
+        annotations['textAnnotations'] is List &&
+        annotations['textAnnotations'].isNotEmpty) {
+      
+      String fullText = '';
+      for (var textAnnotation in annotations['textAnnotations']) {
+        String description = (textAnnotation['description']?.toString() ?? '').toLowerCase();
+        fullText += '$description ';
+      }
+      
+      // Check for suspicious text that indicates photos of documents/IDs
+      List<String> suspiciousTerms = [
+        'driver', 'license', 'passport', 'id card', 'identification',
+        'birth certificate', 'social security', 'voter', 'employee',
+        'student id', 'membership', 'card', 'official', 'government'
+      ];
+      
+      for (String term in suspiciousTerms) {
+        if (fullText.contains(term)) {
+          hasSuspiciousText = true;
+          detailBreakdown.add('Suspicious text detected: $term');
+          break;
+        }
+      }
+    }
+    
+    // 4. Label Detection Analysis (Lowest weight - most prone to false positives)
+    if (annotations.containsKey('labelAnnotations') && 
+        annotations['labelAnnotations'] is List) {
+      
+      // Enhanced human-related labels with confidence requirements
+      final Map<String, double> humanLabels = {
+        'human face': 0.85,
+        'facial expression': 0.8,
+        'human': 0.9,
+        'people': 0.85,
+        'human head': 0.8,
+        'human eye': 0.8,
+        'human hair': 0.75,
+        'human nose': 0.8,
+        'human mouth': 0.8,
+        'portrait': 0.7,
+        'selfie': 0.85,
+        'smile': 0.75,
+        'skin': 0.8,
+        'forehead': 0.8,
+        'cheek': 0.8,
+        'eyebrow': 0.8
+      };
+      
+      // Expanded exclude labels for better filtering
+      final Set<String> excludeLabels = {
+        'person', 'face', 'human body', // Too generic
+        'art', 'artwork', 'drawing', 'painting', 'illustration', 'sketch',
+        'statue', 'sculpture', 'mannequin', 'toy', 'doll', 'figure',
+        'photo', 'photograph', 'image', 'picture', 'selfie',
+        'poster', 'sign', 'text', 'logo', 'document',
+        'screen', 'monitor', 'display', 'television', 'phone'
+      };
+      
+      for (var label in annotations['labelAnnotations']) {
+        String description = (label['description']?.toString() ?? '').toLowerCase();
+        double labelConfidence = label['score']?.toDouble() ?? 0.0;
+        
+        // Skip excluded labels
+        if (excludeLabels.contains(description)) {
+          detailBreakdown.add('Excluded: $description (${(labelConfidence * 100).toStringAsFixed(1)}%)');
+          continue;
+        }
+        
+        // Check for specific human labels with required confidence
+        for (String humanLabel in humanLabels.keys) {
+          double requiredConfidence = humanLabels[humanLabel]!;
+          if (description.contains(humanLabel) && labelConfidence >= requiredConfidence) {
+            labelScore = math.max(labelScore, labelConfidence);
+            detectedFeatures.add('$humanLabel (${(labelConfidence * 100).toStringAsFixed(1)}%)');
+            break;
+          }
+        }
+      }
+    }
+    
+    // 5. Calculate enhanced weighted final score
+    // Face detection: 50% weight (most reliable)
+    // Object detection: 25% weight (moderately reliable) 
+    // Label detection: 15% weight (least reliable)
+    // Context score: 10% weight (composition and quality indicators)
+    totalConfidence = (faceScore * 0.5) + (objectScore * 0.25) + (labelScore * 0.15) + (contextScore * 0.1);
+    
+    // Apply penalties for suspicious content
+    if (hasSuspiciousText) {
+      totalConfidence *= 0.7; // 30% penalty for document-like content
+      detailBreakdown.add('Applied penalty for document-like content');
+    }
+    
+    // Require minimum confidence threshold of 0.7 for positive detection (increased from 0.65)
+    bool containsHuman = totalConfidence >= 0.7 && !hasSuspiciousText;
+    
+    // Generate detailed message
+    String message;
+    if (containsHuman) {
+      message = 'Human detected with ${(totalConfidence * 100).toStringAsFixed(1)}% confidence.';
+      if (detectedFeatures.isNotEmpty) {
+        message += '\nDetected features: ${detectedFeatures.take(3).join(', ')}';
+        if (detectedFeatures.length > 3) {
+          message += ' and ${detectedFeatures.length - 3} more...';
+        }
+      }
+    } else {
+      message = 'No reliable human detection. Confidence: ${(totalConfidence * 100).toStringAsFixed(1)}%';
+      if (hasSuspiciousText) {
+        message += '\nImage appears to be a document or ID photo.';
+      } else if (detectedFeatures.isNotEmpty) {
+        message += '\nWeak features found: ${detectedFeatures.take(2).join(', ')}';
+      } else {
+        message += '\nNo clear human features detected.';
+      }
+    }
+    
+    return {
+      'containsHuman': containsHuman,
+      'confidence': totalConfidence,
+      'message': message,
+      'details': {
+        'faceScore': faceScore,
+        'objectScore': objectScore,
+        'labelScore': labelScore,
+        'contextScore': contextScore,
+        'hasSuspiciousText': hasSuspiciousText,
+        'detectedFeatures': detectedFeatures,
+        'breakdown': detailBreakdown,
+      }
+    };
   }
   // Collection reference - Uses only incidents collection now
   CollectionReference get irfCollection => _firestore.collection('incidents');
@@ -507,6 +776,154 @@ class IRFService {
     } catch (e) {
       print('Error fetching user ID type: $e');
       return null;
+    }
+  }
+
+  // Save reporting person data for future form use
+  Future<bool> saveReportingPersonData(Map<String, dynamic> reportingPersonData) async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return false;
+      }
+
+      // Use user-specific document ID since each user should only have one saved data
+      String userDocId = 'user_${currentUserId}';
+
+      // Create a document in savedReportingPersonData collection with user-specific ID
+      await _firestore
+          .collection('savedReportingPersonData')
+          .doc(userDocId)
+          .set({
+        'userId': currentUserId,
+        'documentId': userDocId,
+        'reportingPersonData': reportingPersonData,
+        'savedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('Successfully saved reporting person data for user: $currentUserId with ID: $userDocId');
+      return true;
+    } catch (e) {
+      print('Error saving reporting person data: $e');
+      return false;
+    }
+  }
+
+  // Retrieve saved reporting person data
+  Future<Map<String, dynamic>?> getSavedReportingPersonData() async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return null;
+      }
+
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
+          .collection('savedReportingPersonData')
+          .doc(userDocId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['reportingPersonData'] as Map<String, dynamic>?;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error retrieving saved reporting person data: $e');
+      return null;
+    }
+  }
+
+  // Check if user has saved reporting person data
+  Future<bool> hasSavedReportingPersonData() async {
+    try {
+      if (currentUserId == null) return false;
+
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
+          .collection('savedReportingPersonData')
+          .doc(userDocId)
+          .get();
+
+      return doc.exists;
+    } catch (e) {
+      print('Error checking for saved reporting person data: $e');
+      return false;
+    }
+  }
+
+  // Clear saved reporting person data
+  Future<bool> clearSavedReportingPersonData() async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return false;
+      }
+
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
+          .collection('savedReportingPersonData')
+          .doc(userDocId)
+          .get();
+
+      if (doc.exists) {
+        await _firestore
+            .collection('savedReportingPersonData')
+            .doc(userDocId)
+            .delete();
+        print('Successfully cleared saved reporting person data for user: $currentUserId');
+        return true;
+      } else {
+        print('No saved reporting person data found for user: $currentUserId');
+        return false;
+      }
+    } catch (e) {
+      print('Error clearing saved reporting person data: $e');
+      return false;
+    }
+  }
+
+  // Update existing saved reporting person data
+  Future<bool> updateSavedReportingPersonData(Map<String, dynamic> reportingPersonData) async {
+    try {
+      if (currentUserId == null) {
+        print('Error: User not authenticated');
+        return false;
+      }
+
+      // Use user-specific document ID
+      String userDocId = 'user_${currentUserId}';
+      
+      final DocumentSnapshot doc = await _firestore
+          .collection('savedReportingPersonData')
+          .doc(userDocId)
+          .get();
+
+      if (doc.exists) {
+        await _firestore
+            .collection('savedReportingPersonData')
+            .doc(userDocId)
+            .update({
+          'reportingPersonData': reportingPersonData,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        print('Successfully updated saved reporting person data for user: $currentUserId');
+        return true;
+      } else {
+        // If no existing document, create a new one
+        return await saveReportingPersonData(reportingPersonData);
+      }
+    } catch (e) {
+      print('Error updating saved reporting person data: $e');
+      return false;
     }
   }
 }

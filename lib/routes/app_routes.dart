@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'package:findlink/presentation/fill_up_form_screen.dart';
 import 'package:findlink/presentation/profile_screen.dart';
 
@@ -15,6 +15,9 @@ class AppRoutes {
   static const String idValidation = '/id-validation'; // Added ID validation route
   static const String confirmIdDetails = '/confirm-id-details'; // Added confirm ID details route
   static const String forgotPassword = '/forgot-password'; // Added forgot password route
+  static const String findMeSettings = '/find-me-settings'; // FindMe settings route
+  static const String findMyDevices = '/find-my-devices'; // Find My Devices screen
+  static const String irfDetails = '/irf-details'; // IRF Details screen
 
   static Map<String, WidgetBuilder> routes = {
     home: (context) => HomeScreen(),
@@ -26,6 +29,8 @@ class AppRoutes {
     fillUpForm: (context) => FillUpFormScreen(),
     idValidation: (context) => IDValidationScreen(), // Added ID validation screen to routes
     forgotPassword: (context) => ForgotPasswordPage(), // Added forgot password screen to routes
+    findMeSettings: (context) => FindMeSettingsScreen(), // FindMe settings screen
+    findMyDevices: (context) => FindMyDevicesScreen(), // Find My Devices screen
     
   };
 }

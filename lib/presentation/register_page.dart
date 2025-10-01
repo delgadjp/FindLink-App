@@ -1,8 +1,6 @@
-import '../core/app_export.dart';
-import 'package:intl/intl.dart';
-import 'dart:io';
+import '/core/app_export.dart';
+import '../widgets/step_indicator.dart';
 import 'package:flutter/gestures.dart';
-import 'package:findlink/presentation/id_validation_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -21,7 +19,12 @@ class _RegisterPageState extends State<RegisterPage> {
   String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
   int? age;
-  final AuthService _authService = AuthService();
+  
+  // Date dropdown variables
+  int? selectedDay;
+  int? selectedMonth;
+  int? selectedYear;
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isFirstNameValid = true;
@@ -32,6 +35,19 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPhoneNumberValid = true; // Add phone number validation state
   bool _termsAccepted = false; // Add Terms of Service checkbox state
   final _formKey = GlobalKey<FormState>();
+
+  // ScrollController for auto-scrolling to validation errors
+  final ScrollController _scrollController = ScrollController();
+  
+  // GlobalKeys for form fields to track their positions
+  final GlobalKey _firstNameKey = GlobalKey();
+  final GlobalKey _middleNameKey = GlobalKey();
+  final GlobalKey _lastNameKey = GlobalKey();
+  final GlobalKey _dateOfBirthKey = GlobalKey();
+  final GlobalKey _emailKey = GlobalKey();
+  final GlobalKey _phoneKey = GlobalKey();
+  final GlobalKey _passwordKey = GlobalKey();
+  final GlobalKey _confirmPasswordKey = GlobalKey();
 
   // Philippines country code
   final String countryCode = '+63';
@@ -161,6 +177,16 @@ class _RegisterPageState extends State<RegisterPage> {
   String get fullPhoneNumber {
     return '$countryCode${phoneNumberController.text}';
   }
+  
+  // Format date display text
+  String getDateDisplayText() {
+    if (selectedMonth != null && selectedDay != null && selectedYear != null) {
+      String month = selectedMonth.toString().padLeft(2, '0');
+      String day = selectedDay.toString().padLeft(2, '0');
+      return '$month/$day/$selectedYear';
+    }
+    return 'Select Date of Birth';
+  }
 
   void _calculateAge(DateTime birthDate) {
     final today = DateTime.now();
@@ -173,82 +199,436 @@ class _RegisterPageState extends State<RegisterPage> {
       age = calculatedAge;
     });
   }
-
+  
+  // Calculate age from dropdown selections
+  void _calculateAgeFromDropdowns() {
+    if (selectedDay != null && selectedMonth != null && selectedYear != null) {
+      final birthDate = DateTime(selectedYear!, selectedMonth!, selectedDay!);
+      setState(() {
+        selectedDate = birthDate;
+      });
+      _calculateAge(birthDate);
+    } else {
+      setState(() {
+        selectedDate = null;
+        age = null;
+      });
+    }
+  }
+  
   bool _validateEmail(String email) {
     final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegExp.hasMatch(email);
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime(DateTime.now().year - 18, DateTime.now().month, DateTime.now().day),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(), // Cannot pick future dates
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Color(0xFFFFD27E),
-              onPrimary: Color(0xFF424242),
-              surface: Colors.white,
-              onSurface: Color(0xFF424242),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: Color(0xFFFFD27E),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-        _calculateAge(picked);
-      });
+  // Method to scroll to the first validation error
+  void _scrollToFirstError() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Check which field has validation errors and scroll to the first one
+      if (firstNameController.text.isEmpty) {
+        _scrollToWidget(_firstNameKey);
+      } else if (middleNameController.text.isEmpty) {
+        _scrollToWidget(_middleNameKey);
+      } else if (lastNameController.text.isEmpty) {
+        _scrollToWidget(_lastNameKey);
+      } else if (selectedDay == null || selectedMonth == null || selectedYear == null) {
+        _scrollToWidget(_dateOfBirthKey);
+      } else if (emailController.text.isEmpty || !_validateEmail(emailController.text)) {
+        _scrollToWidget(_emailKey);
+      } else if (phoneNumberController.text.isEmpty || !_validatePhoneNumber(phoneNumberController.text)) {
+        _scrollToWidget(_phoneKey);
+      } else if (passwordController.text.isEmpty || passwordController.text.length < 8) {
+        _scrollToWidget(_passwordKey);
+      } else if (confirmPasswordController.text.isEmpty || confirmPasswordController.text != passwordController.text) {
+        _scrollToWidget(_confirmPasswordKey);
+      }
+    });
+  }
+
+  // Helper method to scroll to a specific widget
+  void _scrollToWidget(GlobalKey key) {
+    if (key.currentContext != null) {
+      final RenderBox renderBox = key.currentContext!.findRenderObject() as RenderBox;
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenHeight = MediaQuery.of(context).size.height;
+      
+      // Calculate scroll offset to center the field on screen
+      final targetOffset = _scrollController.offset + position.dy - (screenHeight * 0.3);
+      
+      _scrollController.animateTo(
+        targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        duration: Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
   // Method to validate form and proceed to ID validation
   void _validateAndProceedToIDValidation() {
-    if (_formKey.currentState!.validate()) {
-      if (selectedDate == null) {
+    // Custom validation for phone number since we removed validator
+    bool isPhoneValid = phoneNumberController.text.isNotEmpty && _validatePhoneNumber(phoneNumberController.text);
+    
+    if (!_formKey.currentState!.validate() || !isPhoneValid) {
+      // Update phone validation state
+      setState(() {
+        _isPhoneNumberValid = isPhoneValid;
+      });
+      
+      // If validation fails, scroll to the first error
+      _scrollToFirstError();
+      
+      // Show phone-specific error if needed
+      if (!isPhoneValid) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please select your date of birth'),
+            content: Text('Please enter a valid 10-digit phone number'),
             backgroundColor: Colors.red,
           ),
         );
-        return;
       }
-      
-      // Create a map with user registration data to pass to ID validation
-      Map<String, dynamic> registrationData = {
-        'email': emailController.text.trim(),
-        'password': passwordController.text,
-        'firstName': firstNameController.text.trim(),
-        'middleName': middleNameController.text.trim(),
-        'lastName': lastNameController.text.trim(),
-        'dateOfBirth': selectedDate,
-        'age': age,
-        'gender': selectedGender,
-        'phoneNumber': fullPhoneNumber,
-      };
-      
-      // Navigate to ID validation with registration data
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => IDValidationScreen(
-            registrationData: registrationData,
-            isFromRegistration: true,
-          ),
+      return;
+    }
+    
+    if (selectedDay == null || selectedMonth == null || selectedYear == null) {
+      _scrollToWidget(_dateOfBirthKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select your complete date of birth'),
+          backgroundColor: Colors.red,
         ),
       );
+      return;
     }
+    
+    // Create a map with user registration data to pass to ID validation
+    Map<String, dynamic> registrationData = {
+      'email': emailController.text.trim(),
+      'password': passwordController.text,
+      'firstName': firstNameController.text.trim(),
+      'middleName': middleNameController.text.trim(),
+      'lastName': lastNameController.text.trim(),
+      'dateOfBirth': selectedDate,
+      'age': age,
+      'gender': selectedGender,
+      'phoneNumber': fullPhoneNumber,
+    };
+    
+    // Navigate to ID validation with registration data
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => IDValidationScreen(
+          registrationData: registrationData,
+          isFromRegistration: true,
+        ),
+      ),
+    );
+  }
+
+  // Show date picker dialog
+  void _showDatePickerDialog() {
+    // Track local state for the dialog
+    int? localMonth = selectedMonth;
+    int? localDay = selectedDay;
+    int? localYear = selectedYear;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              child: Container(
+                width: 380,
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: Color(0xFF2A5298),
+                          size: 24,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Select Date of Birth',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2A5298),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+                    
+                    // Date selection row
+                    Row(
+                      children: [
+                        // Month dropdown
+                        Expanded(
+                          flex: 5,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localMonth,
+                              decoration: InputDecoration(
+                                labelText: 'Month',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF2A5298),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: List.generate(12, (index) {
+                                int month = index + 1;
+                                List<String> monthNames = [
+                                  'January', 'February', 'March', 'April', 'May', 'June',
+                                  'July', 'August', 'September', 'October', 'November', 'December'
+                                ];
+                                return DropdownMenuItem<int>(
+                                  value: month,
+                                  child: Text(
+                                    monthNames[index],
+                                    style: TextStyle(fontSize: 14, color: Colors.black),
+                                  ),
+                                );
+                              }),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localMonth = newValue;
+                                  // Reset day if it's invalid for new month
+                                  if (localDay != null && newValue != null) {
+                                    int daysInNewMonth = DateTime(localYear ?? DateTime.now().year, newValue + 1, 0).day;
+                                    if (localDay! > daysInNewMonth) {
+                                      localDay = null;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Day dropdown
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localDay,
+                              decoration: InputDecoration(
+                                labelText: 'Day',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF2A5298),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: localMonth != null ? 
+                                List.generate(DateTime(localYear ?? DateTime.now().year, localMonth! + 1, 0).day, (index) {
+                                  int day = index + 1;
+                                  return DropdownMenuItem<int>(
+                                    value: day,
+                                    child: Text(
+                                      '$day',
+                                      style: TextStyle(fontSize: 14, color: Colors.black),
+                                    ),
+                                  );
+                                }) : [],
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localDay = newValue;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Year dropdown
+                        Expanded(
+                          flex: 5,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localYear,
+                              decoration: InputDecoration(
+                                labelText: 'Year',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF2A5298),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: List.generate(100, (index) {
+                                int year = DateTime.now().year - index;
+                                return DropdownMenuItem<int>(
+                                  value: year,
+                                  child: Text(
+                                    '$year',
+                                    style: TextStyle(fontSize: 14, color: Colors.black),
+                                  ),
+                                );
+                              }),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localYear = newValue;
+                                  // Reset day if it's invalid for new year (leap year changes)
+                                  if (localDay != null && localMonth != null && newValue != null) {
+                                    int daysInNewYear = DateTime(newValue, localMonth! + 1, 0).day;
+                                    if (localDay! > daysInNewYear) {
+                                      localDay = null;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Selected date preview
+                    if (localMonth != null && localDay != null && localYear != null)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF2A5298).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Color(0xFF2A5298).withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Selected Date:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF2A5298),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${localMonth.toString().padLeft(2, '0')}/${localDay.toString().padLeft(2, '0')}/$localYear',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2A5298),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: (localMonth != null && localDay != null && localYear != null) ? () {
+                            // Update the actual values
+                            this.setState(() {
+                              selectedMonth = localMonth;
+                              selectedDay = localDay;
+                              selectedYear = localYear;
+                              _calculateAgeFromDropdowns();
+                            });
+                            Navigator.of(dialogContext).pop();
+                          } : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF2A5298),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -270,6 +650,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
+            controller: _scrollController,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -295,6 +676,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     child: Column(
                       children: [
+                        
                         // Logo above the form title
                         Image.asset(
                           ImageConstant.logoFinal,
@@ -317,6 +699,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ),
                         ),
+
+                        // Step Indicator (Step 1 of 3)
+                        StepIndicator(currentStep: 1),
+                        SizedBox(height: 24),
                         
                         Form(
                           key: _formKey,
@@ -329,75 +715,84 @@ class _RegisterPageState extends State<RegisterPage> {
                               // First Name
                               _buildInputLabel('First Name'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: firstNameController,
-                                style: TextStyle(color: Colors.black),
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your first name',
-                                  prefixIcon: Icons.person_outline,
-                                  isValid: _isFirstNameValid,
+                              Container(
+                                key: _firstNameKey,
+                                child: TextFormField(
+                                  controller: firstNameController,
+                                  style: TextStyle(color: Colors.black),
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your first name',
+                                    prefixIcon: Icons.person_outline,
+                                    isValid: _isFirstNameValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isFirstNameValid = value.isNotEmpty;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your first name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isFirstNameValid = value.isNotEmpty;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your first name';
-                                  }
-                                  return null;
-                                },
                               ),
                               SizedBox(height: 15),
 
                               // Middle Name
                               _buildInputLabel('Middle Name'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: middleNameController,
-                                style: TextStyle(color: Colors.black),
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your middle name',
-                                  prefixIcon: Icons.person_outline,
-                                  isValid: _isMiddleNameValid,
+                              Container(
+                                key: _middleNameKey,
+                                child: TextFormField(
+                                  controller: middleNameController,
+                                  style: TextStyle(color: Colors.black),
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your middle name',
+                                    prefixIcon: Icons.person_outline,
+                                    isValid: _isMiddleNameValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isMiddleNameValid = value.isNotEmpty;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your middle name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isMiddleNameValid = value.isNotEmpty;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your middle name';
-                                  }
-                                  return null;
-                                },
                               ),
                               SizedBox(height: 15),
 
                               // Last Name
                               _buildInputLabel('Last Name'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: lastNameController,
-                                style: TextStyle(color: Colors.black),
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your last name',
-                                  prefixIcon: Icons.person_outline,
-                                  isValid: _isLastNameValid,
+                              Container(
+                                key: _lastNameKey,
+                                child: TextFormField(
+                                  controller: lastNameController,
+                                  style: TextStyle(color: Colors.black),
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your last name',
+                                    prefixIcon: Icons.person_outline,
+                                    isValid: _isLastNameValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isLastNameValid = value.isNotEmpty;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your last name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isLastNameValid = value.isNotEmpty;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your last name';
-                                  }
-                                  return null;
-                                },
                               ),
                               SizedBox(height: 15),
 
@@ -412,29 +807,43 @@ class _RegisterPageState extends State<RegisterPage> {
                                       children: [
                                         _buildInputLabel('Date of Birth'),
                                         SizedBox(height: 5),
-                                        InkWell(
-                                          onTap: () => _selectDate(context),
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
+                                        Container(
+                                          key: _dateOfBirthKey,
+                                          height: 50,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: Colors.grey.shade300),
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
                                               borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: Colors.grey.shade300),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.calendar_today, color: Color(0xFF53C0FF), size: 20),
-                                                SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    selectedDate == null ? 'Select date' : 
-                                                    DateFormat('MM/dd/yyyy').format(selectedDate!),
-                                                    style: TextStyle(
-                                                      color: selectedDate == null ? Colors.grey : Colors.black,
+                                              onTap: () => _showDatePickerDialog(),
+                                              child: Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.calendar_today, 
+                                                      color: Color(0xFF53C0FF), 
+                                                      size: 20
                                                     ),
-                                                  ),
+                                                    SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        getDateDisplayText(),
+                                                        style: TextStyle(
+                                                          color: (selectedMonth != null && selectedDay != null && selectedYear != null) 
+                                                              ? Colors.black
+                                                              : Colors.grey.shade600,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -522,127 +931,137 @@ class _RegisterPageState extends State<RegisterPage> {
                               // Email address
                               _buildInputLabel('Email Address'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: emailController,
-                                style: TextStyle(color: Colors.black),
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: _buildInputDecoration(
-                                  hintText: 'Enter your email',
-                                  prefixIcon: Icons.email_outlined,
-                                  isValid: _isEmailValid,
-                                ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isEmailValid = value.isEmpty || _validateEmail(value);
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your email address';
-                                  }
-                                  if (!_validateEmail(value)) {
-                                    return 'Please enter a valid email address';
-                                  }
+                              Container(
+                                key: _emailKey,
+                                child: TextFormField(
+                                  controller: emailController,
+                                  style: TextStyle(color: Colors.black),
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Enter your email',
+                                    prefixIcon: Icons.email_outlined,
+                                    isValid: _isEmailValid,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isEmailValid = value.isEmpty || _validateEmail(value);
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your email address';
+                                    }
+                                    if (!_validateEmail(value)) {
+                                      return 'Please enter a valid email address';
+                                    }
                                   return null;
                                 },
+                                ),
                               ),
                               SizedBox(height: 15),
 
                               // Phone Number
                               _buildInputLabel('Phone Number'),
                               SizedBox(height: 5),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Country code prefix container
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: Radius.circular(9),
-                                          bottomLeft: Radius.circular(9),
-                                        ),
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        countryCode,
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 15,
-                                        ),
-                                      ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    key: _phoneKey,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
                                     ),
-                                    // Phone number input field
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: phoneNumberController,
-                                        style: TextStyle(color: Colors.black),
-                                        keyboardType: TextInputType.phone,
-                                        decoration: InputDecoration(
-                                          hintText: 'Enter your phone number',
-                                          prefixIcon: Icon(
-                                            Icons.phone_outlined,
-                                            color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                    child: Row(
+                                      children: [
+                                        // Country code prefix container
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(9),
+                                              bottomLeft: Radius.circular(9),
+                                            ),
+                                            border: Border(
+                                              right: BorderSide(color: Colors.grey.shade300),
+                                            ),
                                           ),
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(vertical: 15),
-                                          errorStyle: TextStyle(height: 0), // Hide error text as we'll use red border
+                                          child: Text(
+                                            countryCode,
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            phoneNumberController.text = _formatPhoneNumber(value);
-                                            phoneNumberController.selection = TextSelection.fromPosition(
-                                              TextPosition(offset: phoneNumberController.text.length),
-                                            );
-                                            _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
-                                          });
-                                        },
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) {
-                                            return 'Please enter your phone number';
-                                          }
-                                          if (!_validatePhoneNumber(value)) {
-                                            return 'Please enter a valid phone number (10 digits)';
-                                          }
-                                          return null;
-                                        },
+                                        // Phone number input field
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: phoneNumberController,
+                                            style: TextStyle(color: Colors.black),
+                                            keyboardType: TextInputType.phone,
+                                            decoration: InputDecoration(
+                                              hintText: 'Enter your phone number',
+                                              prefixIcon: Icon(
+                                                Icons.phone_outlined,
+                                                color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding: EdgeInsets.symmetric(vertical: 15),
+                                              errorStyle: TextStyle(height: 0), // Hide default error text
+                                            ),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                phoneNumberController.text = _formatPhoneNumber(value);
+                                                phoneNumberController.selection = TextSelection.fromPosition(
+                                                  TextPosition(offset: phoneNumberController.text.length),
+                                                );
+                                                _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
+                                              });
+                                            },
+                                            validator: (value) {
+                                              // Return null to prevent default error display
+                                              return null;
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  // Custom error message or format hint
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 5),
+                                    child: Text(
+                                      phoneNumberController.text.isNotEmpty && !_isPhoneNumberValid
+                                          ? 'Please enter a valid 10-digit phone number'
+                                          : 'Enter 10 digits (e.g., 9123456789)',
+                                      style: TextStyle(
+                                        color: phoneNumberController.text.isNotEmpty && !_isPhoneNumberValid
+                                            ? Colors.red
+                                            : Colors.grey.shade600,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              // Phone number format hint
-                              Padding(
-                                padding: EdgeInsets.only(left: 5),
-                                child: Text(
-                                  'Enter 10 digits (e.g., 9123456789)',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 12,
-                                    fontStyle: FontStyle.italic,
                                   ),
-                                ),
+                                ],
                               ),
                               SizedBox(height: 15),
 
                               // Password
                               _buildInputLabel('Password'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: passwordController,
-                                style: TextStyle(color: Colors.black),
-                                obscureText: _obscurePassword,
-                                decoration: _buildInputDecoration(
+                              Container(
+                                key: _passwordKey,
+                                child: TextFormField(
+                                  controller: passwordController,
+                                  style: TextStyle(color: Colors.black),
+                                  obscureText: _obscurePassword,
+                                  decoration: _buildInputDecoration(
                                   hintText: 'Enter your password',
                                   prefixIcon: Icons.lock_outline,
                                   isValid: _isPasswordValid,
@@ -681,6 +1100,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   }
                                   return null;
                                 },
+                                ),
                               ),
                               _buildPasswordStrengthIndicator(passwordController.text),
                               SizedBox(height: 15),
@@ -688,11 +1108,13 @@ class _RegisterPageState extends State<RegisterPage> {
                               // Confirm Password
                               _buildInputLabel('Confirm Password'),
                               SizedBox(height: 5),
-                              TextFormField(
-                                controller: confirmPasswordController,
-                                style: TextStyle(color: Colors.black),
-                                obscureText: _obscureConfirmPassword,
-                                decoration: _buildInputDecoration(
+                              Container(
+                                key: _confirmPasswordKey,
+                                child: TextFormField(
+                                  controller: confirmPasswordController,
+                                  style: TextStyle(color: Colors.black),
+                                  obscureText: _obscureConfirmPassword,
+                                  decoration: _buildInputDecoration(
                                   hintText: 'Confirm your password',
                                   prefixIcon: Icons.lock_outline,
                                   suffixIcon: IconButton(
@@ -716,6 +1138,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   }
                                   return null;
                                 },
+                                ),
                               ),
                               SizedBox(height: 15),                              // Terms of Service checkbox
                               Row(
@@ -789,7 +1212,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     ),
                                   ),
                                   child: Text(
-                                    'SIGN UP',
+                                    'CREATE ACCOUNT',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,

@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 
 class GridItem extends StatefulWidget {
   final IconData icon;

@@ -1,132 +1,135 @@
 rules_version = '2';
 service cloud.firestore {
- match /databases/{database}/documents {
-    match /users/{docId} {
-      // Allow read if the authenticated user owns the document or is an admin
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-
-      // Allow list (query) for authenticated users (needed for sequential ID generation)
-      allow list: if request.auth != null;
-
-      // Allow create if the userId in the new document matches the authenticated user's UID
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-
-      // Allow update/delete if the authenticated user owns the document or is an admin
+  match /databases/{database}/documents {
+  
+        match /users/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-        );
+        get(/databases/$(database)/documents/users/$(docId)).data.role == 'admin'
+      );
+      
+      // ViewedLiftingForms subcollection: allow users to read/write their own viewed forms
+      match /viewedLiftingForms/{liftingFormId} {
+        allow read, write: if request.auth != null && request.auth.uid == docId;
       }
-
-    // Rules for users-app collection - Updated to use userId instead of uid
-    match /users-app/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Allow updating specifically privacy acceptance fields and lastSignIn
-      allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['privacyPolicyAccepted', 'privacyPolicyAcceptedAt', 'lastSignIn'])
-      );
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
-
-   // Rules for missingPersons collection
-    match /missingPersons/{documentId} {
-      allow read: if true; // Allow anyone to read
-      allow create: if request.auth != null; // Allow authenticated users to create
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId || // Allow the owner to update/delete
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Allow admins to update/delete
-      );
-    }
-
-    // Rules for reports collection
-    match /reports/{reportId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    // Allow authenticated users to read/write reports data
-    match /reports-app/{reportId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      allow delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    // Rules for irf-test collection
-    match /irf-test/{irfId} {
-      allow read: if request.auth != null && (
-        resource == null ||
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+    
+    // FindMe location tracking - separate top-level collection
+    match /findMeLocations/{locationId} {
+      // Allow users to read/write/delete their own location data
+    	allow read, write, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, write, delete: if request.auth != null && resource.data.userId == request.auth.uid;
       
-      // Allow querying documents for sequential ID generation
-      allow list: if request.auth != null;
-      
-      allow create: if request.auth != null && (
-        // Ensure the userId field is set to the current user's UID for new documents
-        request.resource.data.userId == request.auth.uid
-      );
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      allow delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      // Allow trusted contacts to read location data if they have permission
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/findMeTrustedContacts/$(request.auth.uid + '_' + resource.data.userId)) &&
+        get(/databases/$(database)/documents/findMeTrustedContacts/$(request.auth.uid + '_' + resource.data.userId)).data.hasLocationAccess == true;
     }
+    
+    // FindMe trusted contacts - separate top-level collection
+    match /findMeTrustedContacts/{contactId} {
+			allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+  match /missingPersons/{docId} {
+  allow read: if true;
+  allow create: if request.auth != null;
+  allow update, delete: if request.auth != null;
+}
+              // Reports: public read, only creators or admins can write
+          match /reports/{reportId} {
+            // Allow anyone to read
+            allow read: if true;
+
+            // Allow any authenticated user to create a report
+            allow create: if request.auth != null;
+
+            // Allow only the report creator or an admin to update/delete
+            allow update, delete: if request.auth != null && (
+              request.auth.uid == resource.data.uid || // Matches the uid field in report
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
+            );
+          }
 
     // Rules for incidents collection
     match /incidents/{incidentId} {
-      // Allow read access for duplicate checking and normal access
-      allow read: if request.auth != null && (
-        // Allow listing/querying for duplicate checks
-        (request.query.limit <= 1) ||
-        // Allow normal document access
-        resource.data.userId == request.auth.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'viewer'
-      );
-
-      // Allow create access only if the userId matches the authenticated user's UID
-      allow create: if request.auth != null; // Temporarily allow all authenticated users for testing
-
-      // Allow update and delete access only to the owner or admin
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
     }
-
-    // Rules for sequences collection
-    match /sequences/{sequenceId} {
-      // Allow read and write access only to authenticated users
+     match /imageHashes/{docId} {
       allow read, write: if request.auth != null;
     }
 
-    // Rules for archivedCases collection
+    // Saved reporting person data - users can only access their own data
+    match /savedReportingPersonData/{docId} {
+      // Allow create if user is authenticated and the userId field matches auth uid
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+        
+      // Allow read, update, delete if user is authenticated and owns the document
+      allow read, update, delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Sequences: authenticated users only
+    match /sequences/{sequenceId} {
+      allow read, write: if request.auth != null;
+    }
+    
+           match /UnderInvestigation/{docId} {
+        allow read, write: if true;
+      }
+
     match /archivedCases/{docId} {
-      allow read: if request.auth != null; // Only authenticated users can read
+      // Allow read and create if the user is authenticated
+      allow read, create: if request.auth != null;
+
+      // Allow update and delete if:
+      // - the user is the owner of the document (matches userId in the existing doc)
+      // - OR the user has role 'admin'
+      allow update, delete: if request.auth != null && (
+        (resource.data.userId == request.auth.uid) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    match /photos/{photoId} {
+      allow read: if true; // Public read access
+      allow create: if request.auth != null; // Only authenticated users can upload
+      allow update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || // Only the owner can modify
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Admin access
+      );
+    }
+    
+      // CaseEvidence: public read, only owners or admins can modify
+    match /CaseEvidence/{docId} {
+      allow read: if true; // Public read, or use: if request.auth != null;
       allow create: if request.auth != null;
       allow update, delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId || 
+        (resource.data.userId == request.auth.uid) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    
+    match /liftingform/{docId} {
+      // Allow read access to all authenticated users
+      allow read: if request.auth != null;
+
+      // Allow create access only for authenticated users
+      allow create: if request.auth != null;
+
+      // Allow update and delete access only for:
+      // - The owner of the document (matches userId in the document)
+      // - OR users with the 'admin' role
+      allow update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || // Owner of the document
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' // Admin access
       );
     }
   }

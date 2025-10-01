@@ -1,4 +1,4 @@
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -235,7 +235,7 @@ class _LoginPageState extends State<LoginPage> {
                                         Navigator.pushNamed(context, '/register');
                                       },
                                       child: Text(
-                                        'Register',
+                                        'Create Account',
                                         style: TextStyle(
                                           color: Color(0xFF53C0FF),
                                           fontSize: 14,

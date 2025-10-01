@@ -1,5 +1,5 @@
 import 'dart:ui';
-import '../core/app_export.dart';
+import '/core/app_export.dart';
 import 'package:findlink/presentation/fill_up_form_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,6 +10,27 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final AutoLocationService _autoLocationService = AutoLocationService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Automatically initialize location service if Find Me is enabled
+    // Use a post-frame callback to ensure the widget is built first
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeLocationService();
+    });
+  }
+
+  Future<void> _initializeLocationService() async {
+    try {
+      await _autoLocationService.autoInitializeLocationService();
+    } catch (e) {
+      print('Error auto-initializing location service: $e');
+      // Don't show error to user - this is background initialization
+    }
+  }
+
   Future<void> _callPNPHotline() async {
     const phoneNumber = '117'; // PNP emergency hotline
     final Uri phoneUri = Uri.parse('tel:$phoneNumber');
@@ -56,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0, // Remove shadow
+        automaticallyImplyLeading: false, // Remove back button
         title: Text(
           "Home",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),

@@ -1,15 +1,14 @@
 import '/core/app_export.dart';
 import 'package:philippines_rpcmb/philippines_rpcmb.dart';
 import 'package:intl/intl.dart';
-import '../core/network/irf_service.dart';
-import '../models/irf_model.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
+
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:ui'; // Added import for ImageFilter
+import 'package:crypto/crypto.dart';
 
 class FillUpFormScreen extends StatefulWidget {
   const FillUpFormScreen({Key? key}) : super(key: key);
@@ -32,7 +31,6 @@ class FillUpForm extends State<FillUpFormScreen> {
   bool hasOtherAddressReporting = false;
   bool hasOtherAddressVictim = false;
   bool isSubmitting = false;
-  bool isSavingDraft = false;
   bool hasAcceptedPrivacyPolicy = false;
   bool isCheckingPrivacyStatus = true;
   
@@ -42,6 +40,7 @@ class FillUpForm extends State<FillUpFormScreen> {
   // Image handling variables
   File? _imageFile;
   Uint8List? _webImage;
+  String? _selectedImageHash;
   final picker = ImagePicker();
   ValidationStatus _validationStatus = ValidationStatus.none;
   String _validationMessage = '';
@@ -133,51 +132,1598 @@ class FillUpForm extends State<FillUpFormScreen> {
 
   // Show image source selection dialog
   void _showImageSourceOptions() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: Icon(Icons.camera_alt),
-            title: Text('Take Photo'),
-            onTap: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.camera);
-            },
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          ListTile(
-            leading: Icon(Icons.photo_library),
-            title: Text('Choose from Gallery'),
-            onTap: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.gallery);
-            },
+          elevation: 8,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon and title
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF2A5298).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.add_photo_alternate,
+                          color: Color(0xFF2A5298),
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Image Source',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2A5298),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Choose how to upload your photo',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 24),
+                  
+                  // Gallery option
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(ImageSource.gallery);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF53C0FF).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.photo_library_rounded,
+                                color: Color(0xFF53C0FF),
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Choose from Gallery',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF424242),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Select an existing photo',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.grey.shade400,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // Camera option
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _pickImage(ImageSource.camera);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF53C0FF).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                color: Color(0xFF53C0FF),
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Take a Photo',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF424242),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Use your camera to capture',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.grey.shade400,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 20),
+                  
+                  // Cancel button
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
   
-  // Image picking and validation
+  // Show dialog to ask if user wants to save reporting person data
+  Future<void> _showSaveReportingPersonDataDialog() async {
+    // Check if user already has saved data
+    bool hasSavedData = await _irfService.hasSavedReportingPersonData();
+    
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 16,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Colors.grey.shade50,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.1),
+                  blurRadius: 40,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon with gradient background
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF2A5298),
+                        Color(0xFF4B89DC),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(40),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF2A5298).withOpacity(0.3),
+                        blurRadius: 16,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    hasSavedData ? Icons.update_rounded : Icons.bookmark_add_rounded,
+                    size: 36,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  hasSavedData ? 'Update Saved Information?' : 'Save Your Information?',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Container(
+                  width: 60,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF2A5298),
+                        Color(0xFF4B89DC),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  hasSavedData 
+                    ? 'Would you like to update your saved reporting person information with the details from this form? This will make future form submissions faster.'
+                    : 'Would you like to save your reporting person information for future forms? This will automatically fill in your details next time, making reporting faster and easier.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Not Now',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF2A5298),
+                              Color(0xFF4B89DC),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFF2A5298).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.of(context).pop();
+                            await _saveReportingPersonData();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                hasSavedData ? Icons.update_rounded : Icons.save_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                hasSavedData ? 'Update' : 'Save',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Save reporting person data to Firebase
+  Future<void> _saveReportingPersonData() async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF2A5298),
+                        Color(0xFF4B89DC),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Saving Information...',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Please wait while we save your data',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Collect reporting person data from form
+      Map<String, dynamic> reportingPersonData = {
+        'surname': _surnameReportingController.text,
+        'firstName': _firstNameReportingController.text,
+        'middleName': _middleNameReportingController.text,
+        'qualifier': _qualifierReportingController.text,
+        'nickname': _nicknameReportingController.text,
+        'citizenship': _citizenshipReportingController.text,
+        'sexGender': _sexGenderReportingController.text,
+        'civilStatus': _civilStatusReportingController.text,
+        'dateOfBirth': _dateOfBirthReportingController.text,
+        'age': _ageReportingController.text,
+        'placeOfBirth': _placeOfBirthReportingController.text,
+        'homePhone': _homePhoneReportingController.text,
+        'mobilePhone': _mobilePhoneReportingController.text,
+        'currentAddress': _currentAddressReportingController.text,
+        'villageSitio': _villageSitioReportingController.text,
+        'education': _educationReportingController.text,
+        'occupation': _occupationReportingController.text,
+        'idCardPresented': _idCardPresentedController.text,
+        'email': _emailReportingController.text,
+        // Address location data
+        'regionName': reportingPersonRegion?.regionName,
+        'provinceName': reportingPersonProvince?.name,
+        'municipalityName': reportingPersonMunicipality?.name,
+        'barangay': reportingPersonBarangay,
+        // Date components for proper restoration
+        'selectedDay': selectedDayReporting,
+        'selectedMonth': selectedMonthReporting,
+        'selectedYear': selectedYearReporting,
+        // Other address data if applicable
+        'hasOtherAddress': hasOtherAddressReporting,
+        'otherRegionName': hasOtherAddressReporting ? reportingPersonOtherRegion?.regionName : null,
+        'otherProvinceName': hasOtherAddressReporting ? reportingPersonOtherProvince?.name : null,
+        'otherMunicipalityName': hasOtherAddressReporting ? reportingPersonOtherMunicipality?.name : null,
+        'otherBarangay': hasOtherAddressReporting ? reportingPersonOtherBarangay : null,
+      };
+
+      // Check if data already exists and update accordingly
+      bool hasSavedData = await _irfService.hasSavedReportingPersonData();
+      bool success;
+      
+      if (hasSavedData) {
+        success = await _irfService.updateSavedReportingPersonData(reportingPersonData);
+      } else {
+        success = await _irfService.saveReportingPersonData(reportingPersonData);
+      }
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.check_circle, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    hasSavedData ? 'Information updated successfully!' : 'Information saved successfully!',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Failed to save information. Please try again.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      print('Error saving reporting person data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error saving information: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+  
+  // Show dialog to confirm clearing saved reporting person data
+  Future<void> _showClearSavedDataDialog() async {
+    // First check if user has saved data
+    bool hasSavedData = await _irfService.hasSavedReportingPersonData();
+    
+    if (!hasSavedData) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No saved reporting person data found.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 16,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.1),
+                  blurRadius: 40,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Warning icon with animated background
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red.shade400,
+                        Colors.red.shade600,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(40),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.3),
+                        blurRadius: 16,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.warning_rounded,
+                    size: 36,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Clear Saved Information?',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Container(
+                  width: 60,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red.shade400,
+                        Colors.red.shade600,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.red.shade200,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        color: Colors.red.shade600,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'This action cannot be undone',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Are you sure you want to permanently delete your saved reporting person information? You will need to re-enter all details in future forms.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.red.shade500,
+                              Colors.red.shade700,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.of(context).pop();
+                            await _clearSavedReportingPersonData();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.delete_forever_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Clear saved reporting person data
+  Future<void> _clearSavedReportingPersonData() async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red.shade400,
+                        Colors.red.shade600,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Clearing Information...',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Please wait while we delete your data',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      bool success = await _irfService.clearSavedReportingPersonData();
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.check_circle, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Saved information cleared successfully!',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Failed to clear saved information. Please try again.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      print('Error clearing saved reporting person data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error clearing information: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  // Load saved reporting person data into the form
+  Future<void> _loadSavedReportingPersonData() async {
+    try {
+      Map<String, dynamic>? savedData = await _irfService.getSavedReportingPersonData();
+      
+      if (savedData == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('No saved reporting person data found.'),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Show confirmation dialog before overwriting current data
+      bool shouldLoad = await _showLoadSavedDataConfirmationDialog();
+      if (!shouldLoad) return;
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.blue.shade400,
+                          Colors.blue.shade600,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading Information...',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Please wait while we load your saved data',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      // Simulate loading delay for better UX
+      await Future.delayed(Duration(milliseconds: 500));
+
+      setState(() {
+        _surnameReportingController.text = savedData['surname'] ?? '';
+        _firstNameReportingController.text = savedData['firstName'] ?? '';
+        _middleNameReportingController.text = savedData['middleName'] ?? '';
+        _qualifierReportingController.text = savedData['qualifier'] ?? '';
+        _nicknameReportingController.text = savedData['nickname'] ?? '';
+        _citizenshipReportingController.text = savedData['citizenship'] ?? '';
+        _sexGenderReportingController.text = savedData['sexGender'] ?? '';
+        _civilStatusReportingController.text = savedData['civilStatus'] ?? '';
+        _dateOfBirthReportingController.text = savedData['dateOfBirth'] ?? '';
+        _ageReportingController.text = savedData['age'] ?? '';
+        _placeOfBirthReportingController.text = savedData['placeOfBirth'] ?? '';
+        _homePhoneReportingController.text = savedData['homePhone'] ?? '';
+        _mobilePhoneReportingController.text = savedData['mobilePhone'] ?? '';
+        _currentAddressReportingController.text = savedData['currentAddress'] ?? '';
+        _villageSitioReportingController.text = savedData['villageSitio'] ?? '';
+        _educationReportingController.text = savedData['education'] ?? '';
+        _occupationReportingController.text = savedData['occupation'] ?? '';
+        _idCardPresentedController.text = savedData['idCardPresented'] ?? '';
+        _emailReportingController.text = savedData['email'] ?? '';
+        
+        // Restore date components
+        selectedDayReporting = savedData['selectedDay'];
+        selectedMonthReporting = savedData['selectedMonth'];
+        selectedYearReporting = savedData['selectedYear'];
+        
+        // Restore address selection state
+        hasOtherAddressReporting = savedData['hasOtherAddress'] ?? false;
+      });
+
+      _restoreLocationData(savedData);
+      updateFormState();
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.check_circle, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Saved information loaded successfully!',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      // Close loading dialog if it's open
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      
+      print('Error loading saved reporting person data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error loading saved information: $e',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  // Show confirmation dialog before loading saved data
+  Future<bool> _showLoadSavedDataConfirmationDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 16,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.1),
+                  blurRadius: 40,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon with gradient background
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade400,
+                        Colors.blue.shade600,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(40),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.3),
+                        blurRadius: 16,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.cloud_download_rounded,
+                    size: 36,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Load Saved Information?',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Container(
+                  width: 60,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade400,
+                        Colors.blue.shade600,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.blue.shade200,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        color: Colors.blue.shade600,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Current form data will be replaced',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'This will replace any information currently filled in the reporting person section with your saved data. Are you sure you want to continue?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(false);
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue.shade500,
+                              Colors.blue.shade700,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(true);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: const Color.fromARGB(0, 255, 255, 255),
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.download_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Load Data',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ) ?? false; // Return false if dialog is dismissed
+  }
+  
+  // Calculate SHA-256 hash of image bytes
+  String _calculateImageHash(Uint8List imageBytes) {
+    var digest = sha256.convert(imageBytes);
+    return digest.toString();
+  }
+
+  // Check if image hash already exists in Firebase
+  Future<bool> _checkDuplicateImageHash(String imageHash) async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('imageHashes')
+          .where('hash', isEqualTo: imageHash)
+          .limit(1)
+          .get();
+      
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking duplicate image hash: $e');
+      return false;
+    }
+  }
+
+  // Generate organized document ID for imageHashes collection
+  Future<String> _generateImageHashDocId() async {
+    final today = DateTime.now();
+    final dateStr = DateFormat('yyyyMMdd').format(today);
+    final idPrefix = 'IMG-$dateStr-';
+
+    try {
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('imageHashes')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: idPrefix + '0001')
+          .where(FieldPath.documentId, isLessThanOrEqualTo: idPrefix + '9999')
+          .get();
+
+      int highestNumber = 0;
+      for (final doc in querySnapshot.docs) {
+        final String docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length > idPrefix.length) {
+          final String suffix = docId.substring(idPrefix.length);
+          final int? num = int.tryParse(suffix);
+          if (num != null && num > highestNumber) highestNumber = num;
+        }
+      }
+
+      final int nextNumber = highestNumber + 1;
+      final String padded = nextNumber.toString().padLeft(4, '0');
+      return '$idPrefix$padded';
+    } catch (e) {
+      // fallback
+      return 'IMG-${DateFormat('yyyyMMdd').format(DateTime.now())}-0001';
+    }
+  }
+
+  // Store image hash in Firebase using organized document ID and without userId
+  Future<void> _storeImageHash(String imageHash, {String? irfId}) async {
+    try {
+      final docId = await _generateImageHashDocId();
+      final Map<String, dynamic> data = {
+        'hash': imageHash,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+      if (irfId != null) {
+        data['irfId'] = irfId;
+      }
+      await FirebaseFirestore.instance.collection('imageHashes').doc(docId).set(data);
+    } catch (e) {
+      print('Error storing image hash: $e');
+    }
+  }
+
+  // Image picking and validation with enhanced camera settings
   Future<void> _pickImage(ImageSource source) async {
     try {
       setState(() => _isProcessingImage = true);
       
-      final pickedFile = await picker.pickImage(source: source);
+      // Enhanced image picker settings for better quality
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,          // Optimal resolution for Vision API
+        maxHeight: 1024,
+        imageQuality: 90,        // High quality for better detection
+        preferredCameraDevice: CameraDevice.rear, // Rear camera typically better quality
+      );
+      
       if (pickedFile != null) {
+        Uint8List imageBytes;
+        
+        // Get image bytes first
+        if (kIsWeb) {
+          imageBytes = await pickedFile.readAsBytes();
+        } else {
+          imageBytes = await File(pickedFile.path).readAsBytes();
+        }
+        
+        // Calculate SHA-256 hash
+        String imageHash = _calculateImageHash(imageBytes);
+        // Check for duplicate hash in the database and block immediately if found
+        bool isDuplicate = await _checkDuplicateImageHash(imageHash);
+        if (isDuplicate) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.photo_library, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'This image has already been uploaded previously. Please use a different image.',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+        // Keep selected image hash in memory; do not store it yet. It will be stored on successful form submission.
+        _selectedImageHash = imageHash;
+        
+        // Set image data for display
         dynamic imageData;
         if (kIsWeb) {
-          final bytes = await pickedFile.readAsBytes();
-          imageData = bytes;
-          setState(() => _webImage = bytes);
+          imageData = imageBytes;
+          setState(() => _webImage = imageBytes);
         } else {
           final file = File(pickedFile.path);
           imageData = file;
           setState(() => _imageFile = file);
         }
         
-        // Validate image using service
+        // Validate image using Google Vision service
         try {
           final validationResult = await _irfService.validateImageWithGoogleVision(imageData);
           
@@ -185,44 +1731,215 @@ class FillUpForm extends State<FillUpFormScreen> {
             if (!validationResult['isValid']) {
               _validationMessage = 'Error validating image: ${validationResult['message']}';
               _validationStatus = ValidationStatus.error;
+              // Clear image on validation error
+              _imageFile = null;
+              _webImage = null;
+              _selectedImageHash = null;
             } else if (!validationResult['containsHuman']) {
               _imageFile = null;
               _webImage = null;
-              _validationMessage = 'No person detected in the image. Image has been removed.';
+              _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been removed.';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.noHuman;
               
+              // Show detailed snackbar with detected features
+              List<String> detectedFeatures = [];
+              if (validationResult['details'] != null && 
+                  validationResult['details']['detectedFeatures'] != null) {
+                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+              }
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Image removed - no person detected'),
-                  backgroundColor: Colors.orange,
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person_off, color: Colors.white),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Image removed - no reliable human detection (${_validationConfidence}% confidence)',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (detectedFeatures.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 8, left: 32),
+                          child: Text(
+                            'Weak features found: ${detectedFeatures.take(2).join(', ')}',
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ),
+                        ),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  margin: EdgeInsets.all(16),
+                  duration: Duration(seconds: 6),
                 ),
               );
             } else {
-              _validationMessage = 'Person detected in image!';
+              _validationMessage = validationResult['message'] ?? 'Person detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
+              
+              // Note: do NOT store the image hash here. It will be stored when the IRF form is submitted.
+              // Keep the computed hash in memory so submit can perform duplicate-check and store it organized.
+              _selectedImageHash = imageHash;
+              
+              // Show detailed success snackbar with detected features
+              List<String> detectedFeatures = [];
+              if (validationResult['details'] != null && 
+                  validationResult['details']['detectedFeatures'] != null) {
+                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+              }
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Image uploaded and validated successfully! (${_validationConfidence}% confidence)',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (detectedFeatures.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 8, left: 32),
+                          child: Text(
+                            'Features: ${detectedFeatures.take(3).join(', ')}',
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ),
+                        ),
+                    ],
+                  ),
+                  backgroundColor: Colors.green.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  margin: EdgeInsets.all(16),
+                  duration: Duration(seconds: 5),
+                ),
+              );
             }
           });
         } catch (e) {
           setState(() {
             _validationMessage = 'Image validation error: ${e.toString()}';
             _validationStatus = ValidationStatus.warning;
+            // Clear image on validation error
+            _imageFile = null;
+            _webImage = null;
+              _selectedImageHash = null;
           });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error validating image: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       }
     } catch (e) {
       print('Error picking image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error accessing image: ${e.toString()}')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.camera_alt, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error accessing image: ${e.toString()}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
+        ),
       );
     } finally {
       setState(() => _isProcessingImage = false);
     }
   }
+
+  // Helper methods for validation status display
+  Color _getValidationStatusColor() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Colors.blue;
+      case ValidationStatus.humanDetected:
+      case ValidationStatus.success:
+        return Colors.green;
+      case ValidationStatus.noHuman:
+        return Colors.orange;
+      case ValidationStatus.error:
+        return Colors.red;
+      case ValidationStatus.warning:
+        return Colors.amber;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getValidationStatusIcon() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return Icons.hourglass_empty;
+      case ValidationStatus.humanDetected:
+      case ValidationStatus.success:
+        return Icons.check_circle;
+      case ValidationStatus.noHuman:
+        return Icons.warning;
+      case ValidationStatus.error:
+        return Icons.error;
+      case ValidationStatus.warning:
+        return Icons.warning_amber;
+      default:
+        return Icons.info;
+    }
+  }
+
+  String _getValidationStatusText() {
+    switch (_validationStatus) {
+      case ValidationStatus.processing:
+        return 'Validating image...';
+      case ValidationStatus.humanDetected:
+        return 'Person detected ($_validationConfidence% confidence)';
+      case ValidationStatus.success:
+        return 'Image validated successfully';
+      case ValidationStatus.noHuman:
+        return 'No person detected';
+      case ValidationStatus.error:
+        return 'Validation error';
+      case ValidationStatus.warning:
+        return 'Validation warning';
+      default:
+        return 'Unknown status';
+    }
+  }
   
-  // Reference to Firestore
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -340,6 +2057,22 @@ class FillUpForm extends State<FillUpFormScreen> {
   Municipality? victimOtherMunicipality;
   String? victimOtherBarangay;
 
+  // Date dropdown variables for reporting person date of birth
+  int? selectedDayReporting;
+  int? selectedMonthReporting;
+  int? selectedYearReporting;
+  
+  // Date dropdown variables for victim date of birth
+  int? selectedDayVictim;
+  int? selectedMonthVictim;
+  int? selectedYearVictim;
+  
+  // Date and time dropdown variables for incident date/time
+  int? selectedDayIncident;
+  int? selectedMonthIncident;
+  int? selectedYearIncident;
+  TimeOfDay? selectedTimeIncident;
+
   // Combined state for FormRowInputs
   Map<String, dynamic> formState = {};
 
@@ -351,6 +2084,159 @@ class FillUpForm extends State<FillUpFormScreen> {
       age--;
     }
     return age;
+  }
+
+  // Update reporting person date controller from dropdown selections
+  void _updateReportingDateFromDropdowns() {
+    if (selectedDayReporting != null && selectedMonthReporting != null && selectedYearReporting != null) {
+      final dateStr = "${selectedDayReporting!.toString().padLeft(2, '0')}/${selectedMonthReporting!.toString().padLeft(2, '0')}/${selectedYearReporting!}";
+      _dateOfBirthReportingController.text = dateStr;
+      
+      // Calculate and update age automatically
+      try {
+        final birthDate = DateTime(selectedYearReporting!, selectedMonthReporting!, selectedDayReporting!);
+        final age = calculateAge(birthDate);
+        _ageReportingController.text = age.toString();
+        reportingPersonAge = age;
+      } catch (e) {
+        print('Error calculating reporting person age: $e');
+      }
+    } else {
+      _dateOfBirthReportingController.text = '';
+      _ageReportingController.text = '';
+      reportingPersonAge = null;
+    }
+    updateFormState();
+  }
+  
+  // Update victim date controller from dropdown selections
+  void _updateVictimDateFromDropdowns() {
+    if (selectedDayVictim != null && selectedMonthVictim != null && selectedYearVictim != null) {
+      final dateStr = "${selectedDayVictim!.toString().padLeft(2, '0')}/${selectedMonthVictim!.toString().padLeft(2, '0')}/${selectedYearVictim!}";
+      _dateOfBirthVictimController.text = dateStr;
+      
+      // Calculate and update age automatically
+      try {
+        final birthDate = DateTime(selectedYearVictim!, selectedMonthVictim!, selectedDayVictim!);
+        final age = calculateAge(birthDate);
+        _ageVictimController.text = age.toString();
+        victimAge = age;
+      } catch (e) {
+        print('Error calculating victim age: $e');
+      }
+    } else {
+      _dateOfBirthVictimController.text = '';
+      _ageVictimController.text = '';
+      victimAge = null;
+    }
+    updateFormState();
+  }
+  
+  // Update incident date and time controller from dropdown and time selections
+  void _updateIncidentDateTimeFromDropdowns() {
+    if (selectedDayIncident != null && selectedMonthIncident != null && selectedYearIncident != null && selectedTimeIncident != null) {
+      try {
+        final incidentDate = DateTime(
+          selectedYearIncident!, 
+          selectedMonthIncident!, 
+          selectedDayIncident!,
+          selectedTimeIncident!.hour,
+          selectedTimeIncident!.minute,
+        );
+        
+        // Update the dateTimeIncident variable and controllers
+        setState(() {
+          dateTimeIncident = incidentDate;
+          _dateTimeIncidentController.text = _formatDateTime(incidentDate);
+          _dateTimeIncidentDController.text = _formatDateTime(incidentDate);
+        });
+      } catch (e) {
+        print('Error creating incident date time: $e');
+      }
+    } else {
+      setState(() {
+        dateTimeIncident = null;
+        _dateTimeIncidentController.text = '';
+        _dateTimeIncidentDController.text = '';
+      });
+    }
+    updateFormState();
+  }
+  
+  // Generate list of days based on selected month and year for reporting person
+  List<int> _getDaysInMonthReporting() {
+    if (selectedMonthReporting == null || selectedYearReporting == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonthReporting!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYearReporting!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  // Generate list of days based on selected month and year for victim
+  List<int> _getDaysInMonthVictim() {
+    if (selectedMonthVictim == null || selectedYearVictim == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonthVictim!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYearVictim!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  // Generate list of days based on selected month and year for incident
+  List<int> _getDaysInMonthIncident() {
+    if (selectedMonthIncident == null || selectedYearIncident == null) {
+      return List.generate(31, (index) => index + 1);
+    }
+    
+    int daysInMonth;
+    switch (selectedMonthIncident!) {
+      case 2: // February
+        daysInMonth = (_isLeapYear(selectedYearIncident!) ? 29 : 28);
+        break;
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        daysInMonth = 30;
+        break;
+      default:
+        daysInMonth = 31;
+    }
+    
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+  
+  bool _isLeapYear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
   }
   @override
   void initState() {
@@ -374,7 +2260,49 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Only prefill if the form is empty
       if (_surnameReportingController.text.isNotEmpty || _firstNameReportingController.text.isNotEmpty) return;
       
-      // Get selected ID type from IRFService
+      // First, try to get saved reporting person data (priority over user profile)
+      Map<String, dynamic>? savedReportingData = await _irfService.getSavedReportingPersonData();
+      
+      if (savedReportingData != null) {
+        // Use saved reporting person data
+        setState(() {
+          _surnameReportingController.text = savedReportingData['surname'] ?? '';
+          _firstNameReportingController.text = savedReportingData['firstName'] ?? '';
+          _middleNameReportingController.text = savedReportingData['middleName'] ?? '';
+          _qualifierReportingController.text = savedReportingData['qualifier'] ?? '';
+          _nicknameReportingController.text = savedReportingData['nickname'] ?? '';
+          _citizenshipReportingController.text = savedReportingData['citizenship'] ?? '';
+          _sexGenderReportingController.text = savedReportingData['sexGender'] ?? '';
+          _civilStatusReportingController.text = savedReportingData['civilStatus'] ?? '';
+          _dateOfBirthReportingController.text = savedReportingData['dateOfBirth'] ?? '';
+          _ageReportingController.text = savedReportingData['age'] ?? '';
+          _placeOfBirthReportingController.text = savedReportingData['placeOfBirth'] ?? '';
+          _homePhoneReportingController.text = savedReportingData['homePhone'] ?? '';
+          _mobilePhoneReportingController.text = savedReportingData['mobilePhone'] ?? '';
+          _currentAddressReportingController.text = savedReportingData['currentAddress'] ?? '';
+          _villageSitioReportingController.text = savedReportingData['villageSitio'] ?? '';
+          _educationReportingController.text = savedReportingData['education'] ?? '';
+          _occupationReportingController.text = savedReportingData['occupation'] ?? '';
+          _idCardPresentedController.text = savedReportingData['idCardPresented'] ?? '';
+          _emailReportingController.text = savedReportingData['email'] ?? '';
+          
+          // Restore date components
+          selectedDayReporting = savedReportingData['selectedDay'];
+          selectedMonthReporting = savedReportingData['selectedMonth'];
+          selectedYearReporting = savedReportingData['selectedYear'];
+          
+          // Restore address selection state
+          hasOtherAddressReporting = savedReportingData['hasOtherAddress'] ?? false;
+          
+          // Note: We'll need to handle region/province/municipality restoration separately
+          // as these require async calls to the Philippines API
+          _restoreLocationData(savedReportingData);
+        });
+        updateFormState();
+        return; // Don't proceed to user profile data if saved data exists
+      }
+      
+      // Fallback to user profile data if no saved reporting person data exists
       String? selectedIDType = await _irfService.getUserSelectedIDType();
       
       final userQuery = await FirebaseFirestore.instance
@@ -383,7 +2311,7 @@ class FillUpForm extends State<FillUpFormScreen> {
           .limit(1)
           .get();
       if (userQuery.docs.isNotEmpty) {
-        final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+        final userData = userQuery.docs.first.data();
         setState(() {
           _surnameReportingController.text = userData['lastName'] ?? '';
           _firstNameReportingController.text = userData['firstName'] ?? '';          
@@ -391,7 +2319,9 @@ class FillUpForm extends State<FillUpFormScreen> {
           _emailReportingController.text = userData['email'] ?? '';
           _sexGenderReportingController.text = userData['gender'] ?? '';
           _ageReportingController.text = userData['age'] != null ? userData['age'].toString() : '';
-          _idCardPresentedController.text = selectedIDType ?? '';          // Handle birthday field for date of birth
+          _idCardPresentedController.text = selectedIDType ?? '';
+          
+          // Handle birthday field for date of birth
           if (userData['birthday'] != null) {
             DateTime? dob;
             try {
@@ -429,6 +2359,10 @@ class FillUpForm extends State<FillUpFormScreen> {
               
               if (dob != null) {
                 _dateOfBirthReportingController.text = "${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}";
+                // Also set the dropdown values
+                selectedDayReporting = dob.day;
+                selectedMonthReporting = dob.month;
+                selectedYearReporting = dob.year;
               }
             } catch (e) {
               print('Error parsing birthday: $e');
@@ -447,6 +2381,94 @@ class FillUpForm extends State<FillUpFormScreen> {
       }
     } catch (e) {
       print('Error pre-filling user details: $e');
+    }
+  }
+
+  // Helper method to restore location data from saved reporting person data
+  Future<void> _restoreLocationData(Map<String, dynamic> savedData) async {
+    try {
+      // Get stored location names
+      String? regionName = savedData['regionName'];
+      String? provinceName = savedData['provinceName'];
+      String? municipalityName = savedData['municipalityName'];
+      String? barangay = savedData['barangay'];
+      
+      // Restore main address location data
+      if (regionName != null) {
+        // Find the region by name
+        reportingPersonRegion = philippineRegions.firstWhere(
+          (region) => region.regionName == regionName,
+          orElse: () => philippineRegions.first,
+        );
+        
+        if (provinceName != null && reportingPersonRegion != null) {
+          // Find the province within the selected region
+          reportingPersonProvince = reportingPersonRegion!.provinces.firstWhere(
+            (province) => province.name == provinceName,
+            orElse: () => reportingPersonRegion!.provinces.first,
+          );
+          
+          if (municipalityName != null && reportingPersonProvince != null) {
+            // Find the municipality within the selected province
+            reportingPersonMunicipality = reportingPersonProvince!.municipalities.firstWhere(
+              (municipality) => municipality.name == municipalityName,
+              orElse: () => reportingPersonProvince!.municipalities.first,
+            );
+            
+            // Set the barangay if it exists in the municipality
+            if (barangay != null && reportingPersonMunicipality != null) {
+              if (reportingPersonMunicipality!.barangays.contains(barangay)) {
+                reportingPersonBarangay = barangay;
+              }
+            }
+          }
+        }
+      }
+      
+      // Handle other address data
+      if (savedData['hasOtherAddress'] == true) {
+        hasOtherAddressReporting = true;
+        
+        String? otherRegionName = savedData['otherRegionName'];
+        String? otherProvinceName = savedData['otherProvinceName'];
+        String? otherMunicipalityName = savedData['otherMunicipalityName'];
+        String? otherBarangay = savedData['otherBarangay'];
+        
+        if (otherRegionName != null) {
+          // Find the other region by name
+          reportingPersonOtherRegion = philippineRegions.firstWhere(
+            (region) => region.regionName == otherRegionName,
+            orElse: () => philippineRegions.first,
+          );
+          
+          if (otherProvinceName != null && reportingPersonOtherRegion != null) {
+            // Find the other province within the selected region
+            reportingPersonOtherProvince = reportingPersonOtherRegion!.provinces.firstWhere(
+              (province) => province.name == otherProvinceName,
+              orElse: () => reportingPersonOtherRegion!.provinces.first,
+            );
+            
+            if (otherMunicipalityName != null && reportingPersonOtherProvince != null) {
+              // Find the other municipality within the selected province
+              reportingPersonOtherMunicipality = reportingPersonOtherProvince!.municipalities.firstWhere(
+                (municipality) => municipality.name == otherMunicipalityName,
+                orElse: () => reportingPersonOtherProvince!.municipalities.first,
+              );
+              
+              // Set the other barangay if it exists in the municipality
+              if (otherBarangay != null && reportingPersonOtherMunicipality != null) {
+                if (reportingPersonOtherMunicipality!.barangays.contains(otherBarangay)) {
+                  reportingPersonOtherBarangay = otherBarangay;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      setState(() {}); // Trigger UI update
+    } catch (e) {
+      print('Error restoring location data: $e');
     }
   }
 
@@ -588,6 +2610,31 @@ class FillUpForm extends State<FillUpFormScreen> {
           break;
         case 'reportingBarangay':
           reportingPersonBarangay = value;
+          break;
+        // Add victim address field handlers
+        case 'victimRegion':
+          if (victimRegion != value) {
+            victimProvince = null;
+            victimMunicipality = null;
+            victimBarangay = null;
+          }
+          victimRegion = value;
+          break;
+        case 'victimProvince':
+          if (victimProvince != value) {
+            victimMunicipality = null;
+            victimBarangay = null;
+          }
+          victimProvince = value;
+          break;
+        case 'victimMunicipality':
+          if (victimMunicipality != value) {
+            victimBarangay = null;
+          }
+          victimMunicipality = value;
+          break;
+        case 'victimBarangay':
+          victimBarangay = value;
           break;
         // Add missing reporting other address field handlers
         case 'reportingOtherRegion':
@@ -845,8 +2892,23 @@ class FillUpForm extends State<FillUpFormScreen> {
             // Show a message to inform the user
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Future time not allowed. Using current time instead.'),
-                duration: Duration(seconds: 2),
+                content: Row(
+                  children: [
+                    Icon(Icons.access_time, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Future time not allowed. Using current time instead.',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.orange.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 3),
               ),
             );
             return;
@@ -859,13 +2921,473 @@ class FillUpForm extends State<FillUpFormScreen> {
     }
   }
 
+  // Incident date and time picker function using dropdown date + time picker
+  void _pickIncidentDateTime() {
+    // Get initial values from current dateTimeIncident or use current date/time
+    DateTime now = DateTime.now();
+    DateTime initialDate = dateTimeIncident ?? now;
+    if (initialDate.isAfter(now)) {
+      initialDate = now;
+    }
+    
+    // If we have an existing incident date, use its values as initial selection
+    if (dateTimeIncident != null) {
+      selectedDayIncident = dateTimeIncident!.day;
+      selectedMonthIncident = dateTimeIncident!.month;
+      selectedYearIncident = dateTimeIncident!.year;
+      selectedTimeIncident = TimeOfDay.fromDateTime(dateTimeIncident!);
+    } else {
+      // Use current date/time as default
+      selectedDayIncident = initialDate.day;
+      selectedMonthIncident = initialDate.month;
+      selectedYearIncident = initialDate.year;
+      selectedTimeIncident = TimeOfDay.fromDateTime(initialDate);
+    }
+    
+    // Show date+time picker dialog
+    _showIncidentDateTimePickerDialog();
+  }
+
+  // Show date+time picker dialog for incident
+  void _showIncidentDateTimePickerDialog() {
+    // Track local state for the dialog
+    int? localMonth = selectedMonthIncident;
+    int? localDay = selectedDayIncident;
+    int? localYear = selectedYearIncident;
+    TimeOfDay? localTime = selectedTimeIncident;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              child: Container(
+                width: 400,
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.event_note,
+                          color: Color(0xFF0D47A1),
+                          size: 24,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Select Date & Time',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0D47A1),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+                    
+                    // Date section
+                    Text(
+                      'Date',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    
+                    // Date selection row
+                    Row(
+                      children: [
+                        // Month dropdown
+                        Expanded(
+                          flex: 5,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localMonth,
+                              decoration: InputDecoration(
+                                labelText: 'Month',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: List.generate(12, (index) {
+                                int month = index + 1;
+                                List<String> monthNames = [
+                                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                ];
+                                return DropdownMenuItem<int>(
+                                  value: month,
+                                  child: Text(
+                                    '${month.toString().padLeft(2, '0')} - ${monthNames[index]}',
+                                    style: TextStyle(fontSize: 12, color: Colors.black),
+                                  ),
+                                );
+                              }),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localMonth = newValue;
+                                  // Reset day if current day is not valid for new month
+                                  if (localDay != null && localYear != null && newValue != null) {
+                                    int daysInMonth = _getDaysInSelectedMonth(newValue, localYear!);
+                                    if (localDay! > daysInMonth) {
+                                      localDay = daysInMonth;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Day dropdown
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localDay,
+                              decoration: InputDecoration(
+                                labelText: 'Day',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: localMonth != null && localYear != null ? 
+                                List.generate(_getDaysInSelectedMonth(localMonth!, localYear!), (index) {
+                                int day = index + 1;
+                                return DropdownMenuItem<int>(
+                                  value: day,
+                                  child: Text(day.toString().padLeft(2, '0'), style: TextStyle(fontSize: 12, color: Colors.black)),
+                                );
+                              }) : [],
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localDay = newValue;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Year dropdown
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonFormField<int>(
+                              value: localYear,
+                              decoration: InputDecoration(
+                                labelText: 'Year',
+                                labelStyle: TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                isDense: true,
+                              ),
+                              isExpanded: true,
+                              dropdownColor: Colors.white,
+                              items: List.generate(100, (index) {
+                                int year = DateTime.now().year - index;
+                                return DropdownMenuItem<int>(
+                                  value: year,
+                                  child: Text(year.toString(), style: TextStyle(fontSize: 12, color: Colors.black)),
+                                );
+                              }),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  localYear = newValue;
+                                  // Reset day if current day is not valid for new year
+                                  if (localDay != null && localMonth != null && newValue != null) {
+                                    int daysInMonth = _getDaysInSelectedMonth(localMonth!, newValue);
+                                    if (localDay! > daysInMonth) {
+                                      localDay = daysInMonth;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Time section
+                    Text(
+                      'Time',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    
+                    // Time picker button
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            final TimeOfDay? pickedTime = await showTimePicker(
+                              context: dialogContext,
+                              initialTime: localTime ?? TimeOfDay.now(),
+                            );
+                            if (pickedTime != null) {
+                              setState(() {
+                                localTime = pickedTime;
+                              });
+                            }
+                          },
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  color: Color(0xFF0D47A1),
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  localTime != null 
+                                    ? localTime!.format(context)
+                                    : 'Select Time',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: localTime != null ? Colors.black87 : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Selected date and time preview
+                    if (localMonth != null && localDay != null && localYear != null && localTime != null)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF0D47A1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Selected Date & Time:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${localMonth.toString().padLeft(2, '0')}/${localDay.toString().padLeft(2, '0')}/$localYear ${localTime!.format(context)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: (localMonth != null && localDay != null && localYear != null && localTime != null) ? () {
+                            // Validate that the selected date/time is not in the future
+                            final selectedDateTime = DateTime(
+                              localYear!,
+                              localMonth!,
+                              localDay!,
+                              localTime!.hour,
+                              localTime!.minute,
+                            );
+                            
+                            final now = DateTime.now();
+                            if (selectedDateTime.isAfter(now)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(Icons.schedule, color: Colors.white),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Future date/time not allowed. Please select a past date and time.',
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.red.shade600,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  margin: EdgeInsets.all(16),
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                              return;
+                            }
+                            
+                            // Update the actual values
+                            this.setState(() {
+                              selectedMonthIncident = localMonth;
+                              selectedDayIncident = localDay;
+                              selectedYearIncident = localYear;
+                              selectedTimeIncident = localTime;
+                            });
+                            _updateIncidentDateTimeFromDropdowns();
+                            Navigator.of(dialogContext).pop();
+                          } : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF0D47A1),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Helper to get days in a specific month and year (for dialog)
+  int _getDaysInSelectedMonth(int month, int year) {
+    switch (month) {
+      case 2: // February
+        return (_isLeapYear(year) ? 29 : 28);
+      case 4:
+      case 6:
+      case 9:
+      case 11:
+        return 30;
+      default:
+        return 31;
+    }
+  }
+
   // Helper method to collect all form data  // Validate form data before collection
   bool validateEducationFields() {
     if (_educationReportingController.text.isEmpty || _educationVictimController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select education level for both reporting person and missing person'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.school, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please select education level for both reporting person and missing person',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return false;
@@ -1027,72 +3549,32 @@ class FillUpForm extends State<FillUpFormScreen> {
     );
   }  // Validate phone fields to prevent submission with invalid phone numbers
   Future<bool> _validatePhoneFields() async {
-    // Check reporting person home phone
-    final reportingHomePhone = _homePhoneReportingController.text.trim();
-    if (reportingHomePhone.isNotEmpty && 
-        reportingHomePhone.toLowerCase() != 'n/a' && 
-        reportingHomePhone.toLowerCase() != 'none') {
-      
-      // Philippines Cavite landline format validation
-      // Format: (046) XXX-XXXX or 046-XXX-XXXX or 046XXXXXXX
-      bool isValidFormat = false;
-      
-      if (RegExp(r'^\(046\)\s*\d{3}-\d{4}$').hasMatch(reportingHomePhone) || // (046) XXX-XXXX
-          RegExp(r'^046-\d{3}-\d{4}$').hasMatch(reportingHomePhone) ||        // 046-XXX-XXXX
-          RegExp(r'^046\d{7}$').hasMatch(reportingHomePhone)) {               // 046XXXXXXX
-        isValidFormat = true;
-      }
-      
-      if (!isValidFormat) {
-        await _scrollToFieldByController(_homePhoneReportingController);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please fix the reporting person home phone field before submitting. Enter valid Cavite landline format (046) XXX-XXXX or None.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return false;
-      }
-    }
-    
     // Check reporting person mobile phone
     final reportingMobilePhone = _mobilePhoneReportingController.text.trim();
     if (reportingMobilePhone.isNotEmpty && reportingMobilePhone.length < 10) {
       await _scrollToFieldByController(_mobilePhoneReportingController);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please fix the reporting person mobile phone field before submitting. Invalid number format.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.phone_android, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please fix the reporting person mobile phone field before submitting. Invalid number format.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return false;
-    }
-      // Check victim home phone
-    final victimHomePhone = _homePhoneVictimController.text.trim();
-    if (victimHomePhone.isNotEmpty && 
-        victimHomePhone.toLowerCase() != 'n/a' && 
-        victimHomePhone.toLowerCase() != 'none') {
-      
-      // Philippines Cavite landline format validation
-      // Format: (046) XXX-XXXX or 046-XXX-XXXX or 046XXXXXXX
-      bool isValidFormat = false;
-      
-      if (RegExp(r'^\(046\)\s*\d{3}-\d{4}$').hasMatch(victimHomePhone) || // (046) XXX-XXXX
-          RegExp(r'^046-\d{3}-\d{4}$').hasMatch(victimHomePhone) ||        // 046-XXX-XXXX
-          RegExp(r'^046\d{7}$').hasMatch(victimHomePhone)) {               // 046XXXXXXX
-        isValidFormat = true;
-      }
-      
-      if (!isValidFormat) {
-        await _scrollToFieldByController(_homePhoneVictimController);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please fix the missing person home phone field before submitting. Enter valid Cavite landline format (046) XXX-XXXX or None.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return false;
-      }
     }
     
     // Check victim mobile phone
@@ -1120,8 +3602,23 @@ class FillUpForm extends State<FillUpFormScreen> {
         await _scrollToFieldByController(_mobilePhoneVictimController);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please fix the missing person mobile phone field before submitting. Invalid number format.'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.phone_android, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Please fix the missing person mobile phone field before submitting. Invalid number format.',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 4),
           ),
         );
         return false;
@@ -1141,8 +3638,22 @@ class FillUpForm extends State<FillUpFormScreen> {
       await _scrollToSpecificField('SURNAME');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Surname (Reporting Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.person, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Surname (Reporting Person) is required and cannot be empty.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
           duration: Duration(seconds: 3),
         ),
       );
@@ -1225,11 +3736,12 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    if (_dateOfBirthReportingController.text.trim().isEmpty) {
+    // Check date of birth dropdowns for reporting person
+    if (selectedDayReporting == null || selectedMonthReporting == null || selectedYearReporting == null) {
       await _scrollToSpecificField('DATE OF BIRTH');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Date of Birth (Reporting Person) is required and cannot be empty.'),
+          content: Text('Date of Birth (Reporting Person) is required. Please select month, day, and year.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -1252,17 +3764,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Place of Birth (Reporting Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    if (_homePhoneReportingController.text.trim().isEmpty) {
-      await _scrollToSpecificField('HOME PHONE');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Home Phone (Reporting Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -1436,11 +3937,12 @@ class FillUpForm extends State<FillUpFormScreen> {
       );
       return false;
     }
-    if (_dateOfBirthVictimController.text.trim().isEmpty) {
+    // Check date of birth dropdowns for victim
+    if (selectedDayVictim == null || selectedMonthVictim == null || selectedYearVictim == null) {
       await _scrollToSpecificField('DATE OF BIRTH VICTIM');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Date of Birth (Missing Person) is required and cannot be empty.'),
+          content: Text('Date of Birth (Missing Person) is required. Please select month, day, and year.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -1463,17 +3965,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Place of Birth (Missing Person) is required and cannot be empty.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return false;
-    }
-    if (_homePhoneVictimController.text.trim().isEmpty) {
-      await _scrollToSpecificField('HOME PHONE VICTIM');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Home Phone (Missing Person) is required and cannot be empty.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -1643,7 +4134,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       _dateOfBirthReportingController: 'DATE OF BIRTH',
       _ageReportingController: 'AGE',
       _placeOfBirthReportingController: 'PLACE OF BIRTH',
-      _homePhoneReportingController: 'HOME PHONE',
       _mobilePhoneReportingController: 'MOBILE PHONE',
       _currentAddressReportingController: 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
       _villageSitioReportingController: 'VILLAGE/SITIO',
@@ -1662,7 +4152,6 @@ class FillUpForm extends State<FillUpFormScreen> {
       _dateOfBirthVictimController: 'DATE OF BIRTH VICTIM',      
       _ageVictimController: 'AGE VICTIM',
       _placeOfBirthVictimController: 'PLACE OF BIRTH VICTIM',
-      _homePhoneVictimController: 'HOME PHONE VICTIM',
       _mobilePhoneVictimController: 'MOBILE PHONE VICTIM',      
       _currentAddressVictimController: 'CURRENT ADDRESS (HOUSE NUMBER/STREET) VICTIM',
       _villageSitioVictimController: 'VILLAGE/SITIO VICTIM',
@@ -1692,8 +4181,23 @@ class FillUpForm extends State<FillUpFormScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please upload an image. It is required.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.photo_camera, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please upload an image. It is required.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return;
@@ -1703,8 +4207,22 @@ class FillUpForm extends State<FillUpFormScreen> {
     if (!_validateReportingPersonNotSelf()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('You cannot report yourself as a missing person. Please check the reporting person and missing person details.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.person_off, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'You cannot report yourself as a missing person. Please check the reporting person and missing person details.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
           duration: Duration(seconds: 4),
         ),
       );
@@ -1715,8 +4233,23 @@ class FillUpForm extends State<FillUpFormScreen> {
     if (await _checkDuplicateMissingPerson()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('A form for this missing person already exists.'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'A form for this missing person already exists.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 4),
         ),
       );
       return;
@@ -1735,6 +4268,21 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Create IRF model from form data
       IRFModel irfData = createIRFModel();
       
+      // Before uploading image, ensure selected image hash isn't a duplicate in the DB
+      if (_selectedImageHash != null) {
+        bool isDuplicate = await _checkDuplicateImageHash(_selectedImageHash!);
+        if (isDuplicate) {
+          setState(() { isSubmitting = false; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('This image has already been used in another report. Please choose a different image.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
       // Upload image and get URL
       String? imageUrl;
       if (kIsWeb && _webImage != null) {
@@ -1753,6 +4301,10 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Get the document to retrieve the formal ID
       DocumentSnapshot doc = await docRef.get();
       String formalId = (doc.data() as Map<String, dynamic>)['incidentDetails']?['incidentId'] ?? docRef.id;
+      // Store the image hash in the imageHashes collection now that the IRF has been successfully created
+      if (_selectedImageHash != null) {
+        await _storeImageHash(_selectedImageHash!, irfId: formalId);
+      }
       
       // Show success message with formal ID
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1761,6 +4313,9 @@ class FillUpForm extends State<FillUpFormScreen> {
           backgroundColor: Colors.green,
         ),
       );
+      
+      // Check if user wants to save reporting person data for future use
+      await _showSaveReportingPersonDataDialog();
       
       // Navigate back
       Navigator.pop(context);
@@ -1796,15 +4351,16 @@ class FillUpForm extends State<FillUpFormScreen> {
     final victimMiddleName = _middleNameVictimController.text.trim().toLowerCase();
     final victimDob = _dateOfBirthVictimController.text.trim();
     
-    // Check if all key identifying information matches
+    // Check if required fields (surname, first name, and date of birth) are not empty
+    // Middle name is optional so we don't require it to be filled
     if (reportingSurname.isNotEmpty && victimSurname.isNotEmpty &&
         reportingFirstName.isNotEmpty && victimFirstName.isNotEmpty &&
-        reportingMiddleName.isNotEmpty && victimMiddleName.isNotEmpty &&
         reportingDob.isNotEmpty && victimDob.isNotEmpty) {
       
+      // Check if key identifying information matches (including middle name comparison)
       if (reportingSurname == victimSurname &&
           reportingFirstName == victimFirstName &&
-          reportingMiddleName == victimMiddleName &&
+          reportingMiddleName == victimMiddleName && // This handles empty middle names correctly
           reportingDob == victimDob) {
         return false; // Same person - validation failed
       }
@@ -1815,22 +4371,54 @@ class FillUpForm extends State<FillUpFormScreen> {
 
   // Check for duplicate missing person
   Future<bool> _checkDuplicateMissingPerson() async {
-    final surname = _surnameVictimController.text.trim().toLowerCase();
-    final firstName = _firstNameVictimController.text.trim().toLowerCase();
-    final middleName = _middleNameVictimController.text.trim().toLowerCase();
+    final surname = _surnameVictimController.text.trim();
+    final firstName = _firstNameVictimController.text.trim();
+    final middleName = _middleNameVictimController.text.trim();
     final dob = _dateOfBirthVictimController.text.trim();
-    if (surname.isEmpty || firstName.isEmpty || middleName.isEmpty || dob.isEmpty) {
+    
+    // Only check for duplicates if required fields are filled
+    // Middle name is optional, so we don't require it to be filled
+    if (surname.isEmpty || firstName.isEmpty || dob.isEmpty) {
       return false;
     }
-    final query = await FirebaseFirestore.instance
-        .collection('incidents')
-        .where('itemC.familyName', isEqualTo: surname)
-        .where('itemC.firstName', isEqualTo: firstName)
-        .where('itemC.middleName', isEqualTo: middleName)
-        .where('itemC.dateOfBirth', isEqualTo: dob)
-        .limit(1)
-        .get();
-    return query.docs.isNotEmpty;
+
+    try {
+      // Build query based on available fields
+      Query query = FirebaseFirestore.instance
+          .collection('incidents')
+          .where('itemC.familyName', isEqualTo: surname)
+          .where('itemC.firstName', isEqualTo: firstName)
+          .where('itemC.dateOfBirth', isEqualTo: dob);
+      
+      // Add middle name to query only if it's not empty
+      if (middleName.isNotEmpty) {
+        query = query.where('itemC.middleName', isEqualTo: middleName);
+      }
+      
+      final querySnapshot = await query.limit(1).get();
+      
+      // Additional check for cases where middle name is empty in the form
+      // but might exist in the database
+      if (querySnapshot.docs.isEmpty && middleName.isEmpty) {
+        // Check for records with empty or null middle name
+        final emptyMiddleNameQuery = await FirebaseFirestore.instance
+            .collection('incidents')
+            .where('itemC.familyName', isEqualTo: surname)
+            .where('itemC.firstName', isEqualTo: firstName)
+            .where('itemC.dateOfBirth', isEqualTo: dob)
+            .where('itemC.middleName', whereIn: ['', null])
+            .limit(1)
+            .get();
+        
+        return emptyMiddleNameQuery.docs.isNotEmpty;
+      }
+      
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking for duplicate missing person: $e');
+      // In case of error, allow the form to proceed (don't block legitimate submissions)
+      return false;
+    }
   }
 
   @override  Widget build(BuildContext context) {
@@ -1846,6 +4434,136 @@ class FillUpForm extends State<FillUpFormScreen> {
           icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              
+            ),
+            child: PopupMenuButton<String>(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white.withOpacity(0.15),
+                ),
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              onSelected: (String value) async {
+                switch (value) {
+                  case 'clear_saved_data':
+                    await _showClearSavedDataDialog();
+                    break;
+                  case 'load_saved_data':
+                    await _loadSavedReportingPersonData();
+                    break;
+                }
+              },
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              color: Colors.white,
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'load_saved_data',
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.cloud_download_rounded,
+                            color: Colors.blue.shade600,
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Load Saved Info',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              Text(
+                                'Fill form with saved data',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'clear_saved_data',
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.delete_sweep_rounded,
+                            color: Colors.red.shade600,
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Clear Saved Info',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              Text(
+                                'Delete all saved data',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: isCheckingPrivacyStatus 
         ? Center(child: CircularProgressIndicator())
@@ -1904,6 +4622,13 @@ class FillUpForm extends State<FillUpFormScreen> {
 
                         SizedBox(height: 10),
 
+                        SubsectionTitle(
+                          title: 'Personal Information',
+                          icon: Icons.person,
+                        ),
+
+                        SizedBox(height: 10),
+
                         KeyedSubtree(
                           key: _getOrCreateKey('SURNAME'),
                           child: FormRowInputs(
@@ -1914,6 +4639,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                 'controller': _surnameReportingController,
                                 'keyboardType': TextInputType.name,
                                 'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                                'readOnly': true,
                               },
                               {
                                 'label': 'FIRST NAME',
@@ -1921,6 +4647,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                 'controller': _firstNameReportingController,
                                 'keyboardType': TextInputType.name,
                                 'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                                'readOnly': true,
                               },
                               {
                                 'label': 'MIDDLE NAME',
@@ -1928,6 +4655,7 @@ class FillUpForm extends State<FillUpFormScreen> {
                                 'controller': _middleNameReportingController,
                                 'keyboardType': TextInputType.name,
                                 'inputFormatters': [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                                'readOnly': true,
                               },
                             ],
                             formState: formState,
@@ -2002,25 +4730,29 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'DATE OF BIRTH',
                               'required': true,
                               'controller': _dateOfBirthReportingController,
-                              'readOnly': true,
                               'key': _getOrCreateKey('DATE OF BIRTH'),
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthReportingController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    reportingPersonAge = calculateAge(pickedDate);
-                                    _ageReportingController.text = reportingPersonAge.toString();
-                                  });
-                                }
+                              'isDateDropdown': true,
+                              'section': 'reporting',
+                              'context': context,
+                              'selectedDay': selectedDayReporting,
+                              'selectedMonth': selectedMonthReporting,
+                              'selectedYear': selectedYearReporting,
+                              'getDaysInMonth': _getDaysInMonthReporting,
+                              'updateDateFromDropdowns': _updateReportingDateFromDropdowns,
+                              'onDateFieldChange': (String key, dynamic value) {
+                                setState(() {
+                                  switch (key) {
+                                    case 'selectedDayReporting':
+                                      selectedDayReporting = value;
+                                      break;
+                                    case 'selectedMonthReporting':
+                                      selectedMonthReporting = value;
+                                      break;
+                                    case 'selectedYearReporting':
+                                      selectedYearReporting = value;
+                                      break;
+                                  }
+                                });
                               },
                             },
                             {
@@ -2041,14 +4773,23 @@ class FillUpForm extends State<FillUpFormScreen> {
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
-                          SizedBox(height: 10),                        FormRowInputs(
+                          SizedBox(height: 10),                        
+                        
+                        SubsectionTitle(
+                          title: 'Contact Information',
+                          icon: Icons.phone,
+                        ),
+
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
                           fields: [
                             {
-                              'label': 'HOME PHONE',
-                              'required': true,
+                              'label': 'HOME PHONE (If Any)',
+                              'required': false,
                               'controller': _homePhoneReportingController,
                               'keyboardType': TextInputType.text,
-                              'hintText': 'Enter Home Phone Number or None',
+                              'hintText': 'Enter Home Phone Number or leave empty',
                               'key': _getOrCreateKey('HOME PHONE'),
                             },
                             {
@@ -2066,7 +4807,15 @@ class FillUpForm extends State<FillUpFormScreen> {
                         ),
                         
                         SizedBox(height: 10),
-                          FormRowInputs(
+                        
+                        SubsectionTitle(
+                          title: 'Address Information',
+                          icon: Icons.location_on,
+                        ),
+
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'CURRENT ADDRESS (HOUSE NUMBER/STREET)',
@@ -2288,7 +5037,16 @@ class FillUpForm extends State<FillUpFormScreen> {
                           backgroundColor: Color(0xFF1E215A),
                         ),
                         
-                        SizedBox(height: 10),                        FormRowInputs(
+                        SizedBox(height: 10),
+                        
+                        SubsectionTitle(
+                          title: 'Personal Information',
+                          icon: Icons.person_search,
+                        ),
+
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
                           fields: [
                             {
                               'label': 'SURNAME',
@@ -2392,25 +5150,29 @@ class FillUpForm extends State<FillUpFormScreen> {
                               'label': 'DATE OF BIRTH',
                               'required': true,
                               'controller': _dateOfBirthVictimController,
-                              'readOnly': true,
                               'key': _getOrCreateKey('DATE OF BIRTH VICTIM'),
-                              'onTap': () async {
-                                DateTime? pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _dateOfBirthVictimController.text = 
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                        "${pickedDate.year}";
-                                    victimAge = calculateAge(pickedDate);
-                                    _ageVictimController.text = victimAge.toString();
-                                  });
-                                }
+                              'isDateDropdown': true,
+                              'section': 'victim',
+                              'context': context,
+                              'selectedDay': selectedDayVictim,
+                              'selectedMonth': selectedMonthVictim,
+                              'selectedYear': selectedYearVictim,
+                              'getDaysInMonth': _getDaysInMonthVictim,
+                              'updateDateFromDropdowns': _updateVictimDateFromDropdowns,
+                              'onDateFieldChange': (String key, dynamic value) {
+                                setState(() {
+                                  switch (key) {
+                                    case 'selectedDayVictim':
+                                      selectedDayVictim = value;
+                                      break;
+                                    case 'selectedMonthVictim':
+                                      selectedMonthVictim = value;
+                                      break;
+                                    case 'selectedYearVictim':
+                                      selectedYearVictim = value;
+                                      break;
+                                  }
+                                });
                               },
                             },
                             {
@@ -2432,14 +5194,23 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
-                        SizedBox(height: 10),                        FormRowInputs(
+                        SizedBox(height: 10),
+                        
+                        SubsectionTitle(
+                          title: 'Contact Information',
+                          icon: Icons.phone,
+                        ),
+
+                        SizedBox(height: 10),
+                        
+                        FormRowInputs(
                           fields: [
                             {
-                              'label': 'HOME PHONE',
-                              'required': true,
+                              'label': 'HOME PHONE (If Any)',
+                              'required': false,
                               'controller': _homePhoneVictimController,
                               'keyboardType': TextInputType.text,
-                              'hintText': 'Enter Home Phone Number or None',
+                              'hintText': 'Enter Home Phone Number or leave empty',
                               'key': _getOrCreateKey('HOME PHONE VICTIM'),
                             },
                             {
@@ -2454,6 +5225,14 @@ class FillUpForm extends State<FillUpFormScreen> {
                           formState: formState,
                           onFieldChange: onFieldChange,
                         ),
+                        
+                        SubsectionTitle(
+                          title: 'Address Information',
+                          icon: Icons.location_on,
+                        ),
+
+                        SizedBox(height: 10),
+                        
                         // Checkbox for copying address from reporting person
                         CheckboxListTile(
                           title: Text("Same address as reporting person?", style: TextStyle(fontSize: 15, color: Colors.black)),
@@ -2691,6 +5470,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                         
                         SizedBox(height: 10),
                         
+                        SubsectionTitle(
+                          title: 'Incident Details',
+                          icon: Icons.info_outline,
+                        ),
+
+                        SizedBox(height: 10),
+                        
                         // Type of Incident, Date/Time of Incident, Place of Incident moved here
                         FormRowInputs(
                           fields: [
@@ -2714,20 +5500,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                             {
                               'label': 'DATE/TIME OF INCIDENT',
                               'required': true,
-                              'controller': _dateTimeIncidentController,
-                              'readOnly': true,
+                              'isIncidentDateTime': true,
                               'key': _getOrCreateKey('DATE/TIME OF INCIDENT'),
+                              'displayText': dateTimeIncident != null 
+                                ? _formatDateTime(dateTimeIncident!)
+                                : 'Select',
                               'onTap': () {
-                                _pickDateTime(
-                                  _dateTimeIncidentController,
-                                  dateTimeIncident,
-                                  (DateTime selectedDateTime) {
-                                    setState(() {
-                                      dateTimeIncident = selectedDateTime;
-                                      _dateTimeIncidentDController.text = _formatDateTime(selectedDateTime);
-                                    });
-                                  },
-                                );
+                                _pickIncidentDateTime();
                               },
                             },
                             {
@@ -2742,6 +5521,13 @@ class FillUpForm extends State<FillUpFormScreen> {
                           onFieldChange: onFieldChange,
                         ),
                         
+                        SizedBox(height: 10),
+                        
+                        SubsectionTitle(
+                          title: 'Narrative Description',
+                          icon: Icons.description,
+                        ),
+
                         SizedBox(height: 10),
                         
                         KeyedSubtree(
@@ -2815,6 +5601,68 @@ class FillUpForm extends State<FillUpFormScreen> {
                                                     ),
                                             ),
                                             SizedBox(height: 8),
+                                            // Validation status indicator
+                                            if (_validationStatus != ValidationStatus.none) ...[
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: _getValidationStatusColor(),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      _getValidationStatusIcon(),
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    SizedBox(width: 4),
+                                                    Text(
+                                                      _getValidationStatusText(),
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              SizedBox(height: 8),
+                                            ],
+                                            if (_isProcessingImage) ...[
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 12,
+                                                      height: 12,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      'Processing image...',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              SizedBox(height: 8),
+                                            ],
                                             Row(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
@@ -2940,4 +5788,3 @@ class SubmitButton extends StatelessWidget {
     );
   }
 }
-
