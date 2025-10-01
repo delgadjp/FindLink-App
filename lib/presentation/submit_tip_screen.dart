@@ -13,7 +13,7 @@ import 'package:http/http.dart' as http; // Add HTTP package for API calls
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart'; // Add url launcher
 import 'dart:math';
-import 'utils/image_processor.dart'; // Import the image processor
+import 'dart:ui'; // For ImageFilter
 
 class SubmitTipScreen extends StatefulWidget {
   final MissingPerson person;
@@ -31,6 +31,7 @@ enum ValidationStatus {
   error,
   warning,
   noHuman,
+  lowConfidenceHuman, // Added for confidence 50-70%
   humanDetected,
   success
 }
@@ -47,6 +48,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   ValidationStatus _validationStatus = ValidationStatus.none;
   String _validationMessage = '';
   String _validationConfidence = '0.0';
+  bool _isProcessingImage = false;
   
   // Variables for nearby tips feature
   bool _isCheckingNearbyTips = false;
@@ -77,6 +79,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   Uint8List? _webImage;
   final picker = ImagePicker();
   final auth.FirebaseAuth _auth = auth.FirebaseAuth.instance;
+  
+  // Service for tip operations and image validation
+  final TipService _tipService = TipService();
 
   final TextEditingController _dateLastSeenController = TextEditingController();
   final TextEditingController _timeLastSeenController = TextEditingController();
@@ -1017,277 +1022,191 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     }
   }
 
-  /// Enhanced image picker with better permission handling and immediate validation
+  /// Enhanced image picker with validation from fill up form
   Future<void> _pickImage(ImageSource source) async {
     try {
+      setState(() {
+        _isProcessingImage = true;
+        _validationStatus = ValidationStatus.processing;
+        _validationMessage = 'Processing image...';
+      });
+
       // Handle camera permission differently - check permission status first
       if (source == ImageSource.camera) {
-        PermissionStatus cameraStatus = await Permission.camera.status;
+        final cameraStatus = await Permission.camera.status;
         
         if (cameraStatus.isDenied) {
-          // Request permission if it's denied
-          cameraStatus = await Permission.camera.request();
-        }
-        
-        if (cameraStatus.isPermanentlyDenied) {
-          // Show dialog to open app settings if permanently denied
-          showDialog(
-            context: context,
-            builder: (BuildContext context) => AlertDialog(
-              title: Text("Camera Permission Required"),
-              content: Text(
-                "Camera permission is needed to take photos. Please enable it in your device settings.",
-              ),
-              actions: [
-                TextButton(
-                  child: Text("Cancel"),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                TextButton(
-                  child: Text("Open Settings"),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    openAppSettings();
-                  },
-                ),
-              ],
-            ),
-          );
-          return;
-        }
-        
-        if (!cameraStatus.isGranted) {
+          final result = await Permission.camera.request();
+          if (result.isDenied) {
+            setState(() {
+              _isProcessingImage = false;
+              _validationStatus = ValidationStatus.error;
+              _validationMessage = 'Camera permission denied';
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Row(
-                  children: [
-                    Icon(Icons.settings, color: Colors.white),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Camera permission is required to take photos',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.orange.shade600,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: EdgeInsets.all(16),
-                duration: Duration(seconds: 5),
-                action: SnackBarAction(
-                  label: 'Settings',
-                  textColor: Colors.white,
-                  backgroundColor: Colors.orange.shade800,
-                  onPressed: openAppSettings,
-                ),
+                content: Text('Camera permission is required to take photos'),
+                backgroundColor: Colors.red,
               ),
             );
+            return;
+          }
+        } else if (cameraStatus.isPermanentlyDenied) {
+          setState(() {
+            _isProcessingImage = false;
+            _validationStatus = ValidationStatus.error;
+            _validationMessage = 'Camera permission permanently denied';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please enable camera permission in settings'),
+              backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: 'Settings',
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
           return;
         }
       }
       
-      // If we got here, permission is granted or we're using gallery
-      final pickedFile = await picker.pickImage(source: source);
+      // Configure image picker settings for better quality
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: source == ImageSource.camera ? 90 : 85,
+        maxWidth: source == ImageSource.camera ? 1920 : 1600,
+        maxHeight: source == ImageSource.camera ? 1920 : 1600,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+      
       if (pickedFile != null) {
-        // Show loading state while processing the image
         setState(() {
-          _validationMessage = "Processing image...";
           _validationStatus = ValidationStatus.processing;
+          _validationMessage = 'Validating image...';
         });
-        
-        // Prepare image data based on platform
-        dynamic imageData;
+
+        // Handle image data based on platform
         if (kIsWeb) {
-          // Handle web platform
           final bytes = await pickedFile.readAsBytes();
-          imageData = bytes;
           setState(() {
             _webImage = bytes;
-            tipData['image'] = base64Encode(bytes); // Store as base64 for web
+            _imageFile = null;
           });
+          
+          // Validate image with Google Vision API
+          await _validateImageWithVision(bytes);
+          
         } else {
-          // Handle mobile platforms
           final file = File(pickedFile.path);
-          imageData = file;
           setState(() {
             _imageFile = file;
-            tipData['image'] = pickedFile.path;
+            _webImage = null;
           });
+          
+          // Validate image with Google Vision API
+          await _validateImageWithVision(file);
         }
         
-        // Immediately validate the image with enhanced Google Vision
-        try {
-          final TipService tipService = TipService();
-          Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(imageData);
-          
-          print('Enhanced validation result: $validationResult');
-          
-          if (!validationResult['isValid']) {
-            setState(() {
-              _validationMessage = 'Error validating image: ${validationResult['message']}';
-              _validationStatus = ValidationStatus.error;
-            });
-          } else if (!validationResult['containsHuman']) {
-            // If no human is detected, clear the image and show detailed notification
-            setState(() {
-              _imageFile = null;
-              _webImage = null;
-              tipData['image'] = '';
-              _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been automatically removed.';
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-              _validationStatus = ValidationStatus.noHuman;
-            });
-            
-            // Show a detailed snackbar notification with more information
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.person_off, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Image removed - no clear person detected',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (validationResult['details'] != null && 
-                        validationResult['details']['detectedFeatures'].isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8, left: 32),
-                        child: Text(
-                          'Weak features found: ${validationResult['details']['detectedFeatures'].take(2).join(', ')}',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                      ),
-                  ],
-                ),
-                backgroundColor: Colors.orange.shade600,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: EdgeInsets.all(16),
-                duration: Duration(seconds: 6),
-              ),
-            );
-          } else {
-            // Human detected - keep the image and show detailed confirmation
-            setState(() {
-              String detailMessage = validationResult['message'] ?? 'Person clearly detected in image!';
-              _validationMessage = detailMessage;
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-              _validationStatus = ValidationStatus.humanDetected;
-            });
-            
-            // Show a success snackbar with detected features
-            List<String> detectedFeatures = [];
-            if (validationResult['details'] != null && 
-                validationResult['details']['detectedFeatures'] != null) {
-              detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
-            }
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Person detected! (${_validationConfidence}% confidence)',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (detectedFeatures.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8, left: 32),
-                        child: Text(
-                          'Features: ${detectedFeatures.take(3).join(', ')}',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                      ),
-                  ],
-                ),
-                backgroundColor: Colors.green.shade600,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: EdgeInsets.all(16),
-                duration: Duration(seconds: 5),
-              ),
-            );
-          }
-        } catch (e) {
-          print('Error during enhanced image validation: $e');
-          setState(() {
-            _validationMessage = 'Image validation error: ${e.toString()}';
-            _validationStatus = ValidationStatus.warning;
-          });
-          
-          // Show error snackbar
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.warning, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Image validation failed, but image was saved',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.amber.shade600,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: EdgeInsets.all(16),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
+        // Update tip data
+        tipData['image'] = pickedFile.path;
         
         // Scroll to validation section to show results
         _scrollToValidationSection();
+        
+      } else {
+        setState(() {
+          _isProcessingImage = false;
+          _validationStatus = ValidationStatus.none;
+          _validationMessage = '';
+        });
       }
     } catch (e) {
       print('Error picking image: $e');
+      setState(() {
+        _isProcessingImage = false;
+        _validationStatus = ValidationStatus.error;
+        _validationMessage = 'Error selecting image: ${e.toString()}';
+      });
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.camera_alt, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Error accessing camera: ${e.toString()}',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          margin: EdgeInsets.all(16),
-          duration: Duration(seconds: 4),
+          content: Text('Error selecting image. Please try again.'),
+          backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      setState(() {
+        _isProcessingImage = false;
+      });
     }
   }
+
+  // Validate image using Google Vision API (adapted from IRFService)
+  Future<void> _validateImageWithVision(dynamic imageData) async {
+    try {
+      setState(() {
+        _validationStatus = ValidationStatus.processing;
+        _validationMessage = 'Analyzing image for person detection...';
+      });
+
+      // Use TipService to validate image (it should have similar method to IRFService)
+      final result = await _tipService.validateImageWithGoogleVision(imageData);
+      
+      final bool containsHuman = result['containsHuman'] ?? false;
+      final double confidence = result['confidence'] ?? 0.0;
+      final String message = result['message'] ?? 'Validation completed';
+      
+      setState(() {
+        _validationConfidence = (confidence * 100).toStringAsFixed(1);
+        _validationMessage = message;
+        
+        if (!result['isValid']) {
+          _validationStatus = ValidationStatus.error;
+          // Clear image on validation error
+          _imageFile = null;
+          _webImage = null;
+          tipData['image'] = '';
+        } else if (!containsHuman) {
+          double confidencePercent = confidence * 100;
+          
+          // Check if confidence is above 50% - keep image but warn user
+          if (confidencePercent > 50.0) {
+            _validationStatus = ValidationStatus.lowConfidenceHuman;
+            // Keep the image but show warning
+          } else {
+            _validationStatus = ValidationStatus.noHuman;
+            // Clear the image for very low confidence
+            _imageFile = null;
+            _webImage = null;
+            tipData['image'] = '';
+          }
+        } else {
+          // Human detected
+          double confidencePercent = confidence * 100;
+          if (confidencePercent >= 85.0) {
+            _validationStatus = ValidationStatus.success;
+          } else if (confidencePercent >= 70.0) {
+            _validationStatus = ValidationStatus.humanDetected;
+          } else if (confidencePercent >= 50.0) {
+            _validationStatus = ValidationStatus.lowConfidenceHuman;
+          } else {
+            _validationStatus = ValidationStatus.warning;
+          }
+        }
+      });
+      
+    } catch (e) {
+      print('Error validating image: $e');
+      setState(() {
+        _validationStatus = ValidationStatus.error;
+        _validationMessage = 'Error analyzing image: ${e.toString()}';
+        _validationConfidence = '0.0';
+      });
+    }
+  }
+
+
 
   /// Submit tip data with validation
   Future<void> _submitTip() async {
@@ -3052,18 +2971,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 ),
               ),
             ),
-          if (_validationStatus == ValidationStatus.humanDetected)
-            Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                "Confidence score: $_validationConfidence%",
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                  color: Colors.black, // Changed text color to black
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -3072,6 +2979,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   // Helper methods for validation UI
   IconData _getValidationIcon() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Icons.info_outline;
       case ValidationStatus.processing:
         return Icons.hourglass_top;
       case ValidationStatus.error:
@@ -3080,17 +2989,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return Icons.warning_amber;
       case ValidationStatus.noHuman:
         return Icons.person_off;
+      case ValidationStatus.lowConfidenceHuman:
+        return Icons.person_outline;
       case ValidationStatus.humanDetected:
         return Icons.person;
       case ValidationStatus.success:
         return Icons.check_circle_outline;
-      default:
-        return Icons.info_outline;
     }
   }
 
   Color _getValidationIconColor() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Colors.grey;
       case ValidationStatus.processing:
         return Colors.blue;
       case ValidationStatus.error:
@@ -3099,17 +3010,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return Colors.orange;
       case ValidationStatus.noHuman:
         return Colors.orange;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.orange;
       case ValidationStatus.humanDetected:
         return Colors.green;
       case ValidationStatus.success:
         return Colors.green;
-      default:
-        return Colors.blue;
     }
   }
 
   Color _getValidationBorderColor() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Colors.grey.shade300;
       case ValidationStatus.processing:
         return Colors.blue.shade300;
       case ValidationStatus.error:
@@ -3118,17 +3031,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return Colors.orange.shade300;
       case ValidationStatus.noHuman:
         return Colors.orange.shade300;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.orange.shade300;
       case ValidationStatus.humanDetected:
         return Colors.green.shade300;
       case ValidationStatus.success:
         return Colors.green.shade300;
-      default:
-        return Colors.grey.shade300;
     }
   }
 
   Color _getValidationBackgroundColor() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Colors.grey.shade50;
       case ValidationStatus.processing:
         return Colors.blue.shade50;
       case ValidationStatus.error:
@@ -3137,17 +3052,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return Colors.orange.shade50;
       case ValidationStatus.noHuman:
         return Colors.orange.shade50;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.orange.shade50;
       case ValidationStatus.humanDetected:
         return Colors.green.shade50;
       case ValidationStatus.success:
         return Colors.green.shade50;
-      default:
-        return Colors.grey.shade50;
     }
   }
 
   String _getValidationTitle() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return "No Image Selected";
       case ValidationStatus.processing:
         return "Processing...";
       case ValidationStatus.error:
@@ -3156,12 +3073,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return "Warning";
       case ValidationStatus.noHuman:
         return "No Person Detected";
+      case ValidationStatus.lowConfidenceHuman:
+        return "Low Confidence Detection";
       case ValidationStatus.humanDetected:
         return "Person Detected";
       case ValidationStatus.success:
         return "Success";
-      default:
-        return "Information";
     }
   }
   /// Check for existing tip for the same person within specified radius (matches SubmitReport.jsx logic)

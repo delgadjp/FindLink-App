@@ -23,6 +23,7 @@ enum ValidationStatus {
   error,
   warning,
   noHuman,
+  lowConfidenceHuman, // Added for confidence 50-70%
   humanDetected,
   success
 }
@@ -1736,54 +1737,106 @@ class FillUpForm extends State<FillUpFormScreen> {
               _webImage = null;
               _selectedImageHash = null;
             } else if (!validationResult['containsHuman']) {
-              _imageFile = null;
-              _webImage = null;
-              _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been removed.';
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-              _validationStatus = ValidationStatus.noHuman;
+              double confidence = (validationResult['confidence'] * 100);
+              _validationConfidence = confidence.toStringAsFixed(1);
               
-              // Show detailed snackbar with detected features
-              List<String> detectedFeatures = [];
-              if (validationResult['details'] != null && 
-                  validationResult['details']['detectedFeatures'] != null) {
-                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
-              }
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.person_off, color: Colors.white),
-                          SizedBox(width: 12),
-                          Expanded(
+              // Check if confidence is above 50% - keep image but warn user
+              if (confidence > 50.0) {
+                _validationMessage = validationResult['message'] ?? 'Low confidence detection. Consider a clearer image.';
+                _validationStatus = ValidationStatus.lowConfidenceHuman;
+                
+                // Show warning snackbar encouraging reupload
+                List<String> detectedFeatures = [];
+                if (validationResult['details'] != null && 
+                    validationResult['details']['detectedFeatures'] != null) {
+                  detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                }
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.warning_amber, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Low confidence (${_validationConfidence}%). Consider a clearer image.',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (detectedFeatures.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(top: 8, left: 32),
                             child: Text(
-                              'Image removed - no reliable human detection (${_validationConfidence}% confidence)',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                              'Features found: ${detectedFeatures.take(2).join(', ')}',
+                              style: TextStyle(fontSize: 12, color: Colors.white70),
                             ),
                           ),
-                        ],
-                      ),
-                      if (detectedFeatures.isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.only(top: 8, left: 32),
-                          child: Text(
-                            'Weak features found: ${detectedFeatures.take(2).join(', ')}',
-                            style: TextStyle(fontSize: 12, color: Colors.white70),
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
+                    backgroundColor: Colors.amber.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    margin: EdgeInsets.all(16),
+                    duration: Duration(seconds: 8),
                   ),
-                  backgroundColor: Colors.orange.shade600,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  margin: EdgeInsets.all(16),
-                  duration: Duration(seconds: 6),
-                ),
-              );
+                );
+              } else {
+                // Confidence is 50% or below - remove image
+                _imageFile = null;
+                _webImage = null;
+                _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been removed.';
+                _validationStatus = ValidationStatus.noHuman;
+                
+                // Show detailed snackbar with detected features
+                List<String> detectedFeatures = [];
+                if (validationResult['details'] != null && 
+                    validationResult['details']['detectedFeatures'] != null) {
+                  detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                }
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.person_off, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Image removed - no reliable human detection (${_validationConfidence}% confidence)',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (detectedFeatures.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(top: 8, left: 32),
+                            child: Text(
+                              'Weak features found: ${detectedFeatures.take(2).join(', ')}',
+                              style: TextStyle(fontSize: 12, color: Colors.white70),
+                            ),
+                          ),
+                      ],
+                    ),
+                    backgroundColor: Colors.orange.shade600,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    margin: EdgeInsets.all(16),
+                    duration: Duration(seconds: 6),
+                  ),
+                );
+              }
             } else {
               _validationMessage = validationResult['message'] ?? 'Person detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
@@ -1892,6 +1945,8 @@ class FillUpForm extends State<FillUpFormScreen> {
       case ValidationStatus.humanDetected:
       case ValidationStatus.success:
         return Colors.green;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.amber.shade700;
       case ValidationStatus.noHuman:
         return Colors.orange;
       case ValidationStatus.error:
@@ -1910,6 +1965,8 @@ class FillUpForm extends State<FillUpFormScreen> {
       case ValidationStatus.humanDetected:
       case ValidationStatus.success:
         return Icons.check_circle;
+      case ValidationStatus.lowConfidenceHuman:
+        return Icons.warning_amber;
       case ValidationStatus.noHuman:
         return Icons.warning;
       case ValidationStatus.error:
@@ -1927,6 +1984,8 @@ class FillUpForm extends State<FillUpFormScreen> {
         return 'Validating image...';
       case ValidationStatus.humanDetected:
         return 'Person detected ($_validationConfidence% confidence)';
+      case ValidationStatus.lowConfidenceHuman:
+        return 'Low confidence ($_validationConfidence%). Consider clearer image.';
       case ValidationStatus.success:
         return 'Image validated successfully';
       case ValidationStatus.noHuman:

@@ -73,6 +73,12 @@ service cloud.firestore {
       // Allow read, update, delete if user is authenticated and owns the document
       allow read, update, delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
+        
+      // Allow queries/list operations for authenticated users
+      allow list: if request.auth != null;
+      
+      // Allow get operations for authenticated users (for document existence checks)
+      allow get: if request.auth != null;
     }
 
     // Sequences: authenticated users only

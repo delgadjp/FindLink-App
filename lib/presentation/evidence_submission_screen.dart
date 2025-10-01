@@ -32,6 +32,10 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   ValidationStatus _validationStatus = ValidationStatus.none;
   String _validationMessage = '';
   String _validationConfidence = '0.0';
+  bool _isProcessingImage = false;
+  
+  // Service for image validation (reuse TipService for consistency)
+  final TipService _tipService = TipService();
   final GlobalKey _validationSectionKey = GlobalKey();
   
   // Global keys for auto-scrolling to error fields
@@ -202,26 +206,42 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
           if (_selectedImages.length + validImages.length < 5) {
             final file = File(image.path);
             
-            // Validate each image with enhanced OCR
+            // Validate each image with enhanced logic from fill up form
             try {
-              final TipService tipService = TipService();
-              Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(file);
+              Map<String, dynamic> validationResult = await _tipService.validateImageWithGoogleVision(file);
               
               print('Enhanced validation result for image: $validationResult');
               
               if (!validationResult['isValid']) {
                 rejectedReasons.add('Validation error: ${validationResult['message']}');
               } else if (!validationResult['containsHuman']) {
-                // Enhanced rejection feedback with details
-                String reason = 'No person detected';
-                if (validationResult['details'] != null && 
-                    validationResult['details']['detectedFeatures'] != null &&
-                    validationResult['details']['detectedFeatures'].isNotEmpty) {
-                  List<String> features = List<String>.from(validationResult['details']['detectedFeatures']);
-                  reason += ' (weak features: ${features.take(2).join(', ')})';
+                double confidence = (validationResult['confidence'] * 100);
+                
+                // Check if confidence is above 50% - keep image but warn user (similar to fill up form)
+                if (confidence > 50.0) {
+                  validImages.add(file);
+                  // Add to validation message that this was low confidence but kept
+                  String reason = 'Low confidence (${confidence.toStringAsFixed(1)}%)';
+                  if (validationResult['details'] != null && 
+                      validationResult['details']['detectedFeatures'] != null &&
+                      validationResult['details']['detectedFeatures'].isNotEmpty) {
+                    List<String> features = List<String>.from(validationResult['details']['detectedFeatures']);
+                    reason += ' - weak features: ${features.take(2).join(', ')}';
+                  }
+                  rejectedReasons.add(reason);
+                } else {
+                  // Confidence is 50% or below - reject image
+                  String reason = 'No person detected (${confidence.toStringAsFixed(1)}% confidence)';
+                  if (validationResult['details'] != null && 
+                      validationResult['details']['detectedFeatures'] != null &&
+                      validationResult['details']['detectedFeatures'].isNotEmpty) {
+                    List<String> features = List<String>.from(validationResult['details']['detectedFeatures']);
+                    reason += ' - weak features: ${features.take(2).join(', ')}';
+                  }
+                  rejectedReasons.add(reason);
                 }
-                rejectedReasons.add(reason);
               } else {
+                // Human detected - add image
                 validImages.add(file);
               }
             } catch (e) {
@@ -253,41 +273,78 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
           _scrollToValidationSection();
         });
 
-        // Show detailed feedback in snackbar
+        // Show detailed feedback in snackbar with enhanced styling
         if (validImages.isNotEmpty && rejectedReasons.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      SizedBox(width: 12),
-                      Expanded(
+              content: Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Mixed Results',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '${validImages.length} image(s) accepted, ${rejectedReasons.length} rejected',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (rejectedReasons.isNotEmpty)
+                      Container(
+                        margin: EdgeInsets.only(top: 12, left: 56),
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Text(
-                          '${validImages.length} image(s) added, ${rejectedReasons.length} rejected',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          'Rejected: ${rejectedReasons.take(2).join(', ')}${rejectedReasons.length > 2 ? '...' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.85),
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                  if (rejectedReasons.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(top: 8, left: 32),
-                      child: Text(
-                        'Rejected: ${rejectedReasons.take(2).join(', ')}',
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-              backgroundColor: Colors.orange.shade600,
+              backgroundColor: Colors.amber.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: EdgeInsets.all(16),
-              duration: Duration(seconds: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              margin: EdgeInsets.all(20),
+              duration: Duration(seconds: 8),
+              elevation: 8,
             ),
           );
         } else if (validImages.isEmpty) {
@@ -295,23 +352,52 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${validImages.length} image(s) with persons detected successfully added',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              content: Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                     ),
-                  ),
-                ],
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Images Validated Successfully!',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '${validImages.length} image(s) with persons detected',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               backgroundColor: Colors.green.shade600,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: EdgeInsets.all(16),
-              duration: Duration(seconds: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              margin: EdgeInsets.all(20),
+              duration: Duration(seconds: 5),
+              elevation: 8,
             ),
           );
         }
@@ -343,165 +429,353 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
         final file = File(image.path);
         
-        // Validate the image with enhanced OCR
+        // Validate the image with enhanced logic from fill up form
         try {
-          final TipService tipService = TipService();
-          Map<String, dynamic> validationResult = await tipService.validateImageWithGoogleVision(file);
+          setState(() {
+            _isProcessingImage = true;
+          });
+
+          Map<String, dynamic> validationResult = await _tipService.validateImageWithGoogleVision(file);
           
           print('Enhanced camera validation result: $validationResult');
           
-          if (!validationResult['isValid']) {
-            setState(() {
-              _validationStatus = ValidationStatus.error;
+          setState(() {
+            if (!validationResult['isValid']) {
               _validationMessage = 'Error validating image: ${validationResult['message']}';
-            });
-            _showErrorSnackBar('Error validating image: ${validationResult['message']}');
-          } else if (!validationResult['containsHuman']) {
-            // Enhanced rejection feedback with detected features
-            String detailMessage = validationResult['message'] ?? 'No person detected in the image. Please take another photo.';
-            
-            setState(() {
-              _validationStatus = ValidationStatus.noHuman;
-              _validationMessage = detailMessage;
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-            });
-            
-            // Scroll to validation section to show results
-            Future.delayed(Duration(milliseconds: 100), () {
-              _scrollToValidationSection();
-            });
-            
-            // Show detailed rejection snackbar
-            List<String> detectedFeatures = [];
-            if (validationResult['details'] != null && 
-                validationResult['details']['detectedFeatures'] != null) {
-              detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
-            }
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.person_off, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Image rejected - no person detected (${_validationConfidence}% confidence)',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              _validationStatus = ValidationStatus.error;
+            } else if (!validationResult['containsHuman']) {
+              double confidence = (validationResult['confidence'] * 100);
+              _validationConfidence = confidence.toStringAsFixed(1);
+              
+              // Check if confidence is above 50% - keep image but warn user
+              if (confidence > 50.0) {
+                _validationMessage = validationResult['message'] ?? 'Low confidence detection. Consider a clearer image.';
+                _validationStatus = ValidationStatus.lowConfidenceHuman;
+                
+                // Keep the image
+                _selectedImages.add(file);
+                
+                // Show warning snackbar encouraging reupload
+                List<String> detectedFeatures = [];
+                if (validationResult['details'] != null && 
+                    validationResult['details']['detectedFeatures'] != null) {
+                  detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                }
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Low Confidence Detection',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Consider retaking with better lighting (${_validationConfidence}% confidence)',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    if (detectedFeatures.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8, left: 32),
-                        child: Text(
-                          'Weak features found: ${detectedFeatures.take(2).join(', ')}',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
+                          if (detectedFeatures.isNotEmpty)
+                            Container(
+                              margin: EdgeInsets.only(top: 12, left: 56),
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Features found: ${detectedFeatures.take(2).join(', ')}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.85),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-                backgroundColor: Colors.orange.shade600,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: EdgeInsets.all(16),
-                duration: Duration(seconds: 6),
-              ),
-            );
-          } else {
-            // Person detected - add image and show detailed success
-            setState(() {
-              _selectedImages.add(file);
-              _validationStatus = ValidationStatus.humanDetected;
+                    ),
+                    backgroundColor: Colors.amber.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    margin: EdgeInsets.all(20),
+                    duration: Duration(seconds: 10),
+                    elevation: 8,
+                  ),
+                );
+              } else {
+                // Confidence is 50% or below - remove image
+                _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been removed.';
+                _validationStatus = ValidationStatus.noHuman;
+                
+                // Show detailed snackbar with detected features
+                List<String> detectedFeatures = [];
+                if (validationResult['details'] != null && 
+                    validationResult['details']['detectedFeatures'] != null) {
+                  detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                }
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(Icons.person_off_rounded, color: Colors.white, size: 20),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Image Rejected',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'No reliable person detected (${_validationConfidence}% confidence)',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (detectedFeatures.isNotEmpty)
+                            Container(
+                              margin: EdgeInsets.only(top: 12, left: 56),
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Weak features: ${detectedFeatures.take(2).join(', ')}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.85),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    backgroundColor: Colors.orange.shade600,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    margin: EdgeInsets.all(20),
+                    duration: Duration(seconds: 8),
+                    elevation: 8,
+                  ),
+                );
+              }
+            } else {
               _validationMessage = validationResult['message'] ?? 'Person detected in image!';
               _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
-            });
-            
-            // Scroll to validation section to show results
-            Future.delayed(Duration(milliseconds: 100), () {
-              _scrollToValidationSection();
-            });
-            
-            // Show detailed success snackbar
-            List<String> detectedFeatures = [];
-            if (validationResult['details'] != null && 
-                validationResult['details']['detectedFeatures'] != null) {
-              detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
-            }
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              _validationStatus = ValidationStatus.humanDetected;
+              
+              // Keep the image
+              _selectedImages.add(file);
+              
+              // Show detailed success snackbar with detected features
+              List<String> detectedFeatures = [];
+              if (validationResult['details'] != null && 
+                  validationResult['details']['detectedFeatures'] != null) {
+                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+              }
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Container(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Person detected! (${_validationConfidence}% confidence)',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Validation Successful!',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Person detected with ${_validationConfidence}% confidence',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                        if (detectedFeatures.isNotEmpty)
+                          Container(
+                            margin: EdgeInsets.only(top: 12, left: 56),
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Features detected: ${detectedFeatures.take(3).join(', ')}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.85),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                    if (detectedFeatures.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8, left: 32),
-                        child: Text(
-                          'Features: ${detectedFeatures.take(3).join(', ')}',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                      ),
-                  ],
+                  ),
+                  backgroundColor: Colors.green.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  margin: EdgeInsets.all(20),
+                  duration: Duration(seconds: 6),
+                  elevation: 8,
                 ),
-                backgroundColor: Colors.green.shade600,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: EdgeInsets.all(16),
-                duration: Duration(seconds: 5),
-              ),
-            );
-          }
-        } catch (e) {
-          print('Error validating image: $e');
-          setState(() {
-            _validationStatus = ValidationStatus.warning;
-            _validationMessage = 'Image validation error: ${e.toString()}';
+              );
+            }
           });
-          // Still add the image if validation fails with a warning
+          
+          // Scroll to validation section to show results
+          Future.delayed(Duration(milliseconds: 100), () {
+            _scrollToValidationSection();
+          });
+          
+        } catch (e) {
           setState(() {
+            _validationMessage = 'Image validation error: ${e.toString()}';
+            _validationStatus = ValidationStatus.warning;
+            // Still add the image if validation fails with a warning
             _selectedImages.add(file);
           });
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.warning, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Image validation failed, but image was saved',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              content: Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(Icons.warning_rounded, color: Colors.white, size: 20),
                     ),
-                  ),
-                ],
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Validation Warning',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Validation failed, but image was saved',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               backgroundColor: Colors.amber.shade600,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: EdgeInsets.all(16),
-              duration: Duration(seconds: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              margin: EdgeInsets.all(20),
+              duration: Duration(seconds: 5),
+              elevation: 8,
             ),
           );
+        } finally {
+          setState(() {
+            _isProcessingImage = false;
+          });
         }
       }
     } catch (e) {
@@ -715,9 +989,52 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+        content: Container(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(Icons.error_rounded, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Error',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.red.shade600,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: EdgeInsets.all(20),
+        duration: Duration(seconds: 6),
+        elevation: 8,
       ),
     );
   }
@@ -725,9 +1042,52 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
+        content: Container(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Success',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: EdgeInsets.all(20),
+        duration: Duration(seconds: 5),
+        elevation: 8,
       ),
     );
   }
@@ -787,18 +1147,6 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                 ),
               ),
             ),
-          if (_validationStatus == ValidationStatus.humanDetected && _validationConfidence.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                "Confidence score: $_validationConfidence%",
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                  color: Colors.black,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -807,6 +1155,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   // Helper methods for validation UI
   IconData _getValidationIcon() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Icons.info_outline;
       case ValidationStatus.processing:
         return Icons.hourglass_top;
       case ValidationStatus.error:
@@ -815,17 +1165,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         return Icons.warning_amber;
       case ValidationStatus.noHuman:
         return Icons.person_off;
+      case ValidationStatus.lowConfidenceHuman:
+        return Icons.person_outline;
       case ValidationStatus.humanDetected:
         return Icons.person;
       case ValidationStatus.success:
         return Icons.check_circle_outline;
-      default:
-        return Icons.info_outline;
     }
   }
 
   Color _getValidationIconColor() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Colors.grey;
       case ValidationStatus.processing:
         return Colors.blue;
       case ValidationStatus.error:
@@ -834,17 +1186,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         return Colors.orange;
       case ValidationStatus.noHuman:
         return Colors.orange;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.orange;
       case ValidationStatus.humanDetected:
         return Colors.green;
       case ValidationStatus.success:
         return Colors.green;
-      default:
-        return Colors.blue;
     }
   }
 
   Color _getValidationBorderColor() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Colors.grey.shade300;
       case ValidationStatus.processing:
         return Colors.blue.shade300;
       case ValidationStatus.error:
@@ -853,17 +1207,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         return Colors.orange.shade300;
       case ValidationStatus.noHuman:
         return Colors.orange.shade300;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.orange.shade300;
       case ValidationStatus.humanDetected:
         return Colors.green.shade300;
       case ValidationStatus.success:
         return Colors.green.shade300;
-      default:
-        return Colors.grey.shade300;
     }
   }
 
   Color _getValidationBackgroundColor() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return Colors.grey.shade50;
       case ValidationStatus.processing:
         return Colors.blue.shade50;
       case ValidationStatus.error:
@@ -872,17 +1228,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         return Colors.orange.shade50;
       case ValidationStatus.noHuman:
         return Colors.orange.shade50;
+      case ValidationStatus.lowConfidenceHuman:
+        return Colors.orange.shade50;
       case ValidationStatus.humanDetected:
         return Colors.green.shade50;
       case ValidationStatus.success:
         return Colors.green.shade50;
-      default:
-        return Colors.grey.shade50;
     }
   }
 
   String _getValidationTitle() {
     switch (_validationStatus) {
+      case ValidationStatus.none:
+        return "No Image Selected";
       case ValidationStatus.processing:
         return "Processing...";
       case ValidationStatus.error:
@@ -891,12 +1249,12 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         return "Warning";
       case ValidationStatus.noHuman:
         return "No Person Detected";
+      case ValidationStatus.lowConfidenceHuman:
+        return "Low Confidence Detection";
       case ValidationStatus.humanDetected:
         return "Person Detected";
       case ValidationStatus.success:
         return "Success";
-      default:
-        return "Information";
     }
   }
 

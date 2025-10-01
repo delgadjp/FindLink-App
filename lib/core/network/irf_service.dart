@@ -27,6 +27,85 @@ class IRFService {
     'Resolved Case',
     'Unresolved Case',
   ];
+
+  // Helper to build organized document IDs for saved reporting person data
+  String _generateSavedReportingPersonDocId(
+    String userId, {
+    String? firstName,
+    DateTime? referenceDate,
+  }) {
+    final dateStr = DateFormat('yyyyMMdd').format(referenceDate ?? DateTime.now());
+    final sanitizedFirstName = (firstName ?? '')
+        .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+        .toUpperCase();
+
+    if (sanitizedFirstName.isNotEmpty) {
+      return 'SRPD-$dateStr-$sanitizedFirstName';
+    }
+
+    final sanitizedUser = userId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    final normalized = sanitizedUser.isNotEmpty ? sanitizedUser : 'USER';
+    final suffix = normalized.length >= 6
+        ? normalized.substring(0, 6)
+        : normalized.padRight(6, '0');
+    return 'SRPD-$dateStr-$suffix';
+  }
+
+  // Fetch the saved reporting person document for the current user, if any
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _getSavedReportingPersonDocSnapshot() async {
+    if (currentUserId == null) return null;
+
+    final query = await _firestore
+        .collection('savedReportingPersonData')
+        .where('userId', isEqualTo: currentUserId)
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      return query.docs.first;
+    }
+
+    return null;
+  }
+
+  Future<String> _resolveSavedReportingPersonDocId(
+    CollectionReference<Map<String, dynamic>> collection,
+    String desiredDocId,
+    String userId, {
+    String? existingDocId,
+  }) async {
+    if (existingDocId == desiredDocId) {
+      return desiredDocId;
+    }
+
+    final desiredSnapshot = await collection.doc(desiredDocId).get();
+    if (!desiredSnapshot.exists) {
+      return desiredDocId;
+    }
+
+    final desiredData = desiredSnapshot.data();
+    if (desiredData != null && desiredData['userId'] == userId) {
+      return desiredDocId;
+    }
+
+    final sanitizedUser = userId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    final shortUser = sanitizedUser.length >= 6
+        ? sanitizedUser.substring(0, 6)
+        : sanitizedUser.padRight(6, '0');
+    final candidate = '$desiredDocId-$shortUser';
+
+    if (candidate == existingDocId) {
+      return candidate;
+    }
+
+    final candidateSnapshot = await collection.doc(candidate).get();
+    if (!candidateSnapshot.exists) {
+      return candidate;
+    }
+
+    final fallbackSuffix = DateFormat('HHmmss').format(DateTime.now());
+    return '$desiredDocId-$fallbackSuffix';
+  }
   // Add helper method to upload image to Firebase Storage
   Future<String?> uploadImage(dynamic imageData, String irfId) async {
     try {
@@ -787,22 +866,78 @@ class IRFService {
         return false;
       }
 
-      // Use user-specific document ID since each user should only have one saved data
-      String userDocId = 'user_${currentUserId}';
+      final collection = _firestore.collection('savedReportingPersonData');
+      final existingSnapshot = await _getSavedReportingPersonDocSnapshot();
+      final existingData = existingSnapshot?.data();
+      Map<String, dynamic>? existingReportingData;
+      if (existingData != null) {
+        final rpData = existingData['reportingPersonData'];
+        if (rpData is Map<String, dynamic>) {
+          existingReportingData = Map<String, dynamic>.from(rpData);
+        }
+      }
 
-      // Create a document in savedReportingPersonData collection with user-specific ID
-      await _firestore
-          .collection('savedReportingPersonData')
-          .doc(userDocId)
-          .set({
+      final savedAtField = existingData?['savedAt'];
+      DateTime? savedAtDate;
+      if (savedAtField is Timestamp) {
+        savedAtDate = savedAtField.toDate();
+      } else if (savedAtField is DateTime) {
+        savedAtDate = savedAtField;
+      }
+
+      final targetFirstName = (reportingPersonData['firstName'] ?? existingReportingData?['firstName'])?.toString();
+      final desiredDocId = _generateSavedReportingPersonDocId(
+        currentUserId!,
+        firstName: targetFirstName,
+        referenceDate: savedAtDate,
+      );
+
+      final resolvedDocId = await _resolveSavedReportingPersonDocId(
+        collection,
+        desiredDocId,
+        currentUserId!,
+        existingDocId: existingSnapshot?.id,
+      );
+
+      if (existingSnapshot != null && existingSnapshot.id != resolvedDocId) {
+        final newDocRef = collection.doc(resolvedDocId);
+        await newDocRef.set({
+          'userId': currentUserId,
+          'documentId': resolvedDocId,
+          'reportingPersonData': reportingPersonData,
+          'savedAt': savedAtField ?? FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        await existingSnapshot.reference.delete();
+        print('Migrated saved reporting person data for user: $currentUserId from ${existingSnapshot.id} to $resolvedDocId');
+        return true;
+      }
+
+      DocumentReference<Map<String, dynamic>> targetDocRef;
+      bool isNewDoc = false;
+
+      if (existingSnapshot == null) {
+        targetDocRef = collection.doc(resolvedDocId);
+        isNewDoc = true;
+      } else {
+        targetDocRef = existingSnapshot.reference;
+      }
+
+      final Map<String, dynamic> payload = {
         'userId': currentUserId,
-        'documentId': userDocId,
+        'documentId': targetDocRef.id,
         'reportingPersonData': reportingPersonData,
-        'savedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
 
-      print('Successfully saved reporting person data for user: $currentUserId with ID: $userDocId');
+      if (isNewDoc) {
+        payload['savedAt'] = FieldValue.serverTimestamp();
+        await targetDocRef.set(payload);
+        print('Successfully saved reporting person data for user: $currentUserId with ID: ${targetDocRef.id}');
+      } else {
+        await targetDocRef.update(payload);
+        print('Successfully updated existing reporting person data for user: $currentUserId with ID: ${targetDocRef.id}');
+      }
       return true;
     } catch (e) {
       print('Error saving reporting person data: $e');
@@ -818,17 +953,11 @@ class IRFService {
         return null;
       }
 
-      // Use user-specific document ID
-      String userDocId = 'user_${currentUserId}';
-      
-      final DocumentSnapshot doc = await _firestore
-          .collection('savedReportingPersonData')
-          .doc(userDocId)
-          .get();
+      final existingSnapshot = await _getSavedReportingPersonDocSnapshot();
 
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        return data['reportingPersonData'] as Map<String, dynamic>?;
+      if (existingSnapshot != null) {
+        final data = existingSnapshot.data();
+        return data?['reportingPersonData'] as Map<String, dynamic>?;
       }
 
       return null;
@@ -843,15 +972,9 @@ class IRFService {
     try {
       if (currentUserId == null) return false;
 
-      // Use user-specific document ID
-      String userDocId = 'user_${currentUserId}';
-      
-      final DocumentSnapshot doc = await _firestore
-          .collection('savedReportingPersonData')
-          .doc(userDocId)
-          .get();
+      final existingSnapshot = await _getSavedReportingPersonDocSnapshot();
 
-      return doc.exists;
+      return existingSnapshot != null;
     } catch (e) {
       print('Error checking for saved reporting person data: $e');
       return false;
@@ -866,25 +989,16 @@ class IRFService {
         return false;
       }
 
-      // Use user-specific document ID
-      String userDocId = 'user_${currentUserId}';
-      
-      final DocumentSnapshot doc = await _firestore
-          .collection('savedReportingPersonData')
-          .doc(userDocId)
-          .get();
+      final existingSnapshot = await _getSavedReportingPersonDocSnapshot();
 
-      if (doc.exists) {
-        await _firestore
-            .collection('savedReportingPersonData')
-            .doc(userDocId)
-            .delete();
+      if (existingSnapshot != null) {
+        await existingSnapshot.reference.delete();
         print('Successfully cleared saved reporting person data for user: $currentUserId');
         return true;
-      } else {
-        print('No saved reporting person data found for user: $currentUserId');
-        return false;
       }
+
+      print('No saved reporting person data found for user: $currentUserId');
+      return false;
     } catch (e) {
       print('Error clearing saved reporting person data: $e');
       return false;
@@ -893,37 +1007,6 @@ class IRFService {
 
   // Update existing saved reporting person data
   Future<bool> updateSavedReportingPersonData(Map<String, dynamic> reportingPersonData) async {
-    try {
-      if (currentUserId == null) {
-        print('Error: User not authenticated');
-        return false;
-      }
-
-      // Use user-specific document ID
-      String userDocId = 'user_${currentUserId}';
-      
-      final DocumentSnapshot doc = await _firestore
-          .collection('savedReportingPersonData')
-          .doc(userDocId)
-          .get();
-
-      if (doc.exists) {
-        await _firestore
-            .collection('savedReportingPersonData')
-            .doc(userDocId)
-            .update({
-          'reportingPersonData': reportingPersonData,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        print('Successfully updated saved reporting person data for user: $currentUserId');
-        return true;
-      } else {
-        // If no existing document, create a new one
-        return await saveReportingPersonData(reportingPersonData);
-      }
-    } catch (e) {
-      print('Error updating saved reporting person data: $e');
-      return false;
-    }
+    return await saveReportingPersonData(reportingPersonData);
   }
 }
