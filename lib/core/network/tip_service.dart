@@ -15,7 +15,7 @@ class TipService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   
   // Google Vision API key
-  final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
+  final String _visionApiKey = 'AIzaSyDLPJt6WudzkFbNa77p6hsqirAXEXU52OQ';
 
   // Generate a formal document ID format: REPORT-YYYYMMDD-XXXX (where XXXX is sequential starting at 0001)
   Future<String> generateFormalReportId() async {

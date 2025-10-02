@@ -1,37 +1,37 @@
 {
   "project_info": {
-    "project_number": "152637585017",
-    "project_id": "missing-person-cap",
-    "storage_bucket": "missing-person-cap.firebasestorage.app"
+    "project_number": "677216091931",
+    "project_id": "missingperson-345a8",
+    "storage_bucket": "missingperson-345a8.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:152637585017:android:74e225bfa99f64353386a8",
+        "mobilesdk_app_id": "1:677216091931:android:b29e2f38e3f61359525dbe",
         "android_client_info": {
           "package_name": "com.example.findlink"
         }
       },
       "oauth_client": [
         {
-          "client_id": "152637585017-spnfkp9n7ubtl9nb9plcv7descc30507.apps.googleusercontent.com",
+          "client_id": "677216091931-v2b8lsqbigdb3j66t3op2l49tv331616.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCOEjzw3xPeciieI8-u2B1SZIDFGnsl2Xo"
+          "current_key": "AIzaSyCSgZdfTtAzH9sgyp5kpcxAq1BXflMryqU"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "152637585017-spnfkp9n7ubtl9nb9plcv7descc30507.apps.googleusercontent.com",
+              "client_id": "677216091931-v2b8lsqbigdb3j66t3op2l49tv331616.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "152637585017-3knoqmn9oec9sh7e1l4f3tip6tsv2nbk.apps.googleusercontent.com",
+              "client_id": "677216091931-nj3n1k5hf7o79r6s0p7o1h3evnreq9q7.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.example.findlink"

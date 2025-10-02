@@ -159,7 +159,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   List<Map<String, dynamic>> _searchResults = [];
-  static const String API_KEY = "AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0";
+  static const String API_KEY = "AIzaSyDLPJt6WudzkFbNa77p6hsqirAXEXU52OQ";
 
   static const String SCREEN_SUBMIT_TIP_COMPLIANCE = 'submitTipComplianceAccepted';
 

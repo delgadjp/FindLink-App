@@ -16,7 +16,7 @@ class IRFService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   
   // Google Vision API key - use the same one as in TipService
-  final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
+  final String _visionApiKey = 'AIzaSyDLPJt6WudzkFbNa77p6hsqirAXEXU52OQ';
 
   // Status step definitions from React reference
   final List<String> statusSteps = [

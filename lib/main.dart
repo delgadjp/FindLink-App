@@ -8,13 +8,13 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
         options: FirebaseOptions(
-            apiKey: "AIzaSyBtAa6znwld6hJdlBdDEPhqkECzuuyzzo8",
-            authDomain: "missing-person-cap.firebaseapp.com",
-            projectId: "missing-person-cap",
-            storageBucket: "missing-person-cap.firebasestorage.app",
-            messagingSenderId: "152637585017",
-            appId: "1:152637585017:web:ec43d14d9b3224963386a8",
-            measurementId: "G-KW3Q9T21GY"));
+            apiKey: "AIzaSyCJgw142ugimVb30QUotOqYe_RYmzXgXMg",
+            authDomain: "missingperson-345a8.firebaseapp.com",
+            projectId: "missingperson-345a8",
+            storageBucket: "missingperson-345a8.firebasestorage.app",
+            messagingSenderId: "677216091931",
+            appId: "1:677216091931:web:d0e23fbc10667039525dbe",
+            measurementId: "G-56J5GH3P7K"));
   } else {
     await Firebase.initializeApp();
   }

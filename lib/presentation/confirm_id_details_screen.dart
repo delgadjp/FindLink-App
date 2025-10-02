@@ -34,7 +34,7 @@ class _ConfirmIDDetailsScreenState extends State<ConfirmIDDetailsScreen> {
   bool _showRetryOption = false; // Flag to show retry option when validation fails
 
   // Google Vision API key from TipService
-  final String _visionApiKey = 'AIzaSyBpeXXTgrLeT9PuUT-8H-AXPTW6sWlnys0';
+  final String _visionApiKey = 'AIzaSyDLPJt6WudzkFbNa77p6hsqirAXEXU52OQ';
     // Data extracted from ID via OCR
   Map<String, dynamic> extractedData = {
     'firstName': '',
