@@ -1,6 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/core/app_export.dart';
 
+/// Result class for trusted contact operations
+class TrustedContactResult {
+  final bool success;
+  final String? errorMessage;
+  
+  TrustedContactResult({required this.success, this.errorMessage});
+}
+
 class TrustedContactsService {
   static final TrustedContactsService _instance = TrustedContactsService._internal();
   factory TrustedContactsService() => _instance;
@@ -44,7 +52,116 @@ class TrustedContactsService {
     }
   }
 
-  /// Add a trusted contact
+  /// Add a trusted contact - returns a result with success status and error message
+  Future<TrustedContactResult> addTrustedContactWithValidation({
+    required String name,
+    required String email,
+    required String phone,
+    required String relationship,
+    bool canAccessLocation = false,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        return TrustedContactResult(success: false, errorMessage: 'User not authenticated');
+      }
+
+      // Find current user for validation (we still need to ensure user exists)
+      final currentUserQuery = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      
+      if (currentUserQuery.docs.isEmpty) {
+        print('Current user document not found');
+        return TrustedContactResult(success: false, errorMessage: 'Current user not found in database');
+      }
+
+      // Check if contact user exists and get their userId (auth UID)
+      final contactUserQuery = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email.toLowerCase())
+          .get();
+
+      String contactUserId = '';
+      if (contactUserQuery.docs.isNotEmpty) {
+        final contactData = contactUserQuery.docs.first.data();
+        contactUserId = contactData['userId'] ?? ''; // Get the auth UID from userId field
+        
+        // CRITICAL VALIDATION: Ensure we're not adding current user as their own trusted contact
+        if (contactUserId == user.uid) {
+          print('Error: Cannot add yourself as a trusted contact');
+          return TrustedContactResult(success: false, errorMessage: 'You cannot add yourself as a trusted contact');
+        }
+        
+        print('Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
+      } else {
+        // VALIDATION: Contact user does not exist in Firebase
+        print('Contact user not found for email: $email');
+        return TrustedContactResult(success: false, errorMessage: 'No FindLink user found with this email address. Please ensure the person has a FindLink account.');
+      }
+
+      // Additional validation: Ensure contactUserId is not empty
+      if (contactUserId.isEmpty) {
+        print('Error: Invalid contact user data - missing userId');
+        return TrustedContactResult(success: false, errorMessage: 'Invalid user data found. Please try again.');
+      }
+
+      // Check if this trusted contact already exists
+      final existingContactQuery = await _firestore
+          .collection('findMeTrustedContacts')
+          .where('userId', isEqualTo: user.uid)
+          .where('contactUserId', isEqualTo: contactUserId)
+          .get();
+
+      if (existingContactQuery.docs.isNotEmpty) {
+        return TrustedContactResult(success: false, errorMessage: 'This person is already in your trusted contacts list');
+      }
+
+      // Proceed with adding the contact
+      final contactDocId = await _generateTrustedContactDocumentId(user.uid);
+
+      final trustedContact = TrustedContact(
+        id: contactDocId, // Use the custom document ID
+        userId: user.uid, // Store the auth UID for identification
+        contactUserId: contactUserId,
+        name: name,
+        email: email.toLowerCase(),
+        phone: phone,
+        relationship: relationship,
+        isVerified: true, // Auto-verify since we confirmed user exists
+        canAccessLocation: canAccessLocation,
+        createdAt: DateTime.now(), // This will be converted to Firestore Timestamp
+      );
+
+      // Store in findMeTrustedContacts collection with custom document ID
+      final contactData = trustedContact.toMap();
+      // Override createdAt with server timestamp for consistency
+      contactData['createdAt'] = FieldValue.serverTimestamp();
+      
+      print('Storing trusted contact:');
+      print('  Document ID: $contactDocId');
+      print('  UserId (owner): ${user.uid}');
+      print('  ContactUserId (target): $contactUserId');
+      print('  Name: $name');
+      print('  Email: $email');
+      print('  Can Access Location: $canAccessLocation');
+      
+      await _firestore
+          .collection('findMeTrustedContacts')
+          .doc(contactDocId)
+          .set(contactData);
+
+      print('Trusted contact stored successfully');
+      return TrustedContactResult(success: true, errorMessage: null);
+    } catch (e) {
+      print('Error adding trusted contact: $e');
+      return TrustedContactResult(success: false, errorMessage: 'An error occurred while adding the trusted contact. Please try again.');
+    }
+  }
+
+  /// Add a trusted contact (backward compatibility)
   Future<bool> addTrustedContact({
     required String name,
     required String email,
@@ -87,7 +204,15 @@ class TrustedContactsService {
         
         print('Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
       } else {
+        // VALIDATION: Contact user does not exist in Firebase
         print('Contact user not found for email: $email');
+        return false; // Fail the operation if user doesn't exist
+      }
+
+      // Additional validation: Ensure contactUserId is not empty
+      if (contactUserId.isEmpty) {
+        print('Error: Invalid contact user data - missing userId');
+        return false;
       }
 
       // Generate custom document ID
@@ -101,7 +226,7 @@ class TrustedContactsService {
         email: email.toLowerCase(),
         phone: phone,
         relationship: relationship,
-        isVerified: contactUserId.isNotEmpty, // Auto-verify if user exists
+        isVerified: true, // Auto-verify since we confirmed user exists
         canAccessLocation: canAccessLocation,
         createdAt: DateTime.now(), // This will be converted to Firestore Timestamp
       );

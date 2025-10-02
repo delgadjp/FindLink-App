@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '/core/app_export.dart';
 
+enum SnackBarType { success, error, warning, info }
 
 class FindMeSettingsScreen extends StatefulWidget {
   @override
@@ -206,14 +207,12 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
               _isTracking = trackingStarted;
             });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(trackingStarted 
-                  ? 'FindMe feature enabled successfully!' 
-                  : 'FindMe enabled. Location tracking will start automatically.'),
-                backgroundColor: trackingStarted ? Colors.green : Colors.orange,
-                duration: Duration(seconds: trackingStarted ? 2 : 3),
-              ),
+            _showStyledSnackBar(
+              message: trackingStarted 
+                ? 'FindMe feature enabled successfully!' 
+                : 'FindMe enabled. Location tracking will start automatically.',
+              type: trackingStarted ? SnackBarType.success : SnackBarType.warning,
+              durationSeconds: trackingStarted ? 2 : 3,
             );
           }
         } catch (e) {
@@ -247,12 +246,10 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   _isTracking = false;
                 });
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('FindMe enabled. Location access may take a moment to initialize.'),
-                    backgroundColor: Colors.orange,
-                    duration: Duration(seconds: 4),
-                  ),
+                _showStyledSnackBar(
+                  message: 'FindMe enabled. Location access may take a moment to initialize.',
+                  type: SnackBarType.warning,
+                  durationSeconds: 4,
                 );
               }
               return; // Don't re-throw the error
@@ -287,15 +284,17 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
               _isTracking = false;
             });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('FindMe feature disabled')),
+            _showStyledSnackBar(
+              message: 'FindMe feature disabled',
+              type: SnackBarType.info,
             );
           }
         } catch (e) {
           print('Error disabling FindMe: $e');
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error disabling FindMe: ${e.toString()}')),
+            _showStyledSnackBar(
+              message: 'Error disabling FindMe: ${e.toString()}',
+              type: SnackBarType.error,
             );
           }
           throw e;
@@ -305,8 +304,9 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
       print('Error toggling FindMe: $e');
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating settings: ${e.toString()}')),
+        _showStyledSnackBar(
+          message: 'Error updating settings: ${e.toString()}',
+          type: SnackBarType.error,
         );
         
         // Reset state in case of error
@@ -675,6 +675,71 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     );
   }
 
+  void _showStyledSnackBar({
+    required String message,
+    required SnackBarType type,
+    int durationSeconds = 3,
+  }) {
+    Color backgroundColor;
+    Color textColor = Colors.white;
+    IconData icon;
+    
+    switch (type) {
+      case SnackBarType.success:
+        backgroundColor = Colors.green.shade600;
+        icon = Icons.check_circle_outline;
+        break;
+      case SnackBarType.error:
+        backgroundColor = Colors.red.shade600;
+        icon = Icons.error_outline;
+        break;
+      case SnackBarType.warning:
+        backgroundColor = Colors.orange.shade600;
+        icon = Icons.warning_amber_outlined;
+        break;
+      case SnackBarType.info:
+        backgroundColor = Colors.blue.shade600;
+        icon = Icons.info_outline;
+        break;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: textColor,
+                size: 20,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: backgroundColor,
+        duration: Duration(seconds: durationSeconds),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        elevation: 6,
+      ),
+    );
+  }
+
   Future<void> _updateContactPermission(String contactId, String permission, bool value) async {
     try {
       // Get current contact index
@@ -694,13 +759,15 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         });
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Permission updated successfully')),
+      _showStyledSnackBar(
+        message: 'Permission updated successfully',
+        type: SnackBarType.success,
       );
     } catch (e) {
       print('Error updating contact permission: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating permission')),
+      _showStyledSnackBar(
+        message: 'Error updating permission',
+        type: SnackBarType.error,
       );
     }
   }
@@ -712,29 +779,25 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     );
 
     if (result != null) {
-      final success = await _trustedContactsService.addTrustedContact(
+      final addResult = await _trustedContactsService.addTrustedContactWithValidation(
         name: result['name']!,
         email: result['email']!,
         phone: '', // Default empty phone since it's not required
         relationship: 'Contact', // Default relationship
       );
 
-      if (success) {
+      if (addResult.success) {
         _loadTrustedContacts();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Trusted contact added successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
+        _showStyledSnackBar(
+          message: 'Trusted contact added successfully!',
+          type: SnackBarType.success,
+          durationSeconds: 2,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: User not found. Please ensure the email belongs to an existing FindLink user.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
-          ),
+        _showStyledSnackBar(
+          message: addResult.errorMessage ?? 'An error occurred while adding the trusted contact',
+          type: SnackBarType.error,
+          durationSeconds: 4,
         );
       }
     }
@@ -1362,21 +1425,238 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   }
 
   Future<void> _removeTrustedContact(String contactId) async {
+    // Find the contact to get their name
+    final contact = _trustedContacts.firstWhere(
+      (c) => c.id == contactId,
+      orElse: () => TrustedContact(
+        id: '', 
+        userId: '', 
+        contactUserId: '', 
+        name: 'Contact', 
+        email: '', 
+        phone: '', 
+        relationship: '',
+        createdAt: DateTime.now(),
+      ),
+    );
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Remove Trusted Contact'),
-        content: Text('Are you sure you want to remove this trusted contact?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 8,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 400),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 15,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Remove'),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon Header
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(40),
+                    border: Border.all(color: Colors.red.shade200, width: 2),
+                  ),
+                  child: Icon(
+                    Icons.person_remove,
+                    size: 40,
+                    color: Colors.red.shade600,
+                  ),
+                ),
+                SizedBox(height: 20),
+                
+                // Title
+                Text(
+                  'Remove Trusted Contact',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D47A1),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                
+                // Contact Info
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Color(0xFF0D47A1),
+                          borderRadius: BorderRadius.circular(22.5),
+                        ),
+                        child: Center(
+                          child: Text(
+                            contact.name.isNotEmpty ? contact.name[0].toUpperCase() : 'C',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              contact.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                            if (contact.email.isNotEmpty) ...[
+                              SizedBox(height: 2),
+                              Text(
+                                contact.email,
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Warning Message
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade600,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Are you sure?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red.shade700,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'This contact will no longer have access to your location data.',
+                              style: TextStyle(
+                                color: Colors.red.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24),
+                
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.delete, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Remove',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
 
@@ -1384,8 +1664,14 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
       final success = await _trustedContactsService.removeTrustedContact(contactId);
       if (success) {
         _loadTrustedContacts();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Trusted contact removed')),
+        _showStyledSnackBar(
+          message: 'Trusted contact "${contact.name}" removed successfully',
+          type: SnackBarType.success,
+        );
+      } else {
+        _showStyledSnackBar(
+          message: 'Failed to remove trusted contact',
+          type: SnackBarType.error,
         );
       }
     }
@@ -1497,6 +1783,19 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Color(0xFF0D47A1)),
                     ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                    ),
+                    errorStyle: TextStyle(
+                      color: Colors.red.shade700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   validator: (value) => value?.isEmpty == true ? 'Name is required' : null,
                 ),
@@ -1518,6 +1817,19 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Color(0xFF0D47A1)),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                    ),
+                    errorStyle: TextStyle(
+                      color: Colors.red.shade700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   keyboardType: TextInputType.emailAddress,
