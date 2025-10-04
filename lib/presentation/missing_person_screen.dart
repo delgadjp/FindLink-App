@@ -2,6 +2,8 @@ import '/core/app_export.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
+enum ViewMode { card, list, grid }
+
 class MissingPersonScreen extends StatefulWidget {
   @override
   _MissingPersonScreenState createState() => _MissingPersonScreenState();
@@ -17,6 +19,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   bool showAdvancedFilters = false;
   int _currentPage = 0;
   static const int _itemsPerPage = 8;
+  ViewMode _viewMode = ViewMode.card;
+  bool _isSearchExpanded = false;
   
   // Stream subscription for real-time updates
   StreamSubscription<QuerySnapshot>? _missingPersonsSubscription;
@@ -153,39 +157,115 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
           },
           child: Column(
             children: [
+              // Top bar with view toggles and search
               Container(
                 padding: EdgeInsets.all(16),
                 color: Color(0xFF0D47A1),
-                child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      searchQuery = value;
-                      _currentPage = 0;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, case ID, or description...',
-                    hintStyle: TextStyle(color: Colors.white70),
-                    prefixIcon: Icon(Icons.search, color: Colors.white70),
-                    suffixIcon: searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear, color: Colors.white70),
-                            onPressed: () {
+                child: Row(
+                  children: [
+                    // Search toggle button
+                    IconButton(
+                      icon: Icon(
+                        _isSearchExpanded ? Icons.close : Icons.search,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isSearchExpanded = !_isSearchExpanded;
+                          if (!_isSearchExpanded) {
+                            searchQuery = '';
+                            _currentPage = 0;
+                          }
+                        });
+                      },
+                      tooltip: 'Search',
+                    ),
+                    // Expandable search bar
+                    if (_isSearchExpanded) ...[
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          height: 40,
+                          child: TextField(
+                            onChanged: (value) {
                               setState(() {
-                                searchQuery = '';
+                                searchQuery = value;
                                 _currentPage = 0;
                               });
                             },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Colors.white24,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
+                            decoration: InputDecoration(
+                              hintText: 'Search...',
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
+                              suffixIcon: searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(Icons.clear, color: Colors.white70, size: 18),
+                                      onPressed: () {
+                                        setState(() {
+                                          searchQuery = '';
+                                          _currentPage = 0;
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: Colors.white24,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                            autofocus: true,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                    ] else
+                      Spacer(),
+                    // View mode toggle buttons
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.view_agenda),
+                            color: _viewMode == ViewMode.card ? Colors.white : Colors.white54,
+                            onPressed: () {
+                              setState(() {
+                                _viewMode = ViewMode.card;
+                              });
+                            },
+                            tooltip: 'Card View',
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.list),
+                            color: _viewMode == ViewMode.list ? Colors.white : Colors.white54,
+                            onPressed: () {
+                              setState(() {
+                                _viewMode = ViewMode.list;
+                              });
+                            },
+                            tooltip: 'List View',
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.grid_view),
+                            color: _viewMode == ViewMode.grid ? Colors.white : Colors.white54,
+                            onPressed: () {
+                              setState(() {
+                                _viewMode = ViewMode.grid;
+                              });
+                            },
+                            tooltip: 'Grid View',
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  style: TextStyle(color: Colors.white),
+                  ],
                 ),
               ),
               
@@ -482,7 +562,38 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         .toList();
 
     final showPagination = totalPages > 1;
-    final listView = ListView.builder(
+    Widget contentView;
+
+    switch (_viewMode) {
+      case ViewMode.list:
+        contentView = _buildListView(displayedPersons, showPagination);
+        break;
+      case ViewMode.grid:
+        contentView = _buildGridView(displayedPersons, showPagination);
+        break;
+      case ViewMode.card:
+        contentView = _buildCardView(displayedPersons, showPagination);
+        break;
+    }
+
+    if (!showPagination) {
+      return contentView;
+    }
+
+    return Stack(
+      children: [
+        contentView,
+        _buildPaginationControls(
+          totalPages: totalPages,
+          totalItems: totalItems,
+        ),
+      ],
+    );
+  }
+
+  // Build card view (current implementation)
+  Widget _buildCardView(List<MissingPerson> displayedPersons, bool showPagination) {
+    return ListView.builder(
       padding: EdgeInsets.fromLTRB(16, 8, 16, showPagination ? 120 : 16),
       physics: AlwaysScrollableScrollPhysics(),
       itemCount: displayedPersons.length,
@@ -490,19 +601,412 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         return MissingPersonCard(person: displayedPersons[index]);
       },
     );
+  }
 
-    if (!showPagination) {
-      return listView;
+  // Build list view (compact version)
+  Widget _buildListView(List<MissingPerson> displayedPersons, bool showPagination) {
+    return ListView.builder(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, showPagination ? 120 : 16),
+      physics: AlwaysScrollableScrollPhysics(),
+      itemCount: displayedPersons.length,
+      itemBuilder: (context, index) {
+        return _buildListItem(displayedPersons[index]);
+      },
+    );
+  }
+
+  // Build grid view
+  Widget _buildGridView(List<MissingPerson> displayedPersons, bool showPagination) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    int crossAxisCount = 2;
+    
+    // Adaptive grid based on screen width
+    if (screenWidth > 1200) {
+      crossAxisCount = 4;
+    } else if (screenWidth > 800) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
     }
 
-    return Stack(
-      children: [
-        listView,
-        _buildPaginationControls(
-          totalPages: totalPages,
-          totalItems: totalItems,
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, showPagination ? 120 : 16),
+      physics: AlwaysScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: displayedPersons.length,
+      itemBuilder: (context, index) {
+        return _buildGridItem(displayedPersons[index]);
+      },
+    );
+  }
+
+  // Build compact list item
+  Widget _buildListItem(MissingPerson person) {
+    return Card(
+      elevation: 3,
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.blue.shade50],
+          ),
+          borderRadius: BorderRadius.circular(12),
         ),
-      ],
+        child: ListTile(
+          contentPadding: EdgeInsets.all(16),
+          leading: Container(
+            width: 65,
+            height: 65,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Color(0xFF0D47A1), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                )
+              ],
+            ),
+            child: person.imageUrl.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      person.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.person, color: Color(0xFF0D47A1), size: 32),
+                        );
+                      },
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.person, color: Color(0xFF0D47A1), size: 32),
+                  ),
+          ),
+          title: Text(
+            person.name,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Color(0xFF0D47A1),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      person.placeLastSeen,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.badge, size: 14, color: Colors.grey.shade600),
+                  SizedBox(width: 4),
+                  Text(
+                    'Case ID: ${person.caseId}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              _buildStatusChip(person.status),
+            ],
+          ),
+          trailing: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Color(0xFF0D47A1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CaseDetailsScreen(person: person),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // Build grid item
+  Widget _buildGridItem(MissingPerson person) {
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.all(4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Colors.blue.shade50],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CaseDetailsScreen(person: person),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with name and status
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF0D47A1),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      person.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4),
+                    _buildStatusChip(person.status),
+                  ],
+                ),
+              ),
+              // Image
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3), width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: person.imageUrl.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(11),
+                          child: Image.network(
+                            person.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                child: Center(
+                                  child: Icon(Icons.person, size: 40, color: Color(0xFF0D47A1)),
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                      : Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.person, size: 40, color: Color(0xFF0D47A1)),
+                          ),
+                        ),
+                ),
+              ),
+              // Content
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              person.placeLastSeen,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              person.datetimeLastSeen,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Spacer(),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF0D47A1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.visibility, size: 14, color: Color(0xFF0D47A1)),
+                            SizedBox(width: 4),
+                            Text(
+                              'View Details',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF0D47A1),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build status chip
+  Widget _buildStatusChip(String status) {
+    final statusText = status.isNotEmpty ? status : 'UNRESOLVED';
+    Color bgColor;
+    Color textColor;
+    IconData statusIcon;
+
+    switch (statusText) {
+      case 'Unresolved Case':
+        bgColor = Colors.red.shade100;
+        textColor = Colors.red.shade900;
+        statusIcon = Icons.warning_rounded;
+        break;
+      case 'Pending':
+        bgColor = Colors.orange.shade100;
+        textColor = Colors.orange.shade900;
+        statusIcon = Icons.pending_rounded;
+        break;
+      case 'Resolved':
+        bgColor = Colors.green.shade100;
+        textColor = Colors.green.shade900;
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade900;
+        statusIcon = Icons.help_rounded;
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: textColor.withOpacity(0.1),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            statusIcon,
+            size: 12,
+            color: textColor,
+          ),
+          SizedBox(width: 4),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -651,8 +1155,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                     'In Progress',
                                     'Evidence Submitted',
                                     'Unresolved Case',
-                                    'Resolved Case',
-                                    'Resolved',
                                   ].map((String value) {
                                     return DropdownMenuItem<String>(
                                       value: value,
@@ -1007,10 +1509,6 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         break;
       case 'Unresolved Case':
         color = Colors.red;
-        break;
-      case 'Resolved Case':
-      case 'Resolved':
-        color = Colors.green;
         break;
       default:
         color = Colors.grey;
