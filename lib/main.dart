@@ -1,6 +1,7 @@
 import 'core/app_export.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/network/notification_service.dart';
+import 'core/network/global_notification_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,7 @@ void main() async {
   }
 
   await NotificationService().initialize();
+  await GlobalNotificationManager().initialize();
 
   runApp(FindLinkApp());
 }

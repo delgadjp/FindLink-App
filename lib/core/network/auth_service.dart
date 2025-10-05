@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
 import '/core/app_export.dart';
+import 'global_notification_manager.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -29,6 +30,9 @@ class AuthService {
 
         // Auto-initialize location service if Find Me is enabled
         _autoLocationService.autoInitializeLocationService();
+        
+        // Refresh global notification manager for new login
+        await GlobalNotificationManager().refreshStreams();
       }
 
       Navigator.pushReplacementNamed(
@@ -436,6 +440,9 @@ class AuthService {
     try {
       // Reset auto location service state
       _autoLocationService.reset();
+      
+      // Cleanup global notification manager
+      await GlobalNotificationManager().dispose();
 
       // Sign out from Firebase only
       await _auth.signOut();

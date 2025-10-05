@@ -65,11 +65,18 @@ class NotificationService {
     if (requestPermission) {
       FirebaseMessaging.onMessage.listen(_onForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
+      
+      // Handle notification when app is terminated and opened via notification
+      final RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        _onMessageOpenedApp(initialMessage);
+      }
     }
 
     await _setupFcmTokenPersistence();
 
     _initialized = true;
+    debugPrint('NotificationService initialized successfully');
   }
 
   Future<void> _configureLocalNotifications() async {
