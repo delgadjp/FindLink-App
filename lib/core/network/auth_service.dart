@@ -26,12 +26,13 @@ class AuthService {
       // Update last sign-in time
       if (userCredential.user != null) {
         await updateLastSignIn(userCredential.user!.uid);
-        
+
         // Auto-initialize location service if Find Me is enabled
         _autoLocationService.autoInitializeLocationService();
       }
 
-      Navigator.pushReplacementNamed(context, '/home'); // Replace with your home route
+      Navigator.pushReplacementNamed(
+          context, '/home'); // Replace with your home route
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Login error: ${e.message}';
       if (e.code == 'user-not-found') {
@@ -41,7 +42,8 @@ class AuthService {
       } else if (e.code == 'invalid-email') {
         errorMessage = 'The email address is badly formatted.';
       } else if (e.code == 'user-disabled') {
-        errorMessage = 'This account has been disabled. Please contact support.';
+        errorMessage =
+            'This account has been disabled. Please contact support.';
       } else if (e.code == 'too-many-requests') {
         errorMessage = 'Too many login attempts. Please try again later.';
       } else if (e.code == 'network-request-failed') {
@@ -59,7 +61,7 @@ class AuthService {
 
   // Upload ID image to Firebase Storage
   Future<String?> uploadIDImage({
-    required String uid, 
+    required String uid,
     required File idImage,
   }) async {
     try {
@@ -74,30 +76,32 @@ class AuthService {
           );
         }
       }
-      
+
       final String imagePath = 'user_ids_app/$uid/id_image.jpg';
       final Reference imageRef = _storage.ref().child(imagePath);
-      
+
       final UploadTask uploadTask = imageRef.putFile(
         idImage,
         SettableMetadata(contentType: 'image/jpeg'),
       );
-      
+
       // Add error handling for the upload task
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        print('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+        print(
+            'Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
       }, onError: (e) {
         print('Upload task error: $e');
       });
-      
+
       final TaskSnapshot snapshot = await uploadTask;
       final String imageURL = await snapshot.ref.getDownloadURL();
-      
+
       print('Successfully uploaded ID image to: $imagePath');
       return imageURL;
     } on FirebaseException catch (e) {
       if (e.code == 'unauthorized') {
-        print('Error uploading ID image: Unauthorized access. Check Firebase Storage rules.');
+        print(
+            'Error uploading ID image: Unauthorized access. Check Firebase Storage rules.');
         // You might want to show a more user-friendly error to the user
       } else {
         print('Firebase error uploading ID image: ${e.code} - ${e.message}');
@@ -108,6 +112,7 @@ class AuthService {
       throw e;
     }
   }
+
   // Modified method with custom document ID format and additional user fields
   Future<void> addUserToFirestore(
     User user,
@@ -125,8 +130,13 @@ class AuthService {
     try {
       // Create a formatted custom ID: USER_YYYYMMDD_XXX (sequential 3-digit number)
       final now = DateTime.now();
-      final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
-      String emailPrefix = email.split('@')[0].substring(0, email.split('@')[0].length > 3 ? 3 : email.split('@')[0].length).toUpperCase();
+      final datePart =
+          "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+      String emailPrefix = email
+          .split('@')[0]
+          .substring(0,
+              email.split('@')[0].length > 3 ? 3 : email.split('@')[0].length)
+          .toUpperCase();
       final idPrefix = "USER_${datePart}_${emailPrefix}_";
 
       // Query Firestore for existing users with the same date and prefix to find the highest number
@@ -149,7 +159,7 @@ class AuthService {
       final int nextNumber = highestNumber + 1;
       final String paddedNumber = nextNumber.toString().padLeft(3, '0');
       final customDocId = "${idPrefix}${paddedNumber}";
-      
+
       // Upload ID image if provided
       String? idImageURL;
       if (uploadedIDImage != null) {
@@ -157,7 +167,7 @@ class AuthService {
           uid: user.uid,
           idImage: uploadedIDImage,
         );
-      }      // Store user data with the custom document ID
+      } // Store user data with the custom document ID
       await _firestore.collection('users').doc(customDocId).set({
         'userId': user.uid,
         'email': email,
@@ -169,7 +179,9 @@ class AuthService {
         'gender': gender ?? 'Not specified',
         'phoneNumber': phoneNumber ?? '',
         'createdAt': FieldValue.serverTimestamp(),
-        'displayName': firstName != null ? '$firstName ${lastName ?? ''}' : (user.displayName ?? email.split('@')[0]),
+        'displayName': firstName != null
+            ? '$firstName ${lastName ?? ''}'
+            : (user.displayName ?? email.split('@')[0]),
         'role': 'user',
         'documentId': customDocId,
         'lastSignIn': FieldValue.serverTimestamp(),
@@ -181,7 +193,8 @@ class AuthService {
         'uploadedIDImageURL': idImageURL ?? '',
       });
 
-      print('User successfully added to Firestore with custom ID: $customDocId');
+      print(
+          'User successfully added to Firestore with custom ID: $customDocId');
     } catch (e) {
       print('Error adding user to Firestore: $e');
       throw e; // Re-throw to handle in the calling function
@@ -231,7 +244,7 @@ class AuthService {
       return false;
     }
   }
-  
+
   // Method to update privacy policy acceptance status
   Future<bool> updatePrivacyPolicyAcceptance(String uid, bool accepted) async {
     try {
@@ -244,7 +257,8 @@ class AuthService {
       if (userQuery.docs.isNotEmpty) {
         await userQuery.docs.first.reference.update({
           'privacyPolicyAccepted': accepted,
-          'privacyPolicyAcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
+          'privacyPolicyAcceptedAt':
+              accepted ? FieldValue.serverTimestamp() : null,
         });
         print('Updated privacy policy acceptance for user: $uid to $accepted');
         return true;
@@ -257,6 +271,7 @@ class AuthService {
       return false;
     }
   }
+
   // Modified Register function with improved error handling and additional user fields
   Future<void> registerUser({
     required String email,
@@ -281,10 +296,14 @@ class AuthService {
     }
 
     // Check password strength
-    if (password.length < 8 || !password.contains(RegExp(r'[A-Z]')) || 
-        !password.contains(RegExp(r'[0-9]')) || !password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+    if (password.length < 8 ||
+        !password.contains(RegExp(r'[A-Z]')) ||
+        !password.contains(RegExp(r'[0-9]')) ||
+        !password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password must be at least 8 characters with uppercase, number, and special character')),
+        SnackBar(
+            content: Text(
+                'Password must be at least 8 characters with uppercase, number, and special character')),
       );
       return;
     }
@@ -297,12 +316,13 @@ class AuthService {
         builder: (context) => Center(child: CircularProgressIndicator()),
       );
 
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
-      );      // Add user to Firestore with additional profile information
+      ); // Add user to Firestore with additional profile information
       await addUserToFirestore(
-        userCredential.user!, 
+        userCredential.user!,
         email,
         firstName: firstName,
         middleName: middleName,
@@ -320,7 +340,9 @@ class AuthService {
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration successful! Please complete ID verification.')),
+        SnackBar(
+            content: Text(
+                'Registration successful! Please complete ID verification.')),
       );
 
       // Navigate to ID validation page if ID image wasn't provided during registration
@@ -388,7 +410,7 @@ class AuthService {
             uid: uid,
             idImage: uploadedIDImage,
           );
-          
+
           if (idImageURL != null) {
             updateData['uploadedIDImageURL'] = idImageURL;
           }
@@ -396,7 +418,7 @@ class AuthService {
 
         if (verified != null) updateData['isValidated'] = verified;
         if (idType != null) updateData['idType'] = idType;
-        
+
         if (submitted) {
           updateData['idSubmittedAt'] = FieldValue.serverTimestamp();
         }
@@ -414,10 +436,11 @@ class AuthService {
     try {
       // Reset auto location service state
       _autoLocationService.reset();
-      
+
       // Sign out from Firebase only
       await _auth.signOut();
-      Navigator.pushReplacementNamed(context, '/login'); // Replace with your login route
+      Navigator.pushReplacementNamed(
+          context, '/login'); // Replace with your login route
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sign out error: $e')),
@@ -448,7 +471,8 @@ class AuthService {
   }
 
   // Method to update compliance acceptance for a specific screen
-  Future<void> updateScreenComplianceAccepted(String uid, String screenKey, bool accepted) async {
+  Future<void> updateScreenComplianceAccepted(
+      String uid, String screenKey, bool accepted) async {
     try {
       QuerySnapshot userQuery = await _firestore
           .collection('users')
@@ -465,8 +489,10 @@ class AuthService {
       print('Error updating compliance acceptance for $screenKey: $e');
     }
   }
-    // Get user's cases from multiple collections
-  Future<List<Map<String, dynamic>>> getUserCasesFromMultipleCollections() async {
+
+  // Get user's cases from multiple collections
+  Future<List<Map<String, dynamic>>>
+      getUserCasesFromMultipleCollections() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       throw Exception('User not authenticated');
@@ -474,7 +500,7 @@ class AuthService {
 
     try {
       final List<Map<String, dynamic>> allCases = [];
-      
+
       // 1. Fetch from incidents collection
       final QuerySnapshot incidentsQuery = await _firestore
           .collection('incidents')
@@ -485,12 +511,12 @@ class AuthService {
         final data = doc.data() as Map<String, dynamic>;
         final incidentDetails = data['incidentDetails'] ?? {};
         final status = data['status'] ?? 'Reported';
-        
+
         // Skip resolved cases as they are archived
         if (status == 'Resolved Case' || status == 'Resolved') {
           continue;
         }
-        
+
         allCases.add({
           'id': doc.id,
           'caseNumber': incidentDetails['incidentId'] ?? doc.id,
@@ -502,7 +528,7 @@ class AuthService {
           'rawData': data,
         });
       }
-      
+
       // 2. Fetch from missingPersons collection
       final QuerySnapshot missingPersonsQuery = await _firestore
           .collection('missingPersons')
@@ -512,12 +538,12 @@ class AuthService {
       for (final doc in missingPersonsQuery.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final status = data['status'] ?? 'Reported';
-        
+
         // Skip resolved cases as they are archived
         if (status == 'Resolved Case' || status == 'Resolved') {
           continue;
         }
-        
+
         allCases.add({
           'id': doc.id,
           'caseNumber': data['case_id'] ?? doc.id,
@@ -529,48 +555,50 @@ class AuthService {
           'rawData': data,
         });
       }
-      
+
       // Note: We don't fetch from archivedCases collection for active case tracking
       // as these are resolved cases that should not appear in the user's active case list
-      
+
       // Sort all cases by date (newest first)
       allCases.sort((a, b) {
         final DateTime dateA = _parseTimestamp(a['dateCreated']);
         final DateTime dateB = _parseTimestamp(b['dateCreated']);
         return dateB.compareTo(dateA);
       });
-      
+
       return allCases;
     } catch (e) {
       print('Error fetching user cases from multiple collections: $e');
       return [];
     }
   }
-  
+
   // Helper method to extract name from different structures
   String _extractCaseName(Map<String, dynamic> data) {
     if (data['itemC'] != null) {
       final itemC = data['itemC'];
       return ((itemC['firstName'] ?? '') +
-          (itemC['middleName'] != null ? ' ${itemC['middleName']}' : '') +
-          (itemC['familyName'] != null ? ' ${itemC['familyName']}' : '')).trim();
+              (itemC['middleName'] != null ? ' ${itemC['middleName']}' : '') +
+              (itemC['familyName'] != null ? ' ${itemC['familyName']}' : ''))
+          .trim();
     } else if (data['name'] != null) {
       return data['name'];
     } else {
       return 'Unknown Person';
     }
   }
-  
+
   // Helper method to format timestamp
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return '';
-    
+
     try {
       DateTime dateTime;
       if (timestamp is Timestamp) {
         dateTime = timestamp.toDate();
       } else if (timestamp is Map && timestamp['seconds'] != null) {
-        dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+        dateTime =
+            DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
       } else if (timestamp is String) {
         dateTime = DateTime.parse(timestamp);
       } else {
@@ -582,7 +610,7 @@ class AuthService {
       return '';
     }
   }
-  
+
   // Helper method to parse date string or timestamp to DateTime
   DateTime _parseTimestamp(dynamic timestamp) {
     try {
@@ -598,7 +626,7 @@ class AuthService {
       return DateTime.now();
     }
   }
-  
+
   // Generate progress steps based on status (for case tracking)
   List<Map<String, String>> generateProgressSteps(String currentStatus) {
     // Map to convert status to step number (1-indexed)
@@ -611,7 +639,7 @@ class AuthService {
       'Unresolved Case': 6,
       'Resolved': 5, // Map 'Resolved' to 'Resolved Case' step
     };
-    
+
     final List<Map<String, String>> caseProgressSteps = [
       {'stage': 'Reported', 'status': 'Pending'},
       {'stage': 'Under Review', 'status': 'Pending'},
@@ -620,13 +648,13 @@ class AuthService {
       {'stage': 'Resolved Case', 'status': 'Pending'},
       {'stage': 'Unresolved Case', 'status': 'Pending'},
     ];
-    
+
     final int currentStep = statusToStep[currentStatus] ?? 1;
-    
+
     return caseProgressSteps.map((step) {
       final int stepNumber = caseProgressSteps.indexOf(step) + 1;
       String status;
-      
+
       if (stepNumber < currentStep) {
         status = 'Completed';
       } else if (stepNumber == currentStep) {
@@ -634,7 +662,7 @@ class AuthService {
       } else {
         status = 'Pending';
       }
-      
+
       return {
         'stage': step['stage'] ?? '',
         'status': status,

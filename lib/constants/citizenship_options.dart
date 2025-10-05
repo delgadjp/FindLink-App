@@ -1,4 +1,3 @@
-
 /// A comprehensive list of citizenship/nationality options for dropdown menus
 class CitizenshipOptions {
   /// Placeholder text shown as the default dropdown value

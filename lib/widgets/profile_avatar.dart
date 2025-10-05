@@ -7,9 +7,9 @@ class ProfileAvatar extends StatelessWidget {
   final bool isLoading;
 
   const ProfileAvatar({
-    this.onEditPressed, 
-    this.imageUrl, 
-    this.radius = 50, 
+    this.onEditPressed,
+    this.imageUrl,
+    this.radius = 50,
     this.isLoading = false,
   });
 
@@ -33,7 +33,7 @@ class ProfileAvatar extends StatelessWidget {
               ),
             ],
           ),
-          child: isLoading 
+          child: isLoading
               ? CircleAvatar(
                   radius: radius,
                   backgroundColor: const Color.fromARGB(255, 131, 131, 131),

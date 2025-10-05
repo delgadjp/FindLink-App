@@ -10,8 +10,10 @@ class ModalUtils {
   // Screen types for tracking separate acceptances
   static const String SCREEN_FILL_UP_FORM = 'fill_up_form';
   static const String SCREEN_SUBMIT_TIP = 'submit_tip';
-  static const String SCREEN_SUBMIT_TIP_COMPLIANCE = 'submitTipComplianceAccepted';
-  static const String SCREEN_FILL_UP_FORM_COMPLIANCE = 'fillUpFormComplianceAccepted';
+  static const String SCREEN_SUBMIT_TIP_COMPLIANCE =
+      'submitTipComplianceAccepted';
+  static const String SCREEN_FILL_UP_FORM_COMPLIANCE =
+      'fillUpFormComplianceAccepted';
 
   // Show legal disclaimer modal before privacy policy
   static void showLegalDisclaimerModal(
@@ -111,16 +113,18 @@ class ModalUtils {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(
-                      text: ', we ensure that your personal data will be processed securely and used solely for law enforcement purposes.\n\n'
-                        'By submitting this form, you ',
+                      text:
+                          ', we ensure that your personal data will be processed securely and used solely for law enforcement purposes.\n\n'
+                          'By submitting this form, you ',
                     ),
                     TextSpan(
                       text: 'voluntarily provide your personal data',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(
-                      text: ' for official police use. Your information will not be disclosed to unauthorized entities.\n\n'
-                        'For more details, visit the ',
+                      text:
+                          ' for official police use. Your information will not be disclosed to unauthorized entities.\n\n'
+                          'For more details, visit the ',
                     ),
                     TextSpan(
                       text: 'National Privacy Commission',
@@ -138,7 +142,8 @@ class ModalUtils {
                 ),
                 onPressed: () {
                   // Update the user's privacy policy status
-                  updatePrivacyPolicyAcceptance(false, onAcceptanceUpdate, screenType);
+                  updatePrivacyPolicyAcceptance(
+                      false, onAcceptanceUpdate, screenType);
                   // Close the dialog
                   Navigator.of(context).pop();
                   // Call the onCancel callback if provided
@@ -154,7 +159,8 @@ class ModalUtils {
                 ),
                 onPressed: () {
                   // Update the user's privacy policy status
-                  updatePrivacyPolicyAcceptance(true, onAcceptanceUpdate, screenType);
+                  updatePrivacyPolicyAcceptance(
+                      true, onAcceptanceUpdate, screenType);
                   Navigator.of(context).pop();
                 },
               ),
@@ -166,7 +172,8 @@ class ModalUtils {
   }
 
   // Helper method to check if user has accepted privacy policy for a specific screen
-  static Future<bool> checkPrivacyPolicyAcceptance({String screenType = ''}) async {
+  static Future<bool> checkPrivacyPolicyAcceptance(
+      {String screenType = ''}) async {
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
@@ -204,7 +211,8 @@ class ModalUtils {
         if (userDoc.docs.isNotEmpty) {
           await userDoc.docs.first.reference.update({
             'privacyPolicyAccepted': accepted,
-            'privacyPolicyAcceptedAt': accepted ? FieldValue.serverTimestamp() : null,
+            'privacyPolicyAcceptedAt':
+                accepted ? FieldValue.serverTimestamp() : null,
           });
           onAcceptanceUpdate(accepted);
         }

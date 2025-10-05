@@ -5,12 +5,13 @@ import '/core/app_export.dart';
 class TrustedContactResult {
   final bool success;
   final String? errorMessage;
-  
+
   TrustedContactResult({required this.success, this.errorMessage});
 }
 
 class TrustedContactsService {
-  static final TrustedContactsService _instance = TrustedContactsService._internal();
+  static final TrustedContactsService _instance =
+      TrustedContactsService._internal();
   factory TrustedContactsService() => _instance;
   TrustedContactsService._internal();
 
@@ -27,19 +28,22 @@ class TrustedContactsService {
           .where('userId', isEqualTo: userId)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isNotEmpty) {
-        final userDocId = userQuery.docs.first.id; // e.g., "USER_20250808_HOM_001"
-        
+        final userDocId =
+            userQuery.docs.first.id; // e.g., "USER_20250808_HOM_001"
+
         // Extract the prefix part (e.g., "HOM" from "USER_20250808_HOM_001")
         final parts = userDocId.split('_');
         final userPrefix = parts.length >= 3 ? parts[2] : 'USR';
-        
+
         // Create trusted contact document ID with current date and time
         final now = DateTime.now();
-        final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
-        final timePart = "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
-        
+        final datePart =
+            "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        final timePart =
+            "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
+
         return "TC_${datePart}_${userPrefix}_${timePart}";
       } else {
         // Fallback to using UUID if user document not found
@@ -63,7 +67,8 @@ class TrustedContactsService {
     try {
       final user = _auth.currentUser;
       if (user == null) {
-        return TrustedContactResult(success: false, errorMessage: 'User not authenticated');
+        return TrustedContactResult(
+            success: false, errorMessage: 'User not authenticated');
       }
 
       // Find current user for validation (we still need to ensure user exists)
@@ -72,10 +77,11 @@ class TrustedContactsService {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       if (currentUserQuery.docs.isEmpty) {
         print('Current user document not found');
-        return TrustedContactResult(success: false, errorMessage: 'Current user not found in database');
+        return TrustedContactResult(
+            success: false, errorMessage: 'Current user not found in database');
       }
 
       // Check if contact user exists and get their userId (auth UID)
@@ -87,25 +93,34 @@ class TrustedContactsService {
       String contactUserId = '';
       if (contactUserQuery.docs.isNotEmpty) {
         final contactData = contactUserQuery.docs.first.data();
-        contactUserId = contactData['userId'] ?? ''; // Get the auth UID from userId field
-        
+        contactUserId =
+            contactData['userId'] ?? ''; // Get the auth UID from userId field
+
         // CRITICAL VALIDATION: Ensure we're not adding current user as their own trusted contact
         if (contactUserId == user.uid) {
           print('Error: Cannot add yourself as a trusted contact');
-          return TrustedContactResult(success: false, errorMessage: 'You cannot add yourself as a trusted contact');
+          return TrustedContactResult(
+              success: false,
+              errorMessage: 'You cannot add yourself as a trusted contact');
         }
-        
-        print('Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
+
+        print(
+            'Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
       } else {
         // VALIDATION: Contact user does not exist in Firebase
         print('Contact user not found for email: $email');
-        return TrustedContactResult(success: false, errorMessage: 'No FindLink user found with this email address. Please ensure the person has a FindLink account.');
+        return TrustedContactResult(
+            success: false,
+            errorMessage:
+                'No FindLink user found with this email address. Please ensure the person has a FindLink account.');
       }
 
       // Additional validation: Ensure contactUserId is not empty
       if (contactUserId.isEmpty) {
         print('Error: Invalid contact user data - missing userId');
-        return TrustedContactResult(success: false, errorMessage: 'Invalid user data found. Please try again.');
+        return TrustedContactResult(
+            success: false,
+            errorMessage: 'Invalid user data found. Please try again.');
       }
 
       // Check if this trusted contact already exists
@@ -116,7 +131,10 @@ class TrustedContactsService {
           .get();
 
       if (existingContactQuery.docs.isNotEmpty) {
-        return TrustedContactResult(success: false, errorMessage: 'This person is already in your trusted contacts list');
+        return TrustedContactResult(
+            success: false,
+            errorMessage:
+                'This person is already in your trusted contacts list');
       }
 
       // Proceed with adding the contact
@@ -132,14 +150,15 @@ class TrustedContactsService {
         relationship: relationship,
         isVerified: true, // Auto-verify since we confirmed user exists
         canAccessLocation: canAccessLocation,
-        createdAt: DateTime.now(), // This will be converted to Firestore Timestamp
+        createdAt:
+            DateTime.now(), // This will be converted to Firestore Timestamp
       );
 
       // Store in findMeTrustedContacts collection with custom document ID
       final contactData = trustedContact.toMap();
       // Override createdAt with server timestamp for consistency
       contactData['createdAt'] = FieldValue.serverTimestamp();
-      
+
       print('Storing trusted contact:');
       print('  Document ID: $contactDocId');
       print('  UserId (owner): ${user.uid}');
@@ -147,7 +166,7 @@ class TrustedContactsService {
       print('  Name: $name');
       print('  Email: $email');
       print('  Can Access Location: $canAccessLocation');
-      
+
       await _firestore
           .collection('findMeTrustedContacts')
           .doc(contactDocId)
@@ -157,7 +176,10 @@ class TrustedContactsService {
       return TrustedContactResult(success: true, errorMessage: null);
     } catch (e) {
       print('Error adding trusted contact: $e');
-      return TrustedContactResult(success: false, errorMessage: 'An error occurred while adding the trusted contact. Please try again.');
+      return TrustedContactResult(
+          success: false,
+          errorMessage:
+              'An error occurred while adding the trusted contact. Please try again.');
     }
   }
 
@@ -179,7 +201,7 @@ class TrustedContactsService {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       if (currentUserQuery.docs.isEmpty) {
         print('Current user document not found');
         return false;
@@ -194,15 +216,17 @@ class TrustedContactsService {
       String contactUserId = '';
       if (contactUserQuery.docs.isNotEmpty) {
         final contactData = contactUserQuery.docs.first.data();
-        contactUserId = contactData['userId'] ?? ''; // Get the auth UID from userId field
-        
+        contactUserId =
+            contactData['userId'] ?? ''; // Get the auth UID from userId field
+
         // CRITICAL VALIDATION: Ensure we're not adding current user as their own trusted contact
         if (contactUserId == user.uid) {
           print('Error: Cannot add yourself as a trusted contact');
           return false;
         }
-        
-        print('Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
+
+        print(
+            'Found contact user: ${contactData['name'] ?? 'Unknown'} with userId: $contactUserId');
       } else {
         // VALIDATION: Contact user does not exist in Firebase
         print('Contact user not found for email: $email');
@@ -228,14 +252,15 @@ class TrustedContactsService {
         relationship: relationship,
         isVerified: true, // Auto-verify since we confirmed user exists
         canAccessLocation: canAccessLocation,
-        createdAt: DateTime.now(), // This will be converted to Firestore Timestamp
+        createdAt:
+            DateTime.now(), // This will be converted to Firestore Timestamp
       );
 
       // Store in findMeTrustedContacts collection with custom document ID
       final contactData = trustedContact.toMap();
       // Override createdAt with server timestamp for consistency
       contactData['createdAt'] = FieldValue.serverTimestamp();
-      
+
       print('Storing trusted contact:');
       print('  Document ID: $contactDocId');
       print('  UserId (owner): ${user.uid}');
@@ -243,7 +268,7 @@ class TrustedContactsService {
       print('  Name: $name');
       print('  Email: $email');
       print('  Can Access Location: $canAccessLocation');
-      
+
       await _firestore
           .collection('findMeTrustedContacts')
           .doc(contactDocId)
@@ -321,9 +346,7 @@ class TrustedContactsService {
 
   /// Update trusted contact permissions
   Future<bool> updateTrustedContactPermissions(
-    String contactId, 
-    bool canAccessLocation
-  ) async {
+      String contactId, bool canAccessLocation) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return false;
@@ -333,7 +356,8 @@ class TrustedContactsService {
           .doc(contactId)
           .update({
         'canAccessLocation': canAccessLocation,
-        'lastUpdated': FieldValue.serverTimestamp(), // Use Firestore server timestamp
+        'lastUpdated':
+            FieldValue.serverTimestamp(), // Use Firestore server timestamp
       });
 
       return true;
@@ -355,11 +379,11 @@ class TrustedContactsService {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       if (currentUserQuery.docs.isEmpty) return false;
 
       final currentUserData = currentUserQuery.docs.first.data();
-      
+
       // Check if user is admin
       if (currentUserData['role'] == 'admin') {
         return true;
@@ -376,7 +400,7 @@ class TrustedContactsService {
           .where('userId', isEqualTo: personUserId)
           .limit(1)
           .get();
-      
+
       if (personQuery.docs.isEmpty) return false;
 
       final personData = personQuery.docs.first.data();
@@ -385,8 +409,10 @@ class TrustedContactsService {
       // AND the person has family sharing enabled
       final trustedContactQuery = await _firestore
           .collection('findMeTrustedContacts')
-          .where('userId', isEqualTo: user.uid) // Current user owns this relationship
-          .where('contactUserId', isEqualTo: personUserId) // Target person is the contact
+          .where('userId',
+              isEqualTo: user.uid) // Current user owns this relationship
+          .where('contactUserId',
+              isEqualTo: personUserId) // Target person is the contact
           .where('isVerified', isEqualTo: true)
           .where('canAccessLocation', isEqualTo: true)
           .get();
@@ -426,7 +452,7 @@ class TrustedContactsService {
       for (var contactDoc in myTrustedContacts.docs) {
         final contactData = contactDoc.data();
         final contactUserId = contactData['contactUserId'];
-        
+
         if (contactUserId != null && contactUserId.isNotEmpty) {
           // Find the user document for this trusted contact
           final userQuery = await _firestore
@@ -434,17 +460,21 @@ class TrustedContactsService {
               .where('userId', isEqualTo: contactUserId)
               .limit(1)
               .get();
-          
+
           if (userQuery.docs.isNotEmpty) {
             final userData = userQuery.docs.first.data();
-            
+
             // Check if this user has FindMe enabled
             if (userData['findMeEnabled'] == true) {
               familyMembers.add(TrustedContact.fromMap({
                 'id': contactDoc.id,
-                'userId': user.uid, // Current user is the owner of this trusted contact relationship
+                'userId': user
+                    .uid, // Current user is the owner of this trusted contact relationship
                 'contactUserId': contactUserId,
-                'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
+                'name': userData['displayName'] ??
+                    userData['name'] ??
+                    contactData['name'] ??
+                    'Unknown',
                 'email': userData['email'] ?? contactData['email'] ?? '',
                 'phone': contactData['phone'] ?? '',
                 'relationship': contactData['relationship'] ?? 'Family',
@@ -484,7 +514,7 @@ class TrustedContactsService {
       for (var contactDoc in myTrustedContacts.docs) {
         final contactData = contactDoc.data();
         final contactUserId = contactData['contactUserId'];
-        
+
         if (contactUserId != null && contactUserId.isNotEmpty) {
           // Find the user document for this trusted contact
           final userQuery = await _firestore
@@ -492,15 +522,18 @@ class TrustedContactsService {
               .where('userId', isEqualTo: contactUserId)
               .limit(1)
               .get();
-          
+
           if (userQuery.docs.isNotEmpty) {
             final userData = userQuery.docs.first.data();
-            
+
             // Check if this user has FindMe enabled
             if (userData['findMeEnabled'] == true) {
               trackableUsers.add({
                 'userId': contactUserId, // Use the contact's userId
-                'name': userData['displayName'] ?? userData['name'] ?? contactData['name'] ?? 'Unknown',
+                'name': userData['displayName'] ??
+                    userData['name'] ??
+                    contactData['name'] ??
+                    'Unknown',
                 'email': userData['email'] ?? contactData['email'] ?? '',
                 'findMeEnabled': userData['findMeEnabled'] ?? false,
                 'lastKnownLocation': userData['lastKnownLocation'],

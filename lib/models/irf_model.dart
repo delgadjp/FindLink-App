@@ -1,5 +1,3 @@
-
-
 class IRFModel {
   String? id;
   String? pdfUrl;

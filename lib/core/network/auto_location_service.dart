@@ -30,7 +30,8 @@ class AutoLocationService {
         return;
       }
 
-      print('AutoLocationService: Checking if Find Me is enabled for user ${user.uid}');
+      print(
+          'AutoLocationService: Checking if Find Me is enabled for user ${user.uid}');
 
       // Find user document by userId field
       final userQuery = await _firestore
@@ -38,7 +39,7 @@ class AutoLocationService {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isEmpty) {
         print('AutoLocationService: User document not found');
         return;
@@ -49,25 +50,28 @@ class AutoLocationService {
       final isCurrentlyTracking = userData['isTracking'] ?? false;
       final locationService = _locationService;
 
-      print('AutoLocationService: FindMe enabled: $findMeEnabled, Currently tracking: $isCurrentlyTracking, Service tracking: ${locationService.isTracking}');
+      print(
+          'AutoLocationService: FindMe enabled: $findMeEnabled, Currently tracking: $isCurrentlyTracking, Service tracking: ${locationService.isTracking}');
 
       if (findMeEnabled) {
         // Initialize simple location service
         await locationService.initializeLocationService();
-        
+
         // Check if we need to start or restart tracking
         if (!locationService.isTracking) {
-          print('AutoLocationService: Location service not tracking - starting simple location tracking');
-          
+          print(
+              'AutoLocationService: Location service not tracking - starting simple location tracking');
+
           // Reset state first to ensure clean start
           locationService.resetState();
-          
+
           // Start simple location tracking
           try {
             final trackingStarted = await locationService.startTracking();
             if (trackingStarted) {
-              print('AutoLocationService: Simple location tracking started successfully');
-              
+              print(
+                  'AutoLocationService: Simple location tracking started successfully');
+
               // Update database to reflect current tracking state
               await userQuery.docs.first.reference.update({
                 'isTracking': true,
@@ -93,7 +97,8 @@ class AutoLocationService {
           }
         }
       } else {
-        print('AutoLocationService: FindMe not enabled - skipping location initialization');
+        print(
+            'AutoLocationService: FindMe not enabled - skipping location initialization');
       }
 
       _hasInitialized = true;

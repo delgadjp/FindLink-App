@@ -14,8 +14,8 @@ class MissingPerson {
   final String contactNo;
   final String additionalInfo;
   final String status;
-  final DateTime? lastSeenDateTime;  // Added actual DateTime field
-  final DateTime? reportedDateTime;  // Added actual DateTime field
+  final DateTime? lastSeenDateTime; // Added actual DateTime field
+  final DateTime? reportedDateTime; // Added actual DateTime field
 
   MissingPerson.fromMap(Map<String, dynamic> data)
       : name = data['name'] ?? '',
@@ -45,9 +45,10 @@ class MissingPerson {
       return null;
     }
   }
+
   static String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return '';
-    
+
     DateTime? dateTime;
     if (timestamp is Timestamp) {
       dateTime = timestamp.toDate();
@@ -60,12 +61,14 @@ class MissingPerson {
         return timestamp.toString();
       }
     }
-    
+
     // Format with 12-hour time and AM/PM
     String period = dateTime.hour >= 12 ? 'PM' : 'AM';
-    int hour12 = dateTime.hour == 0 ? 12 : (dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour);
+    int hour12 = dateTime.hour == 0
+        ? 12
+        : (dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour);
     String minute = dateTime.minute.toString().padLeft(2, '0');
-    
+
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${hour12}:${minute} ${period}';
   }
 

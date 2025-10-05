@@ -28,7 +28,7 @@ class FormRowInputs extends StatelessWidget {
         } else if (field['section'] != null && field['label'] == 'BARANGAY') {
           return _buildBarangayField(field, fieldKey);
         }
-        
+
         // Handle specialized education and occupation fields
         else if (field['label'] == 'HIGHEST EDUCATION ATTAINMENT') {
           return _buildEducationField(field, fieldKey);
@@ -40,13 +40,15 @@ class FormRowInputs extends StatelessWidget {
           return _buildCivilStatusField(field, fieldKey);
         }
         // Handle date dropdown fields for date of birth
-        else if (field['label'] == 'DATE OF BIRTH' && field['isDateDropdown'] == true) {
+        else if (field['label'] == 'DATE OF BIRTH' &&
+            field['isDateDropdown'] == true) {
           return _buildDateDropdownField(field, fieldKey);
         }
         // Handle incident date+time field
-        else if (field['label'] == 'DATE/TIME OF INCIDENT' && field['isIncidentDateTime'] == true) {
+        else if (field['label'] == 'DATE/TIME OF INCIDENT' &&
+            field['isIncidentDateTime'] == true) {
           return _buildIncidentDateTimeField(field, fieldKey);
-        }        // Handle standard fields
+        } // Handle standard fields
         return CustomInputField(
           key: fieldKey, // Pass the extracted key to the CustomInputField
           label: field['label'] ?? '',
@@ -64,9 +66,15 @@ class FormRowInputs extends StatelessWidget {
         );
       }).toList(),
     );
-  }  Widget _buildRegionField(Map<String, dynamic> field, Key? key) {
+  }
+
+  Widget _buildRegionField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final regionKey = section == 'reportingOther' ? 'reportingOtherRegion' : section == 'victimOther' ? 'victimOtherRegion' : '${section}Region';
+    final regionKey = section == 'reportingOther'
+        ? 'reportingOtherRegion'
+        : section == 'victimOther'
+            ? 'victimOtherRegion'
+            : '${section}Region';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -108,8 +116,16 @@ class FormRowInputs extends StatelessWidget {
 
   Widget _buildProvinceField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final provinceKey = section == 'reportingOther' ? 'reportingOtherProvince' : section == 'victimOther' ? 'victimOtherProvince' : '${section}Province';
-    final regionKey = section == 'reportingOther' ? 'reportingOtherRegion' : section == 'victimOther' ? 'victimOtherRegion' : '${section}Region';
+    final provinceKey = section == 'reportingOther'
+        ? 'reportingOtherProvince'
+        : section == 'victimOther'
+            ? 'victimOtherProvince'
+            : '${section}Province';
+    final regionKey = section == 'reportingOther'
+        ? 'reportingOtherRegion'
+        : section == 'victimOther'
+            ? 'victimOtherRegion'
+            : '${section}Region';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -151,8 +167,16 @@ class FormRowInputs extends StatelessWidget {
 
   Widget _buildMunicipalityField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final municipalityKey = section == 'reportingOther' ? 'reportingOtherMunicipality' : section == 'victimOther' ? 'victimOtherMunicipality' : '${section}Municipality';
-    final provinceKey = section == 'reportingOther' ? 'reportingOtherProvince' : section == 'victimOther' ? 'victimOtherProvince' : '${section}Province';
+    final municipalityKey = section == 'reportingOther'
+        ? 'reportingOtherMunicipality'
+        : section == 'victimOther'
+            ? 'victimOtherMunicipality'
+            : '${section}Municipality';
+    final provinceKey = section == 'reportingOther'
+        ? 'reportingOtherProvince'
+        : section == 'victimOther'
+            ? 'victimOtherProvince'
+            : '${section}Province';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -183,8 +207,10 @@ class FormRowInputs extends StatelessWidget {
             SizedBox(height: 4),
             CustomPhilippineMunicipalityDropdown(
               value: formState[municipalityKey],
-              municipalities: (formState[provinceKey] as Province?)?.municipalities ?? [],
-              onChanged: (Municipality? value) => onFieldChange(municipalityKey, value),
+              municipalities:
+                  (formState[provinceKey] as Province?)?.municipalities ?? [],
+              onChanged: (Municipality? value) =>
+                  onFieldChange(municipalityKey, value),
             ),
           ],
         ),
@@ -194,8 +220,16 @@ class FormRowInputs extends StatelessWidget {
 
   Widget _buildBarangayField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
-    final barangayKey = section == 'reportingOther' ? 'reportingOtherBarangay' : section == 'victimOther' ? 'victimOtherBarangay' : '${section}Barangay';
-    final municipalityKey = section == 'reportingOther' ? 'reportingOtherMunicipality' : section == 'victimOther' ? 'victimOtherMunicipality' : '${section}Municipality';
+    final barangayKey = section == 'reportingOther'
+        ? 'reportingOtherBarangay'
+        : section == 'victimOther'
+            ? 'victimOtherBarangay'
+            : '${section}Barangay';
+    final municipalityKey = section == 'reportingOther'
+        ? 'reportingOtherMunicipality'
+        : section == 'victimOther'
+            ? 'victimOtherMunicipality'
+            : '${section}Municipality';
     return Expanded(
       key: key, // Apply the key here
       child: Padding(
@@ -226,18 +260,22 @@ class FormRowInputs extends StatelessWidget {
             SizedBox(height: 4),
             CustomPhilippineBarangayDropdown(
               value: formState[barangayKey],
-              barangays: (formState[municipalityKey] as Municipality?)?.barangays ?? [],
+              barangays:
+                  (formState[municipalityKey] as Municipality?)?.barangays ??
+                      [],
               onChanged: (String? value) => onFieldChange(barangayKey, value),
             ),
           ],
         ),
       ),
     );
-  }Widget _buildEducationField(Map<String, dynamic> field, Key? key) {
+  }
+
+  Widget _buildEducationField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final educationKey = '${section}Education';
     final educationOptions = field['dropdownItems'] ?? [];
-    
+
     return CustomInputField(
       key: key, // Pass the key
       label: field['label'],
@@ -258,11 +296,13 @@ class FormRowInputs extends StatelessWidget {
         onFieldChange(educationKey, value);
       },
     );
-  }  Widget _buildOccupationField(Map<String, dynamic> field, Key? key) {
+  }
+
+  Widget _buildOccupationField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final occupationKey = '${section}Occupation';
     final occupationOptions = field['dropdownItems'] ?? [];
-    
+
     return CustomInputField(
       key: key, // Pass the key
       label: field['label'],
@@ -277,7 +317,9 @@ class FormRowInputs extends StatelessWidget {
         onFieldChange(occupationKey, value);
       },
     );
-  }  Widget _buildCitizenshipField(Map<String, dynamic> field, Key? key) {
+  }
+
+  Widget _buildCitizenshipField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String;
     final citizenshipKey = '${section}Citizenship';
     final citizenshipOptions = field['dropdownItems'] ?? [];
@@ -302,7 +344,9 @@ class FormRowInputs extends StatelessWidget {
         onFieldChange(citizenshipKey, value);
       },
     );
-  }  Widget _buildCivilStatusField(Map<String, dynamic> field, Key? key) {
+  }
+
+  Widget _buildCivilStatusField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String?;
     String? civilStatusKey;
     if (section == 'reporting') {
@@ -329,7 +373,11 @@ class FormRowInputs extends StatelessWidget {
           field['controller'].text = value ?? '';
         }
         if (civilStatusKey != null) {
-          onFieldChange(civilStatusKey == 'reportingPersonCivilStatus' ? 'civilStatusReporting' : 'civilStatusVictim', value);
+          onFieldChange(
+              civilStatusKey == 'reportingPersonCivilStatus'
+                  ? 'civilStatusReporting'
+                  : 'civilStatusVictim',
+              value);
         }
       },
     );
@@ -338,26 +386,30 @@ class FormRowInputs extends StatelessWidget {
   Widget _buildDateDropdownField(Map<String, dynamic> field, Key? key) {
     final section = field['section'] as String?;
     final isReporting = section == 'reporting';
-    
+
     // Get the callback functions passed from the parent
     final List<int> Function() getDaysInMonth = field['getDaysInMonth'];
-    final void Function() updateDateFromDropdowns = field['updateDateFromDropdowns'];
+    final void Function() updateDateFromDropdowns =
+        field['updateDateFromDropdowns'];
     final int? selectedDay = field['selectedDay'];
     final int? selectedMonth = field['selectedMonth'];
     final int? selectedYear = field['selectedYear'];
-    final void Function(String, dynamic) onDateFieldChange = field['onDateFieldChange'];
+    final void Function(String, dynamic) onDateFieldChange =
+        field['onDateFieldChange'];
     final BuildContext context = field['context']; // Get context from field
-    
+
     // Format date display text
     String getDateDisplayText() {
-      if (selectedMonth != null && selectedDay != null && selectedYear != null) {
+      if (selectedMonth != null &&
+          selectedDay != null &&
+          selectedYear != null) {
         String month = selectedMonth.toString().padLeft(2, '0');
         String day = selectedDay.toString().padLeft(2, '0');
         return '$month/$day/$selectedYear';
       }
       return 'Select';
     }
-    
+
     return Expanded(
       key: key,
       child: Padding(
@@ -397,7 +449,8 @@ class FormRowInputs extends StatelessWidget {
               height: 35,
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color.fromARGB(255, 188, 188, 188)),
+                  border: Border.all(
+                      color: const Color.fromARGB(255, 188, 188, 188)),
                   borderRadius: BorderRadius.circular(5),
                   color: isReporting ? Colors.grey.shade100 : Colors.white,
                 ),
@@ -405,27 +458,33 @@ class FormRowInputs extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(5),
-                    onTap: isReporting ? null : () => _showDatePicker(
-                      context,
-                      field, 
-                      selectedDay, 
-                      selectedMonth, 
-                      selectedYear, 
-                      onDateFieldChange, 
-                      updateDateFromDropdowns, 
-                      getDaysInMonth, 
-                      isReporting
-                    ),
+                    onTap: isReporting
+                        ? null
+                        : () => _showDatePicker(
+                            context,
+                            field,
+                            selectedDay,
+                            selectedMonth,
+                            selectedYear,
+                            onDateFieldChange,
+                            updateDateFromDropdowns,
+                            getDaysInMonth,
+                            isReporting),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Row(
                         children: [
                           Expanded(
                             child: Text(
                               getDateDisplayText(),
                               style: TextStyle(
-                                color: (selectedMonth != null && selectedDay != null && selectedYear != null) 
-                                    ? (isReporting ? Colors.grey.shade700 : Colors.black)
+                                color: (selectedMonth != null &&
+                                        selectedDay != null &&
+                                        selectedYear != null)
+                                    ? (isReporting
+                                        ? Colors.grey.shade700
+                                        : Colors.black)
                                     : Colors.grey.shade600,
                                 fontSize: 12,
                               ),
@@ -459,7 +518,7 @@ class FormRowInputs extends StatelessWidget {
     int? localMonth = selectedMonth;
     int? localDay = selectedDay;
     int? localYear = selectedYear;
-    
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -502,7 +561,7 @@ class FormRowInputs extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: 24),
-                    
+
                     // Date selection row
                     Row(
                       children: [
@@ -524,7 +583,8 @@ class FormRowInputs extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 isDense: true,
                               ),
                               isExpanded: true,
@@ -532,14 +592,25 @@ class FormRowInputs extends StatelessWidget {
                               items: List.generate(12, (index) {
                                 int month = index + 1;
                                 List<String> monthNames = [
-                                  'January', 'February', 'March', 'April', 'May', 'June',
-                                  'July', 'August', 'September', 'October', 'November', 'December'
+                                  'January',
+                                  'February',
+                                  'March',
+                                  'April',
+                                  'May',
+                                  'June',
+                                  'July',
+                                  'August',
+                                  'September',
+                                  'October',
+                                  'November',
+                                  'December'
                                 ];
                                 return DropdownMenuItem<int>(
                                   value: month,
                                   child: Text(
                                     monthNames[index],
-                                    style: TextStyle(fontSize: 14, color: Colors.black),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.black),
                                   ),
                                 );
                               }),
@@ -548,7 +619,11 @@ class FormRowInputs extends StatelessWidget {
                                   localMonth = newValue;
                                   // Reset day if it's invalid for new month
                                   if (localDay != null && newValue != null) {
-                                    int daysInNewMonth = DateTime(localYear ?? DateTime.now().year, newValue + 1, 0).day;
+                                    int daysInNewMonth = DateTime(
+                                            localYear ?? DateTime.now().year,
+                                            newValue + 1,
+                                            0)
+                                        .day;
                                     if (localDay! > daysInNewMonth) {
                                       localDay = null;
                                     }
@@ -559,7 +634,7 @@ class FormRowInputs extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 8),
-                        
+
                         // Day dropdown
                         Expanded(
                           flex: 4,
@@ -578,22 +653,29 @@ class FormRowInputs extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 isDense: true,
                               ),
                               isExpanded: true,
                               dropdownColor: Colors.white,
-                              items: localMonth != null ? 
-                                List.generate(DateTime(localYear ?? DateTime.now().year, localMonth! + 1, 0).day, (index) {
-                                  int day = index + 1;
-                                  return DropdownMenuItem<int>(
-                                    value: day,
-                                    child: Text(
-                                      '$day',
-                                      style: TextStyle(fontSize: 14, color: Colors.black),
-                                    ),
-                                  );
-                                }) : [],
+                              items: localMonth != null
+                                  ? List.generate(
+                                      DateTime(localYear ?? DateTime.now().year,
+                                              localMonth! + 1, 0)
+                                          .day, (index) {
+                                      int day = index + 1;
+                                      return DropdownMenuItem<int>(
+                                        value: day,
+                                        child: Text(
+                                          '$day',
+                                          style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black),
+                                        ),
+                                      );
+                                    })
+                                  : [],
                               onChanged: (int? newValue) {
                                 setState(() {
                                   localDay = newValue;
@@ -603,7 +685,7 @@ class FormRowInputs extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 8),
-                        
+
                         // Year dropdown
                         Expanded(
                           flex: 5,
@@ -622,7 +704,8 @@ class FormRowInputs extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 isDense: true,
                               ),
                               isExpanded: true,
@@ -633,7 +716,8 @@ class FormRowInputs extends StatelessWidget {
                                   value: year,
                                   child: Text(
                                     '$year',
-                                    style: TextStyle(fontSize: 14, color: Colors.black),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.black),
                                   ),
                                 );
                               }),
@@ -641,8 +725,12 @@ class FormRowInputs extends StatelessWidget {
                                 setState(() {
                                   localYear = newValue;
                                   // Reset day if it's invalid for new year (leap year changes)
-                                  if (localDay != null && localMonth != null && newValue != null) {
-                                    int daysInNewYear = DateTime(newValue, localMonth! + 1, 0).day;
+                                  if (localDay != null &&
+                                      localMonth != null &&
+                                      newValue != null) {
+                                    int daysInNewYear =
+                                        DateTime(newValue, localMonth! + 1, 0)
+                                            .day;
                                     if (localDay! > daysInNewYear) {
                                       localDay = null;
                                     }
@@ -654,18 +742,21 @@ class FormRowInputs extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
+
                     SizedBox(height: 24),
-                    
+
                     // Selected date preview
-                    if (localMonth != null && localDay != null && localYear != null)
+                    if (localMonth != null &&
+                        localDay != null &&
+                        localYear != null)
                       Container(
                         width: double.infinity,
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Color(0xFF0D47A1).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
+                          border: Border.all(
+                              color: Color(0xFF0D47A1).withOpacity(0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,9 +781,9 @@ class FormRowInputs extends StatelessWidget {
                           ],
                         ),
                       ),
-                    
+
                     SizedBox(height: 24),
-                    
+
                     // Action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -700,7 +791,8 @@ class FormRowInputs extends StatelessWidget {
                         TextButton(
                           onPressed: () => Navigator.of(dialogContext).pop(),
                           style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -715,18 +807,35 @@ class FormRowInputs extends StatelessWidget {
                         ),
                         SizedBox(width: 12),
                         ElevatedButton(
-                          onPressed: (localMonth != null && localDay != null && localYear != null) ? () {
-                            // Update the actual values
-                            onDateFieldChange(isReporting ? 'selectedMonthReporting' : 'selectedMonthVictim', localMonth);
-                            onDateFieldChange(isReporting ? 'selectedDayReporting' : 'selectedDayVictim', localDay);
-                            onDateFieldChange(isReporting ? 'selectedYearReporting' : 'selectedYearVictim', localYear);
-                            updateDateFromDropdowns();
-                            Navigator.of(dialogContext).pop();
-                          } : null,
+                          onPressed: (localMonth != null &&
+                                  localDay != null &&
+                                  localYear != null)
+                              ? () {
+                                  // Update the actual values
+                                  onDateFieldChange(
+                                      isReporting
+                                          ? 'selectedMonthReporting'
+                                          : 'selectedMonthVictim',
+                                      localMonth);
+                                  onDateFieldChange(
+                                      isReporting
+                                          ? 'selectedDayReporting'
+                                          : 'selectedDayVictim',
+                                      localDay);
+                                  onDateFieldChange(
+                                      isReporting
+                                          ? 'selectedYearReporting'
+                                          : 'selectedYearVictim',
+                                      localYear);
+                                  updateDateFromDropdowns();
+                                  Navigator.of(dialogContext).pop();
+                                }
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFF0D47A1),
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -755,7 +864,7 @@ class FormRowInputs extends StatelessWidget {
     // Get the callback functions passed from the parent
     final void Function() onTap = field['onTap'];
     final String displayText = field['displayText'] ?? 'Select Date & Time';
-    
+
     return Expanded(
       key: key,
       child: Padding(
@@ -795,7 +904,8 @@ class FormRowInputs extends StatelessWidget {
               height: 35,
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color.fromARGB(255, 188, 188, 188)),
+                  border: Border.all(
+                      color: const Color.fromARGB(255, 188, 188, 188)),
                   borderRadius: BorderRadius.circular(5),
                   color: Colors.white,
                 ),
@@ -805,7 +915,8 @@ class FormRowInputs extends StatelessWidget {
                     borderRadius: BorderRadius.circular(5),
                     onTap: onTap,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Row(
                         children: [
                           Icon(
@@ -818,8 +929,8 @@ class FormRowInputs extends StatelessWidget {
                             child: Text(
                               displayText,
                               style: TextStyle(
-                                color: displayText != 'Select Date & Time' 
-                                    ? Colors.black87 
+                                color: displayText != 'Select Date & Time'
+                                    ? Colors.black87
                                     : Colors.grey.shade600,
                                 fontSize: 12,
                               ),

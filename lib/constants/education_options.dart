@@ -1,6 +1,6 @@
 class EducationOptions {
   static const String placeholder = 'SELECT';
-  
+
   static const List<String> options = [
     placeholder,
     'No Formal Education',

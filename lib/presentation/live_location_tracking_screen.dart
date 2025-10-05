@@ -14,19 +14,22 @@ class LiveLocationTrackingScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _LiveLocationTrackingScreenState createState() => _LiveLocationTrackingScreenState();
+  _LiveLocationTrackingScreenState createState() =>
+      _LiveLocationTrackingScreenState();
 }
 
-class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen> {
+class _LiveLocationTrackingScreenState
+    extends State<LiveLocationTrackingScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TrustedContactsService _trustedContactsService = TrustedContactsService();
-  
+  final TrustedContactsService _trustedContactsService =
+      TrustedContactsService();
+
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
   LocationData? _currentLocation;
   StreamSubscription<QuerySnapshot>? _locationSubscription;
   Timer? _statusUpdateTimer;
-  
+
   bool _isLoading = true;
   bool _isPersonOnline = false;
   String _lastSeenStatus = 'Checking...';
@@ -36,7 +39,8 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   @override
   void initState() {
     super.initState();
-    print('LiveLocationTrackingScreen initialized for user: ${widget.personId}');
+    print(
+        'LiveLocationTrackingScreen initialized for user: ${widget.personId}');
     _checkPermissionAndStartTracking();
   }
 
@@ -48,8 +52,9 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
       });
 
       // Check if current user can access location data for this person
-      final hasAccess = await _trustedContactsService.canAccessLocationData(widget.personId);
-      
+      final hasAccess =
+          await _trustedContactsService.canAccessLocationData(widget.personId);
+
       setState(() {
         _hasPermission = hasAccess;
       });
@@ -63,7 +68,8 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
         _loadLocationHistory();
         _startStatusUpdates();
       } else {
-        print('Permission denied for accessing ${widget.personId} location data');
+        print(
+            'Permission denied for accessing ${widget.personId} location data');
         setState(() {
           _isLoading = false;
           _lastSeenStatus = 'No permission to access location data';
@@ -93,7 +99,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
     }
 
     print('Starting location tracking for user: ${widget.personId}');
-    
+
     // Instead of directly querying another user's location data (which security rules prevent),
     // we'll create a periodic check that validates permissions and gets the latest shared location
     _startPeriodicLocationCheck();
@@ -104,7 +110,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
     _statusUpdateTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
       await _checkAndUpdateLocation();
     });
-    
+
     // Also do an immediate check
     _checkAndUpdateLocation();
   }
@@ -112,7 +118,8 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
   Future<void> _checkAndUpdateLocation() async {
     try {
       // First verify we still have permission
-      final stillHasAccess = await _trustedContactsService.canAccessLocationData(widget.personId);
+      final stillHasAccess =
+          await _trustedContactsService.canAccessLocationData(widget.personId);
       if (!stillHasAccess) {
         print('Permission revoked during location tracking');
         setState(() {
@@ -130,12 +137,13 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
           .where('userId', isEqualTo: widget.personId)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isNotEmpty) {
         final userData = userQuery.docs.first.data();
         final lastKnownLocation = userData['lastKnownLocation'];
-        
-        if (lastKnownLocation != null && lastKnownLocation is Map<String, dynamic>) {
+
+        if (lastKnownLocation != null &&
+            lastKnownLocation is Map<String, dynamic>) {
           // Create a LocationData object from the user's last known location
           try {
             final locationData = LocationData(
@@ -143,14 +151,15 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
               userId: widget.personId,
               latitude: (lastKnownLocation['latitude'] as num).toDouble(),
               longitude: (lastKnownLocation['longitude'] as num).toDouble(),
-              timestamp: lastKnownLocation['timestamp'] != null 
+              timestamp: lastKnownLocation['timestamp'] != null
                   ? (lastKnownLocation['timestamp'] as Timestamp).toDate()
                   : DateTime.now(),
               accuracy: lastKnownLocation['accuracy']?.toDouble(),
               address: lastKnownLocation['address'],
             );
-            
-            print('Got shared location: ${locationData.latitude}, ${locationData.longitude}');
+
+            print(
+                'Got shared location: ${locationData.latitude}, ${locationData.longitude}');
             _updateCurrentLocation(locationData);
           } catch (e) {
             print('Error parsing shared location data: $e');
@@ -205,7 +214,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
 
   void _updateMapLocation(LocationData location) {
     final position = LatLng(location.latitude, location.longitude);
-    
+
     setState(() {
       _markers.clear();
       _markers.add(
@@ -213,7 +222,9 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
           markerId: MarkerId('current_location'),
           position: position,
           icon: BitmapDescriptor.defaultMarkerWithHue(
-            _isPersonOnline ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed,
+            _isPersonOnline
+                ? BitmapDescriptor.hueGreen
+                : BitmapDescriptor.hueRed,
           ),
           infoWindow: InfoWindow(
             title: widget.personName,
@@ -244,10 +255,11 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
 
     try {
       print('Loading location history for user: ${widget.personId}');
-      
+
       // Instead of using the SimpleLocationService which queries directly,
       // we'll check if we have permission first through trusted contacts service
-      final canAccess = await _trustedContactsService.canAccessLocationData(widget.personId);
+      final canAccess =
+          await _trustedContactsService.canAccessLocationData(widget.personId);
       if (!canAccess) {
         print('Permission check failed during location history load');
         setState(() {
@@ -265,7 +277,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
         _isLoading = false;
         _lastSeenStatus = 'Waiting for location updates...';
       });
-      
+
       print('Location history loading completed (using real-time stream)');
     } catch (e) {
       print('Error loading location history: $e');
@@ -304,13 +316,17 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
             ),
             SizedBox(height: 16),
             _buildDetailRow('Status', _lastSeenStatus),
-            _buildDetailRow('Latitude', _currentLocation!.latitude.toStringAsFixed(6)),
-            _buildDetailRow('Longitude', _currentLocation!.longitude.toStringAsFixed(6)),
+            _buildDetailRow(
+                'Latitude', _currentLocation!.latitude.toStringAsFixed(6)),
+            _buildDetailRow(
+                'Longitude', _currentLocation!.longitude.toStringAsFixed(6)),
             if (_currentLocation!.accuracy != null)
-              _buildDetailRow('Accuracy', '±${_currentLocation!.accuracy!.toStringAsFixed(0)}m'),
+              _buildDetailRow('Accuracy',
+                  '±${_currentLocation!.accuracy!.toStringAsFixed(0)}m'),
             if (_currentLocation!.address != null)
               _buildDetailRow('Address', _currentLocation!.address!),
-            _buildDetailRow('Updated', _formatDateTime(_currentLocation!.timestamp)),
+            _buildDetailRow(
+                'Updated', _formatDateTime(_currentLocation!.timestamp)),
             SizedBox(height: 16),
           ],
         ),
@@ -344,7 +360,7 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
     String amPm = hour >= 12 ? 'PM' : 'AM';
     if (hour > 12) hour -= 12;
     if (hour == 0) hour = 12;
-    
+
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${hour}:${dateTime.minute.toString().padLeft(2, '0')} $amPm';
   }
 
@@ -365,7 +381,8 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
         backgroundColor: Color.fromARGB(255, 18, 32, 47),
         actions: [
           IconButton(
-            icon: Icon(_followLocation ? Icons.my_location : Icons.location_disabled),
+            icon: Icon(
+                _followLocation ? Icons.my_location : Icons.location_disabled),
             onPressed: () {
               setState(() => _followLocation = !_followLocation);
               if (_followLocation && _currentLocation != null) {
@@ -380,28 +397,28 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                 await _checkPermissionAndStartTracking();
                 return;
               }
-              
+
               print('Refresh button tapped');
               setState(() {
                 _isLoading = true;
                 _lastSeenStatus = 'Refreshing location data...';
               });
-              
+
               try {
                 // Cancel existing timers and restart
                 _locationSubscription?.cancel();
                 _statusUpdateTimer?.cancel();
-                
+
                 // Clear current data
                 setState(() {
                   _currentLocation = null;
                   _markers.clear();
                 });
-                
+
                 // Reload everything
                 await _loadLocationHistory();
                 _startLocationTracking();
-                
+
                 print('Refresh completed');
               } catch (e) {
                 print('Error during refresh: $e');
@@ -426,8 +443,8 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
                   Text('Loading location data...'),
-                  Text('For user: ${widget.personName}', 
-                       style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text('For user: ${widget.personName}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             )
@@ -440,7 +457,8 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                       SizedBox(height: 16),
                       Text(
                         'Access Denied',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 8),
                       Text(
@@ -464,143 +482,151 @@ class _LiveLocationTrackingScreenState extends State<LiveLocationTrackingScreen>
                   ),
                 )
               : _currentLocation == null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.location_off, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'No Location Data',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        _lastSeenStatus,
-                        style: TextStyle(color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          if (!_hasPermission) {
-                            await _checkPermissionAndStartTracking();
-                            return;
-                          }
-                          
-                          print('Refresh Location button tapped');
-                          setState(() {
-                            _isLoading = true;
-                            _lastSeenStatus = 'Refreshing location data...';
-                          });
-                          
-                          try {
-                            await _loadLocationHistory();
-                          } catch (e) {
-                            print('Error during manual refresh: $e');
-                            setState(() {
-                              _isLoading = false;
-                              _lastSeenStatus = 'Refresh failed: $e';
-                            });
-                          }
-                        },
-                        icon: Icon(Icons.refresh),
-                        label: Text('Refresh Location'),
-                      ),
-                      SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () async {
-                          if (!_hasPermission) {
-                            await _checkPermissionAndStartTracking();
-                            return;
-                          }
-                          
-                          print('Retry Loading button tapped');
-                          setState(() {
-                            _isLoading = true;
-                            _lastSeenStatus = 'Retrying location load...';
-                          });
-                          
-                          try {
-                            // Cancel and restart everything
-                            _locationSubscription?.cancel();
-                            _statusUpdateTimer?.cancel();
-                            await _loadLocationHistory();
-                            _startLocationTracking();
-                          } catch (e) {
-                            print('Error during retry: $e');
-                            setState(() {
-                              _isLoading = false;
-                              _lastSeenStatus = 'Retry failed: $e';
-                            });
-                          }
-                        },
-                        child: Text('Retry Loading'),
-                      ),
-                    ],
-                  ),
-                )
-              : Stack(
-              children: [
-                GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _currentLocation != null
-                        ? LatLng(_currentLocation!.latitude, _currentLocation!.longitude)
-                        : LatLng(14.5995, 120.9842), // Manila default
-                    zoom: 16,
-                  ),
-                  markers: _markers,
-                  onMapCreated: (GoogleMapController controller) {
-                    _mapController = controller;
-                    if (_currentLocation != null) {
-                      _updateMapLocation(_currentLocation!);
-                    }
-                  },
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                ),
-                
-                // Status card
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Row(
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircleAvatar(
-                            backgroundColor: _isPersonOnline ? Colors.green : Colors.red,
-                            radius: 6,
+                          Icon(Icons.location_off,
+                              size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'No Location Data',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _lastSeenStatus,
-                              style: TextStyle(fontWeight: FontWeight.w500),
-                            ),
+                          SizedBox(height: 8),
+                          Text(
+                            _lastSeenStatus,
+                            style: TextStyle(color: Colors.grey),
+                            textAlign: TextAlign.center,
                           ),
-                          if (_currentLocation != null)
-                            Text(
-                              _formatDateTime(_currentLocation!.timestamp),
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
+                          SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              if (!_hasPermission) {
+                                await _checkPermissionAndStartTracking();
+                                return;
+                              }
+
+                              print('Refresh Location button tapped');
+                              setState(() {
+                                _isLoading = true;
+                                _lastSeenStatus = 'Refreshing location data...';
+                              });
+
+                              try {
+                                await _loadLocationHistory();
+                              } catch (e) {
+                                print('Error during manual refresh: $e');
+                                setState(() {
+                                  _isLoading = false;
+                                  _lastSeenStatus = 'Refresh failed: $e';
+                                });
+                              }
+                            },
+                            icon: Icon(Icons.refresh),
+                            label: Text('Refresh Location'),
+                          ),
+                          SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () async {
+                              if (!_hasPermission) {
+                                await _checkPermissionAndStartTracking();
+                                return;
+                              }
+
+                              print('Retry Loading button tapped');
+                              setState(() {
+                                _isLoading = true;
+                                _lastSeenStatus = 'Retrying location load...';
+                              });
+
+                              try {
+                                // Cancel and restart everything
+                                _locationSubscription?.cancel();
+                                _statusUpdateTimer?.cancel();
+                                await _loadLocationHistory();
+                                _startLocationTracking();
+                              } catch (e) {
+                                print('Error during retry: $e');
+                                setState(() {
+                                  _isLoading = false;
+                                  _lastSeenStatus = 'Retry failed: $e';
+                                });
+                              }
+                            },
+                            child: Text('Retry Loading'),
+                          ),
                         ],
                       ),
-                    ),
-                  ),
-                ),
+                    )
+                  : Stack(
+                      children: [
+                        GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: _currentLocation != null
+                                ? LatLng(_currentLocation!.latitude,
+                                    _currentLocation!.longitude)
+                                : LatLng(14.5995, 120.9842), // Manila default
+                            zoom: 16,
+                          ),
+                          markers: _markers,
+                          onMapCreated: (GoogleMapController controller) {
+                            _mapController = controller;
+                            if (_currentLocation != null) {
+                              _updateMapLocation(_currentLocation!);
+                            }
+                          },
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: false,
+                        ),
 
-                // Control buttons can be added here if needed
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
-                  child: SizedBox.shrink(), // Empty space for now
-                ),
-              ],
-            ),
+                        // Status card
+                        Positioned(
+                          top: 16,
+                          left: 16,
+                          right: 16,
+                          child: Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: _isPersonOnline
+                                        ? Colors.green
+                                        : Colors.red,
+                                    radius: 6,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _lastSeenStatus,
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                  if (_currentLocation != null)
+                                    Text(
+                                      _formatDateTime(
+                                          _currentLocation!.timestamp),
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Control buttons can be added here if needed
+                        Positioned(
+                          bottom: 16,
+                          left: 16,
+                          right: 16,
+                          child: SizedBox.shrink(), // Empty space for now
+                        ),
+                      ],
+                    ),
     );
   }
 }

@@ -162,10 +162,14 @@ class FindMeInfoScreen extends StatelessWidget {
               ],
             ),
             SizedBox(height: 20),
-            _buildStepItem('1', 'Enable FindMe', 'Turn on location tracking with your consent'),
-            _buildStepItem('2', 'Add Family Members', 'Add trusted contacts for family sharing'),
-            _buildStepItem('3', 'Grant Permissions', 'Choose who can access your location'),
-            _buildStepItem('4', 'Stay Connected', 'Family can see your location when permitted'),
+            _buildStepItem('1', 'Enable FindMe',
+                'Turn on location tracking with your consent'),
+            _buildStepItem('2', 'Add Family Members',
+                'Add trusted contacts for family sharing'),
+            _buildStepItem('3', 'Grant Permissions',
+                'Choose who can access your location'),
+            _buildStepItem('4', 'Stay Connected',
+                'Family can see your location when permitted'),
           ],
         ),
       ),
@@ -290,9 +294,12 @@ class FindMeInfoScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 12),
-            _buildFeaturePoint('Family members can see your location continuously'),
-            _buildFeaturePoint('No need to be reported missing for family access'),
-            _buildFeaturePoint('You control individual permissions per contact'),
+            _buildFeaturePoint(
+                'Family members can see your location continuously'),
+            _buildFeaturePoint(
+                'No need to be reported missing for family access'),
+            _buildFeaturePoint(
+                'You control individual permissions per contact'),
           ],
         ),
       ),
@@ -424,7 +431,8 @@ class FindMeInfoScreen extends StatelessWidget {
         children: [
           Text(emoji, style: TextStyle(fontSize: 16)),
           SizedBox(width: 8),
-          Expanded(child: Text(
+          Expanded(
+              child: Text(
             text,
             style: TextStyle(
               fontSize: 14,

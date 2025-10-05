@@ -1,4 +1,3 @@
-
 import '/core/app_export.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -12,39 +11,49 @@ class _FAQScreenState extends State<FAQScreen> {
   final List<Map<String, String>> faqs = [
     {
       "question": "How do I report a missing person?",
-      "answer": "To report a missing person, tap 'INCIDENT RECORD FORM' on the home screen. Fill out the detailed form with all required information about the missing person, including personal details, physical description, last known location, and upload a recent photo. Your report will be sent to the PNP for review and processing."
+      "answer":
+          "To report a missing person, tap 'INCIDENT RECORD FORM' on the home screen. Fill out the detailed form with all required information about the missing person, including personal details, physical description, last known location, and upload a recent photo. Your report will be sent to the PNP for review and processing."
     },
     {
       "question": "How do I track my case?",
-      "answer": "Go to your 'PROFILE' screen and view your submitted cases. You can see the status of each case, from 'Reported' to 'Under Investigation' to 'Resolved'. Each case shows progress steps and you can view the generated PDF of your report."
+      "answer":
+          "Go to your 'PROFILE' screen and view your submitted cases. You can see the status of each case, from 'Reported' to 'Under Investigation' to 'Resolved'. Each case shows progress steps and you can view the generated PDF of your report."
     },
     {
       "question": "How do I view missing persons in my area?",
-      "answer": "Tap 'VIEW MISSING PERSON' on the home screen to see all reported missing persons. You can search by name, filter by date, and sort by most recent cases. Each listing shows the person's photo, description, and last known location."
+      "answer":
+          "Tap 'VIEW MISSING PERSON' on the home screen to see all reported missing persons. You can search by name, filter by date, and sort by most recent cases. Each listing shows the person's photo, description, and last known location."
     },
     {
       "question": "Can I report a sighting of a missing person?",
-      "answer": "Yes! When viewing a missing person's details, tap 'Report a Sighting' to submit information about where and when you saw them. Include as much detail as possible about the location, time, and circumstances of the sighting."
+      "answer":
+          "Yes! When viewing a missing person's details, tap 'Report a Sighting' to submit information about where and when you saw them. Include as much detail as possible about the location, time, and circumstances of the sighting."
     },
     {
       "question": "What is the FindMe feature?",
-      "answer": "FindMe is a location tracking feature that allows family members to share their real-time location with trusted contacts. When enabled, your location is tracked in the background and can be accessed by designated family members or authorities if you're reported missing."
+      "answer":
+          "FindMe is a location tracking feature that allows family members to share their real-time location with trusted contacts. When enabled, your location is tracked in the background and can be accessed by designated family members or authorities if you're reported missing."
     },
     {
       "question": "How do I enable family location sharing?",
-      "answer": "Go to your Profile, tap 'FindMe Settings', and enable the feature. You can add trusted contacts, enable family sharing, and control who has access to your location. Family members with access can view your real-time location through the 'Find My Devices' feature."
+      "answer":
+          "Go to your Profile, tap 'FindMe Settings', and enable the feature. You can add trusted contacts, enable family sharing, and control who has access to your location. Family members with access can view your real-time location through the 'Find My Devices' feature."
     },
     {
-      "question": "What information is required when reporting a missing person?",
-      "answer": "You'll need to provide: personal details (name, age, gender, address), physical description (height, weight, hair/eye color), clothing last worn, circumstances of disappearance, last known location and time, recent photo, and your relationship to the missing person as the complainant."
+      "question":
+          "What information is required when reporting a missing person?",
+      "answer":
+          "You'll need to provide: personal details (name, age, gender, address), physical description (height, weight, hair/eye color), clothing last worn, circumstances of disappearance, last known location and time, recent photo, and your relationship to the missing person as the complainant."
     },
     {
       "question": "Is there a fee for using FindLink services?",
-      "answer": "No, all FindLink services are completely free. The app is designed to help the community and law enforcement work together to locate missing persons at no cost to users."
+      "answer":
+          "No, all FindLink services are completely free. The app is designed to help the community and law enforcement work together to locate missing persons at no cost to users."
     },
     {
       "question": "How does FindLink work with the PNP?",
-      "answer": "FindLink collaborates directly with the Philippine National Police (PNP). Your incident reports are sent to PNP administrators who can create official Missing Person Alarm Sheets (MPAS) and coordinate search efforts. This ensures your report reaches the proper authorities quickly."
+      "answer":
+          "FindLink collaborates directly with the Philippine National Police (PNP). Your incident reports are sent to PNP administrators who can create official Missing Person Alarm Sheets (MPAS) and coordinate search efforts. This ensures your report reaches the proper authorities quickly."
     },
   ];
 
@@ -97,14 +106,13 @@ class _FAQScreenState extends State<FAQScreen> {
         title: Text(
           "Frequently Asked Questions",
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            color: Colors.white,
-            fontSize: 20),
+              fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20),
         ),
         backgroundColor: Color(0xFF0D47A1),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.home, (route) => false),
         ),
       ),
       body: Container(
@@ -112,7 +120,10 @@ class _FAQScreenState extends State<FAQScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D47A1), Colors.blue.shade100,],
+            colors: [
+              Color(0xFF0D47A1),
+              Colors.blue.shade100,
+            ],
             stops: [0.0, 50],
           ),
         ),
@@ -126,12 +137,13 @@ class _FAQScreenState extends State<FAQScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white, // Changed from Colors.grey[700] to app's primary color
+                  color: Colors
+                      .white, // Changed from Colors.grey[700] to app's primary color
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
-            
+
             // FAQ List
             Expanded(
               child: Column(
@@ -199,7 +211,8 @@ class _FAQScreenState extends State<FAQScreen> {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -284,14 +297,16 @@ class _FAQItemState extends State<FAQItem> {
                       ),
                     ),
                     Icon(
-                      _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      _expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
                       color: Colors.grey,
                     ),
                   ],
                 ),
               ),
             ),
-            
+
             // Answer section
             AnimatedCrossFade(
               firstChild: Container(height: 0),
@@ -336,7 +351,9 @@ class _FAQItemState extends State<FAQItem> {
                   ],
                 ),
               ),
-              crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              crossFadeState: _expanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
               duration: Duration(milliseconds: 300),
             ),
           ],

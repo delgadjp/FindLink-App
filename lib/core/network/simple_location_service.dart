@@ -7,7 +7,8 @@ import '/core/app_export.dart';
 /// A simpler location service that uses only Geolocator
 /// This avoids the complex background geolocation plugin conflicts
 class SimpleLocationService {
-  static final SimpleLocationService _instance = SimpleLocationService._internal();
+  static final SimpleLocationService _instance =
+      SimpleLocationService._internal();
   factory SimpleLocationService() => _instance;
   SimpleLocationService._internal();
 
@@ -23,11 +24,12 @@ class SimpleLocationService {
   Future<void> initializeLocationService() async {
     try {
       print('Initializing SimpleLocationService...');
-      
+
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are disabled. Please enable location services in your device settings.');
+        throw Exception(
+            'Location services are disabled. Please enable location services in your device settings.');
       }
 
       // Check permissions
@@ -35,12 +37,14 @@ class SimpleLocationService {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Location permissions are denied. Please grant location access to use FindMe.');
+          throw Exception(
+              'Location permissions are denied. Please grant location access to use FindMe.');
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied. Please enable location access in app settings.');
+        throw Exception(
+            'Location permissions are permanently denied. Please enable location access in app settings.');
       }
 
       // Don't test location access during initialization to avoid timeouts
@@ -73,7 +77,7 @@ class SimpleLocationService {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isEmpty) {
         print('User document not found');
         return false;
@@ -81,7 +85,7 @@ class SimpleLocationService {
 
       final userDoc = userQuery.docs.first;
       final userData = userDoc.data();
-      
+
       if (userData['findMeEnabled'] != true) {
         print('FindMe feature not enabled for user');
         return false;
@@ -89,7 +93,7 @@ class SimpleLocationService {
 
       print('Starting simple location tracking...');
       _isTracking = true;
-      
+
       // Update user's tracking status using the correct document reference
       await userDoc.reference.update({
         'isTracking': true,
@@ -112,7 +116,7 @@ class SimpleLocationService {
 
       // Get initial location
       _updateLocation();
-      
+
       print('Simple location tracking started successfully');
       return true;
     } catch (e) {
@@ -132,9 +136,9 @@ class SimpleLocationService {
         _locationTimer = null;
         print('Simple location tracking stopped');
       }
-      
+
       _isTracking = false;
-      
+
       final user = _auth.currentUser;
       if (user != null) {
         // Find user document by userId field
@@ -143,7 +147,7 @@ class SimpleLocationService {
             .where('userId', isEqualTo: user.uid)
             .limit(1)
             .get();
-        
+
         if (userQuery.docs.isNotEmpty) {
           await userQuery.docs.first.reference.update({
             'isTracking': false,
@@ -168,19 +172,22 @@ class SimpleLocationService {
           .where('userId', isEqualTo: userId)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isNotEmpty) {
-        final userDocId = userQuery.docs.first.id; // e.g., "USER_20250808_HOM_001"
-        
+        final userDocId =
+            userQuery.docs.first.id; // e.g., "USER_20250808_HOM_001"
+
         // Extract the prefix part (e.g., "HOM" from "USER_20250808_HOM_001")
         final parts = userDocId.split('_');
         final userPrefix = parts.length >= 3 ? parts[2] : 'USR';
-        
+
         // Create location document ID with current date and time
         final now = DateTime.now();
-        final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
-        final timePart = "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
-        
+        final datePart =
+            "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        final timePart =
+            "${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}";
+
         return "LOC_${datePart}_${userPrefix}_${timePart}";
       } else {
         // Fallback to using UUID if user document not found
@@ -205,7 +212,7 @@ class SimpleLocationService {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isEmpty) {
         print('User document not found for location update');
         return;
@@ -250,7 +257,8 @@ class SimpleLocationService {
         );
         if (placemarks.isNotEmpty) {
           final placemark = placemarks.first;
-          address = '${placemark.street}, ${placemark.locality}, ${placemark.country}';
+          address =
+              '${placemark.street}, ${placemark.locality}, ${placemark.country}';
         }
       } catch (e) {
         print('Error getting address: $e');
@@ -269,7 +277,8 @@ class SimpleLocationService {
         address: address,
       );
 
-      print('Saving location for user ${user.uid}: ${position.latitude}, ${position.longitude}');
+      print(
+          'Saving location for user ${user.uid}: ${position.latitude}, ${position.longitude}');
       print('Location document ID: $locationDocId');
       print('Location data userId field: ${user.uid}');
 
@@ -284,16 +293,18 @@ class SimpleLocationService {
           .collection('findMeLocations')
           .doc(locationDocId)
           .get();
-      
+
       if (savedDoc.exists) {
         final savedData = savedDoc.data();
         print('✅ Location saved and verified:');
         print('   Doc ID: ${savedDoc.id}');
         print('   UserId in document: ${savedData?['userId']}');
-        print('   Coordinates: ${savedData?['latitude']}, ${savedData?['longitude']}');
-        
+        print(
+            '   Coordinates: ${savedData?['latitude']}, ${savedData?['longitude']}');
+
         if (savedData?['userId'] != user.uid) {
-          print('❌ CRITICAL ERROR: Saved location userId does not match current user!');
+          print(
+              '❌ CRITICAL ERROR: Saved location userId does not match current user!');
         }
       } else {
         print('❌ ERROR: Failed to save location document');
@@ -313,9 +324,8 @@ class SimpleLocationService {
 
       // Keep only last 100 locations (cleanup old data)
       await _cleanupOldLocations(user.uid); // Pass auth UID for querying
-      
+
       print('Location updated: ${position.latitude}, ${position.longitude}');
-      
     } catch (e) {
       print('Error updating location: $e');
       // Don't stop tracking for individual location failures
@@ -341,29 +351,29 @@ class SimpleLocationService {
             'timestamp': data['timestamp'],
           };
         }).toList();
-        
+
         // Sort by timestamp (newest first)
         locations.sort((a, b) {
           final aTimestamp = a['timestamp'];
           final bTimestamp = b['timestamp'];
-          
+
           DateTime aTime = DateTime(1970);
           DateTime bTime = DateTime(1970);
-          
+
           if (aTimestamp is Timestamp) {
             aTime = aTimestamp.toDate();
           }
           if (bTimestamp is Timestamp) {
             bTime = bTimestamp.toDate();
           }
-          
+
           return bTime.compareTo(aTime);
         });
-        
+
         // Keep only the newest 100, delete the rest
         if (locations.length > 100) {
           final docsToDelete = locations.sublist(100);
-          
+
           // Delete old documents in batches
           final batch = _firestore.batch();
           for (var item in docsToDelete) {
@@ -371,7 +381,7 @@ class SimpleLocationService {
             batch.delete(doc.reference);
           }
           await batch.commit();
-          
+
           print('Cleaned up ${docsToDelete.length} old location records');
         }
       }
@@ -411,35 +421,39 @@ class SimpleLocationService {
   }
 
   /// Get location history for a user
-  Future<List<LocationData>> getLocationHistory(String userId, {int? limit}) async {
+  Future<List<LocationData>> getLocationHistory(String userId,
+      {int? limit}) async {
     try {
       print('=== GET LOCATION HISTORY DEBUG START ===');
       print('Requested userId: $userId');
       print('Requested limit: $limit');
-      
+
       // Use simpler query without orderBy to avoid index requirement
       Query query = _firestore
           .collection('findMeLocations')
           .where('userId', isEqualTo: userId);
-      
+
       final querySnapshot = await query.get();
       print('Raw query returned ${querySnapshot.docs.length} documents');
-      
+
       if (querySnapshot.docs.isEmpty) {
         print('No location documents found for user: $userId');
-        
+
         // Debug: Let's see what location documents exist in the collection
         print('DEBUG: Checking all location documents...');
-        final allDocsQuery = await _firestore.collection('findMeLocations').limit(10).get();
-        print('Total location documents in collection: ${allDocsQuery.docs.length}');
+        final allDocsQuery =
+            await _firestore.collection('findMeLocations').limit(10).get();
+        print(
+            'Total location documents in collection: ${allDocsQuery.docs.length}');
         for (var doc in allDocsQuery.docs) {
           final data = doc.data();
-          print('  Doc ID: ${doc.id}, UserId: ${data['userId']}, Lat: ${data['latitude']}, Lng: ${data['longitude']}');
+          print(
+              '  Doc ID: ${doc.id}, UserId: ${data['userId']}, Lat: ${data['latitude']}, Lng: ${data['longitude']}');
         }
-        
+
         return [];
       }
-      
+
       final locations = <LocationData>[];
       for (var doc in querySnapshot.docs) {
         try {
@@ -451,7 +465,7 @@ class SimpleLocationService {
             print('  - Document longitude: ${data['longitude']}');
             print('  - Document address: ${data['address']}');
           }
-          
+
           final location = LocationData.fromSnapshot(doc);
           locations.add(location);
           print('  - Successfully parsed location at ${location.timestamp}');
@@ -461,22 +475,24 @@ class SimpleLocationService {
           // Continue with other documents instead of failing completely
         }
       }
-      
+
       // Sort by timestamp in the app (newest first)
       locations.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      
+
       // Apply limit after sorting if specified
       if (limit != null && locations.length > limit) {
         locations.removeRange(limit, locations.length);
       }
-      
-      print('Successfully parsed and sorted ${locations.length} locations out of ${querySnapshot.docs.length} documents');
+
+      print(
+          'Successfully parsed and sorted ${locations.length} locations out of ${querySnapshot.docs.length} documents');
       if (locations.isNotEmpty) {
         final latest = locations.first;
-        print('Latest location: ${latest.latitude}, ${latest.longitude} for userId: ${latest.userId}');
+        print(
+            'Latest location: ${latest.latitude}, ${latest.longitude} for userId: ${latest.userId}');
       }
       print('=== GET LOCATION HISTORY DEBUG END ===');
-      
+
       return locations;
     } catch (e) {
       print('Error getting location history for user $userId: $e');
@@ -492,7 +508,7 @@ class SimpleLocationService {
         .where('userId', isEqualTo: userId)
         .limit(1)
         .get();
-    
+
     if (userQuery.docs.isNotEmpty) {
       final userDocId = userQuery.docs.first.id;
       await _firestore.collection('users').doc(userDocId).update({
@@ -506,14 +522,14 @@ class SimpleLocationService {
   Future<void> disableFindMe(String userId) async {
     try {
       await stopTracking();
-      
+
       // Find user document by userId field
       final userQuery = await _firestore
           .collection('users')
           .where('userId', isEqualTo: userId)
           .limit(1)
           .get();
-      
+
       if (userQuery.docs.isNotEmpty) {
         final userDocId = userQuery.docs.first.id;
         await _firestore.collection('users').doc(userDocId).update({
@@ -541,9 +557,9 @@ class SimpleLocationService {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       LocationPermission permission = await Geolocator.checkPermission();
-      return serviceEnabled && 
-             permission != LocationPermission.denied && 
-             permission != LocationPermission.deniedForever;
+      return serviceEnabled &&
+          permission != LocationPermission.denied &&
+          permission != LocationPermission.deniedForever;
     } catch (e) {
       print('Error checking location service state: $e');
       return false;

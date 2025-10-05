@@ -43,7 +43,9 @@ class _GridItemState extends State<GridItem> {
                     width: isHovered ? 65 : 60,
                     height: isHovered ? 65 : 60,
                     decoration: BoxDecoration(
-                      color: isHovered ? Colors.blue.shade100 : Colors.blue.shade50,
+                      color: isHovered
+                          ? Colors.blue.shade100
+                          : Colors.blue.shade50,
                       shape: BoxShape.circle,
                     ),
                     child: Center(

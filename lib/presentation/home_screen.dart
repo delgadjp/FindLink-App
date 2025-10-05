@@ -96,7 +96,10 @@ class _HomeScreenState extends State<HomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D47A1), Colors.blue.shade100,],
+            colors: [
+              Color(0xFF0D47A1),
+              Colors.blue.shade100,
+            ],
             stops: [0.0, 50],
           ),
         ),
@@ -166,7 +169,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0D47A1), // Changed text color to match app theme
+                                  color: Color(
+                                      0xFF0D47A1), // Changed text color to match app theme
                                 ),
                               ),
                               Text(
@@ -222,7 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => MissingPersonScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => MissingPersonScreen()),
                         );
                       },
                     ),
@@ -234,7 +239,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => FillUpFormScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => FillUpFormScreen()),
                         );
                       },
                     ),

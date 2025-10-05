@@ -77,14 +77,19 @@ class CustomInputField extends StatelessWidget {
               height: 35,
               child: dropdownItems != null
                   ? LayoutBuilder(
-                      builder: (context, constraints) {                        String currentValue = value ?? dropdownPlaceholder;
+                      builder: (context, constraints) {
+                        String currentValue = value ?? dropdownPlaceholder;
                         // Use controller text if value is null or placeholder
-                        if (controller != null && controller!.text.isNotEmpty && controller!.text != dropdownPlaceholder) {
+                        if (controller != null &&
+                            controller!.text.isNotEmpty &&
+                            controller!.text != dropdownPlaceholder) {
                           currentValue = controller!.text;
                         }
-                        
+
                         return DropdownButtonFormField<String>(
-                          value: dropdownItems!.contains(currentValue) ? currentValue : dropdownPlaceholder,
+                          value: dropdownItems!.contains(currentValue)
+                              ? currentValue
+                              : dropdownPlaceholder,
                           items: dropdownItems!.map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
@@ -92,7 +97,8 @@ class CustomInputField extends StatelessWidget {
                               child: Text(
                                 value,
                                 style: TextStyle(
-                                  fontSize: constraints.maxWidth < 200 ? 12 : 14,
+                                  fontSize:
+                                      constraints.maxWidth < 200 ? 12 : 14,
                                   color: value == dropdownPlaceholder
                                       ? Colors.grey
                                       : Colors.black,
@@ -112,19 +118,25 @@ class CustomInputField extends StatelessWidget {
                             color: Colors.black,
                           ),
                           dropdownColor: Colors.white,
-                          icon: Icon(Icons.arrow_drop_down, color: Colors.black, size: 20),
+                          icon: Icon(Icons.arrow_drop_down,
+                              color: Colors.black, size: 20),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(5),
-                              borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),
+                              borderSide: BorderSide(
+                                  color:
+                                      const Color.fromARGB(255, 188, 188, 188)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(5),
-                              borderSide: BorderSide(color: const Color.fromARGB(255, 205, 205, 205)),
+                              borderSide: BorderSide(
+                                  color:
+                                      const Color.fromARGB(255, 205, 205, 205)),
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
                             isDense: true,
                           ),
                           isExpanded: true,
@@ -141,20 +153,27 @@ class CustomInputField extends StatelessWidget {
                           keyboardType: keyboardType,
                           inputFormatters: inputFormatters,
                           validator: validator,
-                          style: TextStyle(fontSize: 13, color: Colors.black),                          decoration: InputDecoration(
+                          style: TextStyle(fontSize: 13, color: Colors.black),
+                          decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
                             hintText: hintText,
-                            hintStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            hintStyle: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(5),
-                              borderSide: BorderSide(color: const Color.fromARGB(255, 188, 188, 188)),
+                              borderSide: BorderSide(
+                                  color:
+                                      const Color.fromARGB(255, 188, 188, 188)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(5),
-                              borderSide: BorderSide(color: const Color.fromARGB(255, 205, 205, 205)),
+                              borderSide: BorderSide(
+                                  color:
+                                      const Color.fromARGB(255, 205, 205, 205)),
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
                             isDense: true,
                             errorStyle: TextStyle(height: 0),
                           ),

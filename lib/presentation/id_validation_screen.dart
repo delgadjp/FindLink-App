@@ -6,13 +6,13 @@ class IDValidationScreen extends StatefulWidget {
   // Add parameters for registration data and flow control
   final Map<String, dynamic>? registrationData;
   final bool isFromRegistration;
-  
+
   IDValidationScreen({
     Key? key,
     this.registrationData,
     this.isFromRegistration = false,
   }) : super(key: key);
-  
+
   @override
   _IDValidationScreenState createState() => _IDValidationScreenState();
 }
@@ -21,13 +21,13 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
   final ImagePicker _picker = ImagePicker();
   File? idImage;
   bool isSubmitting = false;
-  
+
   // ID types available for selection
   final List<String> idTypes = [
     'Driver\'s License',
     'Philippine Identification Card',
   ];
-  
+
   String selectedIdType = 'Driver\'s License'; // Default value
 
   Future<void> _pickImage(ImageSource source) async {
@@ -122,7 +122,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                     ],
                   ),
                   SizedBox(height: 24),
-                  
+
                   // Gallery option
                   Material(
                     color: Colors.transparent,
@@ -188,9 +188,9 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: 12),
-                  
+
                   // Camera option
                   Material(
                     color: Colors.transparent,
@@ -256,9 +256,9 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: 20),
-                  
+
                   // Cancel button
                   SizedBox(
                     width: double.infinity,
@@ -306,9 +306,10 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ConfirmIDDetailsScreen(
-          idImage: idImage!, 
+          idImage: idImage!,
           idType: selectedIdType,
-          registrationData: widget.isFromRegistration ? widget.registrationData : null,
+          registrationData:
+              widget.isFromRegistration ? widget.registrationData : null,
           isFromRegistration: widget.isFromRegistration,
         ),
       ),
@@ -369,7 +370,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                   ),
           ),
         ),
-        if (image != null) 
+        if (image != null)
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
@@ -389,18 +390,20 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: widget.isFromRegistration ? AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'ID Validation',
-          style: TextStyle(color: Colors.white),
-        ),
-      ) : null,
+      appBar: widget.isFromRegistration
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(
+                'ID Validation',
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          : null,
       body: Container(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
@@ -449,7 +452,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                           fit: BoxFit.contain,
                         ),
                         SizedBox(height: 10),
-                        
+
                         // ID Validation title
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -463,7 +466,7 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                             ),
                           ),
                         ),
-                        
+
                         // Description
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20),
@@ -483,14 +486,14 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                           StepIndicator(currentStep: 2),
                           SizedBox(height: 24),
                         ],
-                        
+
                         // ID Validation Form
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // ID Type Selection
                             _buildSectionHeader("ID Information"),
-                            
+
                             _buildInputLabel('ID Type'),
                             SizedBox(height: 5),
                             Container(
@@ -502,7 +505,8 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.credit_card, color: Color(0xFF53C0FF)),
+                                  Icon(Icons.credit_card,
+                                      color: Color(0xFF53C0FF)),
                                   SizedBox(width: 10),
                                   Expanded(
                                     child: DropdownButtonHideUnderline(
@@ -511,8 +515,11 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                                         style: TextStyle(color: Colors.black),
                                         dropdownColor: Colors.white,
                                         isExpanded: true,
-                                        icon: Icon(Icons.arrow_drop_down, color: Color(0xFF53C0FF)),
-                                        items: idTypes.map<DropdownMenuItem<String>>((String value) {
+                                        icon: Icon(Icons.arrow_drop_down,
+                                            color: Color(0xFF53C0FF)),
+                                        items: idTypes
+                                            .map<DropdownMenuItem<String>>(
+                                                (String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
                                             child: Text(
@@ -539,16 +546,15 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
 
                             // ID Image Upload Section
                             _buildSectionHeader("Upload ID Image"),
-                            
+
                             // ID Image
                             _buildImageUploader(
-                              'ID Image', 
-                              'Upload a clear photo of your ID card', 
-                              idImage
-                            ),
-                            
+                                'ID Image',
+                                'Upload a clear photo of your ID card',
+                                idImage),
+
                             SizedBox(height: 15),
-                            
+
                             // Terms and Privacy
                             Container(
                               padding: EdgeInsets.all(15),
@@ -565,14 +571,15 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                                 ),
                               ),
                             ),
-                            
+
                             SizedBox(height: 30),
-                            
+
                             // Continue Button
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: isSubmitting ? null : _validateAndContinue,
+                                onPressed:
+                                    isSubmitting ? null : _validateAndContinue,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Color(0xFFFFD27E),
                                   foregroundColor: Color(0xFF424242),
@@ -583,30 +590,31 @@ class _IDValidationScreenState extends State<IDValidationScreen> {
                                   ),
                                   disabledBackgroundColor: Colors.grey.shade400,
                                 ),
-                                child: isSubmitting 
-                                  ? Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
+                                child: isSubmitting
+                                    ? Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
                                           ),
+                                          SizedBox(width: 10),
+                                          Text('PROCESSING...'),
+                                        ],
+                                      )
+                                    : Text(
+                                        'CONTINUE',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
                                         ),
-                                        SizedBox(width: 10),
-                                        Text('PROCESSING...'),
-                                      ],
-                                    )
-                                  : Text(
-                                      'CONTINUE',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
                                       ),
-                                    ),
                               ),
                             ),
                           ],

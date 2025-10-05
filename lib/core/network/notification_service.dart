@@ -32,6 +32,14 @@ class NotificationService {
     importance: Importance.high,
   );
 
+  static const AndroidNotificationChannel _liftingFormChannel =
+      AndroidNotificationChannel(
+    'lifting_form_updates',
+    'Lifting Form Updates',
+    description: 'Notifications when you receive new lifting forms.',
+    importance: Importance.high,
+  );
+
   Future<void> initialize({bool requestPermission = true}) async {
     if (_initialized) return;
 
@@ -80,6 +88,11 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_caseStatusChannel);
+
+    await _localNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_liftingFormChannel);
   }
 
   Future<void> _setupFcmTokenPersistence() async {
@@ -181,17 +194,69 @@ class NotificationService {
     );
   }
 
+  Future<void> showCaseResolvedNotification({
+    required String caseId,
+    required String caseNumber,
+    String? caseName,
+  }) async {
+    final title = '🎉 Case Resolved!';
+    final body = (caseName != null && caseName.trim().isNotEmpty)
+        ? 'Great news! Case $caseNumber for $caseName has been successfully resolved.'
+        : 'Great news! Case $caseNumber has been successfully resolved.';
+
+    await showLocalNotification(
+      id: caseId.hashCode & 0x7fffffff,
+      title: title,
+      body: body,
+      payload: {
+        'caseId': caseId,
+        'caseNumber': caseNumber,
+        'status': 'Resolved',
+        'type': 'case_resolved',
+      },
+    );
+  }
+
+  Future<void> showNewLiftingFormNotification({
+    required String liftingFormId,
+    required String reporterName,
+    String? location,
+    String? subject,
+  }) async {
+    final title = '📋 New Lifting Form Received';
+    final body = subject != null && subject.trim().isNotEmpty
+        ? 'You have received a new lifting form for $reporterName regarding: $subject'
+        : 'You have received a new lifting form for $reporterName';
+
+    await showLocalNotification(
+      id: liftingFormId.hashCode & 0x7fffffff,
+      title: title,
+      body: body,
+      payload: {
+        'liftingFormId': liftingFormId,
+        'reporterName': reporterName,
+        'location': location ?? '',
+        'subject': subject ?? '',
+        'type': 'new_lifting_form',
+      },
+      isLiftingForm: true,
+    );
+  }
+
   Future<void> showLocalNotification({
     required int id,
     required String title,
     required String body,
     Map<String, dynamic>? payload,
+    bool isLiftingForm = false,
   }) async {
+    final channel = isLiftingForm ? _liftingFormChannel : _caseStatusChannel;
+
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        _caseStatusChannel.id,
-        _caseStatusChannel.name,
-        channelDescription: _caseStatusChannel.description,
+        channel.id,
+        channel.name,
+        channelDescription: channel.description,
         importance: Importance.high,
         priority: Priority.high,
       ),

@@ -7,9 +7,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:findlink/presentation/irf_details_screen.dart';
 import 'package:findlink/core/network/notification_service.dart';
 import 'package:findlink/widgets/common/lifting_form_widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// ProfileScreen - Optimized and cleaned up version
-/// 
+///
 /// Key optimizations made:
 /// 1. Removed duplicate image builder methods (_buildModalFormImage, _buildFormImage variations)
 /// 2. Consolidated empty state widgets into reusable utility class
@@ -42,6 +43,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _unreadLiftingFormsCount = 0;
   List<Map<String, dynamic>> _liftingForms = [];
   Set<String> _viewedLiftingFormIds = {}; // Track viewed lifting form IDs
+  Set<String> _notifiedLiftingFormIds =
+      {}; // Track lifting forms we've already sent notifications for
 
   // Stream subscriptions for real-time updates
   List<StreamSubscription<QuerySnapshot>> _streamSubscriptions = [];
@@ -70,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _loadNotifiedLiftingFormIds(); // Load persisted notification IDs first
     _fetchUserData();
     _initializeCaseStreams();
     _updateLiftingFormNotifications();
@@ -83,6 +87,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subscription.cancel();
     }
     super.dispose();
+  }
+
+  // Load notified lifting form IDs from persistent storage
+  Future<void> _loadNotifiedLiftingFormIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String>? notifiedIds = prefs.getStringList('notified_lifting_form_ids');
+      if (notifiedIds != null) {
+        _notifiedLiftingFormIds = notifiedIds.toSet();
+      }
+    } catch (e) {
+      print('Error loading notified lifting form IDs: $e');
+    }
+  }
+
+  // Save notified lifting form IDs to persistent storage
+  Future<void> _saveNotifiedLiftingFormIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('notified_lifting_form_ids', _notifiedLiftingFormIds.toList());
+    } catch (e) {
+      print('Error saving notified lifting form IDs: $e');
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -308,6 +335,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final incidentDetails = data['incidentDetails'] ?? {};
         final status = data['status'] ?? 'Reported';
 
+        // Check if case was just resolved for notification
+        final String caseKey = 'incidents:${doc.id}';
+        final String? previousStatus = _previousCaseStatuses[caseKey];
+
+        // Send notification if case was just resolved
+        if (_hasLoadedInitialCases &&
+            (status == 'Resolved Case' || status == 'Resolved') &&
+            previousStatus != null &&
+            previousStatus != status &&
+            previousStatus != 'Resolved Case' &&
+            previousStatus != 'Resolved') {
+          final caseName = _extractName(data);
+          final caseNumber = incidentDetails['incidentId'] ?? doc.id;
+
+          // Schedule notification to be sent after state update
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              NotificationService().showCaseResolvedNotification(
+                caseId: doc.id,
+                caseNumber: caseNumber,
+                caseName: caseName,
+              );
+            }
+          });
+        }
+
         // Skip resolved cases as they are archived
         if (status == 'Resolved Case' || status == 'Resolved') {
           continue;
@@ -335,6 +388,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final data = doc.data() as Map<String, dynamic>;
         final status = data['status'] ?? 'Reported';
 
+        // Check if case was just resolved for notification
+        final String caseKey = 'missingPersons:${doc.id}';
+        final String? previousStatus = _previousCaseStatuses[caseKey];
+
+        // Send notification if case was just resolved
+        if (_hasLoadedInitialCases &&
+            (status == 'Resolved Case' || status == 'Resolved') &&
+            previousStatus != null &&
+            previousStatus != status &&
+            previousStatus != 'Resolved Case' &&
+            previousStatus != 'Resolved') {
+          final caseName = data['name'] ?? 'Unknown Person';
+          final caseNumber = data['case_id'] ?? doc.id;
+
+          // Schedule notification to be sent after state update
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              NotificationService().showCaseResolvedNotification(
+                caseId: doc.id,
+                caseNumber: caseNumber,
+                caseName: caseName,
+              );
+            }
+          });
+        }
+
         // Skip resolved cases as they are archived
         if (status == 'Resolved Case' || status == 'Resolved') {
           continue;
@@ -355,11 +434,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Note: We don't fetch from archivedCases collection for active case tracking
       // as these are resolved cases that should not appear in the user's active case list
 
+      // Update status tracking for all cases (including resolved ones that will be filtered out)
       final Map<String, String> previousStatusesSnapshot =
           Map<String, String>.from(_previousCaseStatuses);
-      final Map<String, String> newStatuses = {};
+      final Map<String, String> newStatuses =
+          Map<String, String>.from(_previousCaseStatuses);
       final List<Map<String, String>> progressedCases = [];
 
+      // Track status for all cases in allCases (active cases only)
       for (final caseItem in allCases) {
         final String caseId = (caseItem['id'] ?? '').toString();
         if (caseId.isEmpty) continue;
@@ -517,11 +599,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       });
 
+      // Check for new lifting forms to trigger notifications
+      final List<Map<String, dynamic>> newForms = [];
+      for (final form in liftingForms) {
+        final formId = form['id'];
+        if (!_notifiedLiftingFormIds.contains(formId)) {
+          newForms.add(form);
+          _notifiedLiftingFormIds.add(formId);
+        }
+      }
+
       setState(() {
         _liftingForms = liftingForms;
         // Update unread count based on viewed forms
         _updateUnreadCount();
       });
+
+      // Send notifications for new lifting forms (only after initial load and if we have new forms)
+      if (newForms.isNotEmpty && _hasLoadedInitialCases && mounted) {
+        print('Sending notifications for ${newForms.length} new lifting forms');
+        for (final form in newForms) {
+          await NotificationService.instance.showNewLiftingFormNotification(
+            liftingFormId: form['id'],
+            reporterName: form['reporterName'] ?? 'Unknown Reporter',
+            location: form['address'] ?? '', // Use 'address' field from the form
+            subject: form['missingPersonName'] ?? '', // Use missing person name as subject
+          );
+        }
+        // Save the updated notification IDs to persistent storage
+        await _saveNotifiedLiftingFormIds();
+      } else if (newForms.isNotEmpty && !_hasLoadedInitialCases) {
+        // During initial load, just save the IDs without sending notifications
+        await _saveNotifiedLiftingFormIds();
+      }
     } catch (e) {
       print('Error updating lifting form notifications: $e');
     }
@@ -923,7 +1033,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Container(
                         width: double.infinity,
                         child: _liftingForms.isEmpty
-                            ? LiftingFormWidgets.buildEmptyState(isEnhanced: true)
+                            ? LiftingFormWidgets.buildEmptyState(
+                                isEnhanced: true)
                             : _LiftingFormsPaginatedList(
                                 liftingForms: _liftingForms,
                                 onFormSelected: (form) {
@@ -978,8 +1089,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
-
-
 
   // Show lifting form details modal (improved version)
   void _showLiftingFormDetails(Map<String, dynamic> form) {
@@ -1105,7 +1214,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                           child: ClipOval(
-                            child: LiftingFormWidgets.buildFormImage(form, iconSize: 50),
+                            child: LiftingFormWidgets.buildFormImage(form,
+                                iconSize: 50),
                           ),
                         ),
 
@@ -1254,16 +1364,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-
-
-
-
-
-
-
-
-
 
   // Paginated list widget for lifting forms in modal
   Widget _LiftingFormsPaginatedList({
@@ -1539,7 +1639,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     child: ClipOval(
-                      child: LiftingFormWidgets.buildFormImage(form, iconSize: 60),
+                      child:
+                          LiftingFormWidgets.buildFormImage(form, iconSize: 60),
                     ),
                   ),
                   SizedBox(height: 12),
@@ -3103,8 +3204,6 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
     );
   }
 
-
-
   Widget _buildLiftingFormCard(Map<String, dynamic> form) {
     return GestureDetector(
       onTap: () => widget.onFormSelected(form),
@@ -3155,7 +3254,8 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
                           ],
                         ),
                         child: ClipOval(
-                          child: LiftingFormWidgets.buildFormImage(form, iconSize: 60),
+                          child: LiftingFormWidgets.buildFormImage(form,
+                              iconSize: 60),
                         ),
                       ),
                       SizedBox(height: 10),
@@ -3203,8 +3303,6 @@ class _LiftingFormsScreenState extends State<_LiftingFormsScreen> {
       ),
     );
   }
-
-
 
   Widget _buildPaginationControls() {
     return Container(

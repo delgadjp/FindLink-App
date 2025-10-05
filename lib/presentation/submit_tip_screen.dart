@@ -39,23 +39,23 @@ enum ValidationStatus {
 class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController(); // Add scroll controller
-  
+
   // Key for validation section for scrolling
   final GlobalKey _validationSectionKey = GlobalKey();
-  
+
   // Validation state variables
   bool _isSubmitting = false;
   ValidationStatus _validationStatus = ValidationStatus.none;
   String _validationMessage = '';
   String _validationConfidence = '0.0';
   bool _isProcessingImage = false;
-  
+
   // Variables for nearby tips feature
   bool _isCheckingNearbyTips = false;
   List<Map<String, dynamic>> _nearbyTips = [];
-  final double _nearbyTipsRadius = 100; 
+  final double _nearbyTipsRadius = 100;
   bool _hasNearbyTips = false;
-  
+
   // Create a map to store keys for form fields
   final Map<String, GlobalKey<FormFieldState>> _fieldKeys = {
     'dateLastSeen': GlobalKey<FormFieldState>(),
@@ -79,7 +79,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   Uint8List? _webImage;
   final picker = ImagePicker();
   final auth.FirebaseAuth _auth = auth.FirebaseAuth.instance;
-  
+
   // Service for tip operations and image validation
   final TipService _tipService = TipService();
 
@@ -105,7 +105,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   String? selectedHairColor;
   String? selectedAgeRange;
   String? selectedHeightRange; // Add selected height range
-  
+
   // Date dropdown variables for date last seen
   int? selectedDay;
   int? selectedMonth;
@@ -113,24 +113,40 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   final List<String> genderOptions = ['Male', 'Female', 'Prefer not to say'];
   final List<String> hairColors = [
-    'Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White',
-    'Dark Brown', 'Light Brown', 'Auburn', 'Strawberry Blonde', 'Unknown'
+    'Black',
+    'Brown',
+    'Blonde',
+    'Red',
+    'Gray',
+    'White',
+    'Dark Brown',
+    'Light Brown',
+    'Auburn',
+    'Strawberry Blonde',
+    'Unknown'
   ];
-  
+
   // Define age range options
   final List<String> ageRanges = [
-    'Under 12', '12-17', '18-24', '25-34', '35-44', 
-    '45-54', '55-64', '65 and older', 'Unknown'
+    'Under 12',
+    '12-17',
+    '18-24',
+    '25-34',
+    '35-44',
+    '45-54',
+    '55-64',
+    '65 and older',
+    'Unknown'
   ];
-  
+
   // Define height range options
   final List<String> heightRanges = [
     'Under 4\' (< 122cm)',
-    '4\' - 4\'6" (122-137cm)', 
+    '4\' - 4\'6" (122-137cm)',
     '4\'7" - 5\' (140-152cm)',
-    '5\'1" - 5\'6" (155-168cm)', 
+    '5\'1" - 5\'6" (155-168cm)',
     '5\'7" - 6\' (170-183cm)',
-    '6\'1" - 6\'6" (185-198cm)', 
+    '6\'1" - 6\'6" (185-198cm)',
     'Over 6\'6" (> 198cm)',
     'Unknown'
   ];
@@ -161,7 +177,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   static const String API_KEY = "AIzaSyDLPJt6WudzkFbNa77p6hsqirAXEXU52OQ";
 
-  static const String SCREEN_SUBMIT_TIP_COMPLIANCE = 'submitTipComplianceAccepted';
+  static const String SCREEN_SUBMIT_TIP_COMPLIANCE =
+      'submitTipComplianceAccepted';
 
   @override
   void initState() {
@@ -200,7 +217,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return;
       }
       final authService = AuthService();
-      bool accepted = await authService.getScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE);
+      bool accepted = await authService.getScreenComplianceAccepted(
+          currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE);
       setState(() {
         hasAcceptedPrivacyPolicy = accepted;
       });
@@ -237,22 +255,24 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          'https://maps.googleapis.com/maps/api/place/textsearch/json?query=$query&key=$API_KEY'
-        ),
+            'https://maps.googleapis.com/maps/api/place/textsearch/json?query=$query&key=$API_KEY'),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final results = data['results'] as List<dynamic>;
-        
+
         setState(() {
-          _searchResults = results.take(5).map((result) => {
-            'name': result['name'] ?? '',
-            'formatted_address': result['formatted_address'] ?? '',
-            'lat': result['geometry']['location']['lat'],
-            'lng': result['geometry']['location']['lng'],
-            'place_id': result['place_id'] ?? '',
-          }).toList();
+          _searchResults = results
+              .take(5)
+              .map((result) => {
+                    'name': result['name'] ?? '',
+                    'formatted_address': result['formatted_address'] ?? '',
+                    'lat': result['geometry']['location']['lat'],
+                    'lng': result['geometry']['location']['lng'],
+                    'place_id': result['place_id'] ?? '',
+                  })
+              .toList();
           _isSearching = false;
         });
       } else {
@@ -276,7 +296,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: EdgeInsets.all(16),
             duration: Duration(seconds: 4),
           ),
@@ -304,7 +325,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 5),
         ),
@@ -317,7 +339,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     final lat = place['lat'] as double;
     final lng = place['lng'] as double;
     final newLocation = LatLng(lat, lng);
-    
+
     setState(() {
       selectedLocation = newLocation;
       _addressController.text = place['formatted_address'] ?? '';
@@ -356,7 +378,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.orange.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 3),
         ),
@@ -366,8 +389,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
     final lat = selectedLocation!.latitude;
     final lng = selectedLocation!.longitude;
-    final url = 'https://www.google.com/maps/@$lat,$lng,3a,75y,90t/data=!3m6!1e1';
-    
+    final url =
+        'https://www.google.com/maps/@$lat,$lng,3a,75y,90t/data=!3m6!1e1';
+
     try {
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -388,7 +412,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: EdgeInsets.all(16),
             duration: Duration(seconds: 4),
           ),
@@ -411,7 +436,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 4),
         ),
@@ -434,13 +460,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             });
             if (accepted && currentUser != null) {
               try {
-                await AuthService().updateScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE, true);
+                await AuthService().updateScreenComplianceAccepted(
+                    currentUser.uid,
+                    ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE,
+                    true);
                 print('Submit tip compliance accepted in database');
               } catch (e) {
                 print('Error updating submit tip compliance: $e');
               }
             } else if (!accepted && currentUser != null) {
-              await AuthService().updateScreenComplianceAccepted(currentUser.uid, ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE, false);
+              await AuthService().updateScreenComplianceAccepted(
+                  currentUser.uid,
+                  ModalUtils.SCREEN_SUBMIT_TIP_COMPLIANCE,
+                  false);
             }
             if (!accepted) {
               Navigator.of(context).pop();
@@ -475,17 +507,17 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       // Request location permission
       final status = await Permission.location.request();
       print("Location permission status: $status");
-      
+
       if (status.isGranted) {
         // Get current position if permission is granted
         Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         );
-        
+
         setState(() {
           selectedLocation = LatLng(position.latitude, position.longitude);
           _updateMarkerAndControllers();
-          
+
           // If we have a map controller, animate to the new position
           if (mapController != null) {
             mapController!.animateCamera(
@@ -496,9 +528,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 ),
               ),
             );
-          }          // Get address when location is updated
+          } // Get address when location is updated
           _getAddressFromCoordinates();
-          
+
           // Check for nearby tips with the current location
           _checkForNearbyTips();
         });
@@ -520,7 +552,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ),
             backgroundColor: Colors.orange.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: EdgeInsets.all(16),
             duration: Duration(seconds: 5),
           ),
@@ -547,7 +580,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 4),
         ),
@@ -557,11 +591,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       });
     }
   }
-  
+
   // Update date controller from dropdown selections
   void _updateDateFromDropdowns() {
     if (selectedDay != null && selectedMonth != null && selectedYear != null) {
-      final dateStr = "${selectedYear!.toString().padLeft(4, '0')}-${selectedMonth!.toString().padLeft(2, '0')}-${selectedDay!.toString().padLeft(2, '0')}";
+      final dateStr =
+          "${selectedYear!.toString().padLeft(4, '0')}-${selectedMonth!.toString().padLeft(2, '0')}-${selectedDay!.toString().padLeft(2, '0')}";
       _dateLastSeenController.text = dateStr;
       tipData['dateLastSeen'] = dateStr;
     } else {
@@ -569,13 +604,13 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       tipData['dateLastSeen'] = '';
     }
   }
-  
+
   // Generate list of days based on selected month and year
   List<int> _getDaysInMonth() {
     if (selectedMonth == null || selectedYear == null) {
       return List.generate(31, (index) => index + 1);
     }
-    
+
     int daysInMonth;
     switch (selectedMonth!) {
       case 2: // February
@@ -590,14 +625,14 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       default:
         daysInMonth = 31;
     }
-    
+
     return List.generate(daysInMonth, (index) => index + 1);
   }
-  
+
   bool _isLeapYear(int year) {
     return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
   }
-  
+
   // Show time picker dialog
   void _showTimePickerDialog() {
     // Parse current time if exists, otherwise use current time
@@ -622,7 +657,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       builder: (BuildContext dialogContext) {
         int selectedHour = initialTime.hour;
         int selectedMinute = initialTime.minute;
-        
+
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
@@ -690,7 +725,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         ],
                       ),
                       SizedBox(height: 24),
-                      
+
                       // Time selection
                       Container(
                         padding: EdgeInsets.all(20),
@@ -729,16 +764,20 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                     controller: FixedExtentScrollController(
                                       initialItem: selectedHour,
                                     ),
-                                    childDelegate: ListWheelChildBuilderDelegate(
+                                    childDelegate:
+                                        ListWheelChildBuilderDelegate(
                                       builder: (context, index) {
-                                        if (index < 0 || index > 23) return null;
+                                        if (index < 0 || index > 23)
+                                          return null;
                                         return Container(
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: selectedHour == index
-                                                ? Color(0xFF0D47A1).withOpacity(0.1)
+                                                ? Color(0xFF0D47A1)
+                                                    .withOpacity(0.1)
                                                 : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             index.toString().padLeft(2, '0'),
@@ -760,7 +799,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                 ),
                               ],
                             ),
-                            
+
                             // Separator
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 20),
@@ -773,7 +812,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                 ),
                               ),
                             ),
-                            
+
                             // Minute picker
                             Column(
                               children: [
@@ -801,24 +840,29 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                     controller: FixedExtentScrollController(
                                       initialItem: selectedMinute,
                                     ),
-                                    childDelegate: ListWheelChildBuilderDelegate(
+                                    childDelegate:
+                                        ListWheelChildBuilderDelegate(
                                       builder: (context, index) {
-                                        if (index < 0 || index > 59) return null;
+                                        if (index < 0 || index > 59)
+                                          return null;
                                         return Container(
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: selectedMinute == index
-                                                ? Color(0xFF0D47A1).withOpacity(0.1)
+                                                ? Color(0xFF0D47A1)
+                                                    .withOpacity(0.1)
                                                 : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             index.toString().padLeft(2, '0'),
                                             style: TextStyle(
                                               fontSize: 18,
-                                              fontWeight: selectedMinute == index
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
+                                              fontWeight:
+                                                  selectedMinute == index
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
                                               color: selectedMinute == index
                                                   ? Color(0xFF0D47A1)
                                                   : Colors.black,
@@ -835,9 +879,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           ],
                         ),
                       ),
-                      
+
                       SizedBox(height: 24),
-                      
+
                       // Selected time preview
                       Container(
                         width: double.infinity,
@@ -845,7 +889,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         decoration: BoxDecoration(
                           color: Color(0xFF0D47A1).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
+                          border: Border.all(
+                              color: Color(0xFF0D47A1).withOpacity(0.3)),
                         ),
                         child: Column(
                           children: [
@@ -869,15 +914,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           ],
                         ),
                       ),
-                      
+
                       SizedBox(height: 24),
-                      
+
                       // Action buttons
                       Row(
                         children: [
                           Expanded(
                             child: TextButton(
-                              onPressed: () => Navigator.of(dialogContext).pop(),
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
@@ -899,7 +945,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 // Update the time controller
-                                final timeString = '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
+                                final timeString =
+                                    '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}';
                                 this.setState(() {
                                   _timeLastSeenController.text = timeString;
                                 });
@@ -935,7 +982,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       },
     );
   }
-  
+
   void _updateMarkerAndControllers() {
     if (selectedLocation != null) {
       markers.clear();
@@ -979,28 +1026,30 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
         String address = '';
-        
+
         // Build address string from components
         if (place.street != null && place.street!.isNotEmpty) {
           address += place.street!;
         }
-        
+
         if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-          address += address.isEmpty ? place.subLocality! : ", ${place.subLocality}";
+          address +=
+              address.isEmpty ? place.subLocality! : ", ${place.subLocality}";
         }
-        
+
         if (place.locality != null && place.locality!.isNotEmpty) {
           address += address.isEmpty ? place.locality! : ", ${place.locality}";
         }
-        
+
         if (place.postalCode != null && place.postalCode!.isNotEmpty) {
-          address += address.isEmpty ? place.postalCode! : ", ${place.postalCode}";
+          address +=
+              address.isEmpty ? place.postalCode! : ", ${place.postalCode}";
         }
-        
+
         if (place.country != null && place.country!.isNotEmpty) {
           address += address.isEmpty ? place.country! : ", ${place.country}";
         }
-        
+
         setState(() {
           _addressController.text = address;
           _isGettingAddress = false;
@@ -1034,7 +1083,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       // Handle camera permission differently - check permission status first
       if (source == ImageSource.camera) {
         final cameraStatus = await Permission.camera.status;
-        
+
         if (cameraStatus.isDenied) {
           final result = await Permission.camera.request();
           if (result.isDenied) {
@@ -1070,7 +1119,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           return;
         }
       }
-      
+
       // Configure image picker settings for better quality
       final pickedFile = await picker.pickImage(
         source: source,
@@ -1079,7 +1128,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         maxHeight: source == ImageSource.camera ? 1920 : 1600,
         preferredCameraDevice: CameraDevice.rear,
       );
-      
+
       if (pickedFile != null) {
         setState(() {
           _validationStatus = ValidationStatus.processing;
@@ -1093,27 +1142,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             _webImage = bytes;
             _imageFile = null;
           });
-          
+
           // Validate image with Google Vision API
           await _validateImageWithVision(bytes);
-          
         } else {
           final file = File(pickedFile.path);
           setState(() {
             _imageFile = file;
             _webImage = null;
           });
-          
+
           // Validate image with Google Vision API
           await _validateImageWithVision(file);
         }
-        
+
         // Update tip data
         tipData['image'] = pickedFile.path;
-        
+
         // Scroll to validation section to show results
         _scrollToValidationSection();
-        
       } else {
         setState(() {
           _isProcessingImage = false;
@@ -1128,7 +1175,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _validationStatus = ValidationStatus.error;
         _validationMessage = 'Error selecting image: ${e.toString()}';
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error selecting image. Please try again.'),
@@ -1152,15 +1199,15 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
       // Use TipService to validate image (it should have similar method to IRFService)
       final result = await _tipService.validateImageWithGoogleVision(imageData);
-      
+
       final bool containsHuman = result['containsHuman'] ?? false;
       final double confidence = result['confidence'] ?? 0.0;
       final String message = result['message'] ?? 'Validation completed';
-      
+
       setState(() {
         _validationConfidence = (confidence * 100).toStringAsFixed(1);
         _validationMessage = message;
-        
+
         if (!result['isValid']) {
           _validationStatus = ValidationStatus.error;
           // Clear image on validation error
@@ -1169,7 +1216,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           tipData['image'] = '';
         } else if (!containsHuman) {
           double confidencePercent = confidence * 100;
-          
+
           // Check if confidence is above 50% - keep image but warn user
           if (confidencePercent > 50.0) {
             _validationStatus = ValidationStatus.lowConfidenceHuman;
@@ -1195,7 +1242,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           }
         }
       });
-      
     } catch (e) {
       print('Error validating image: $e');
       setState(() {
@@ -1205,8 +1251,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       });
     }
   }
-
-
 
   /// Submit tip data with validation
   Future<void> _submitTip() async {
@@ -1228,7 +1272,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.orange.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 5),
           action: SnackBarAction(
@@ -1244,7 +1289,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       );
       return;
     }
-    
+
     // Debug: Print auth info to verify authentication
     print("Current user: ${_auth.currentUser?.uid}");
     print("Current user email: ${_auth.currentUser?.email}");
@@ -1252,15 +1297,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
     // Check form validation state
     final bool isValid = _formKey.currentState?.validate() ?? false;
-    
+
     // Additional validation for date dropdowns and time
-    bool dateDropdownValid = selectedDay != null && selectedMonth != null && selectedYear != null;
+    bool dateDropdownValid =
+        selectedDay != null && selectedMonth != null && selectedYear != null;
     bool timeValid = _timeLastSeenController.text.isNotEmpty;
-    
+
     if (!isValid || !dateDropdownValid || !timeValid) {
       // Find the first field with an error and scroll to it
       GlobalKey<FormFieldState>? firstErrorKey;
-      
+
       // Check date dropdowns first if they're incomplete
       if (!dateDropdownValid) {
         // Show error message for incomplete date
@@ -1280,14 +1326,15 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: EdgeInsets.all(16),
             duration: Duration(seconds: 3),
           ),
         );
         return;
       }
-      
+
       // Check time field
       if (!timeValid) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1306,14 +1353,15 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: EdgeInsets.all(16),
             duration: Duration(seconds: 3),
           ),
         );
         return;
       }
-      
+
       for (final entry in _fieldKeys.entries) {
         final fieldState = entry.value.currentState;
         if (fieldState != null && !fieldState.isValid) {
@@ -1322,7 +1370,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           break;
         }
       }
-      
+
       // Additional validation for dropdown fields that might not have keys
       if (firstErrorKey == null) {
         if (selectedGender == null) {
@@ -1330,12 +1378,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         } else if (selectedAgeRange == null) {
           firstErrorKey = _fieldKeys['ageRange'];
         } else if (selectedHeightRange == null) {
-          firstErrorKey = _fieldKeys['heightRange']; 
+          firstErrorKey = _fieldKeys['heightRange'];
         } else if (selectedHairColor == null) {
           firstErrorKey = _fieldKeys['hairColor'];
         }
       }
-      
+
       // Scroll to the first field with an error
       if (firstErrorKey != null) {
         Scrollable.ensureVisible(
@@ -1345,7 +1393,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           curve: Curves.easeInOut,
         );
       }
-      
+
       // Show error message to user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1363,22 +1411,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 3),
         ),
       );
-      
+
       return;
-    }    // Check for duplicate tip for the same missing person within 100 meters
+    } // Check for duplicate tip for the same missing person within 100 meters
     // This matches the logic from SubmitReport.jsx
     final double lat = double.tryParse(_latitudeController.text) ?? 0.0;
     final double lng = double.tryParse(_longitudeController.text) ?? 0.0;
     final String personName = widget.person.name;
-    
-    print("DEBUG: Checking for duplicates for person: $personName at location: $lat, $lng");
-    
-    final bool duplicateExists = await _hasDuplicateTipForPersonNearby(personName, lat, lng, 100);
+
+    print(
+        "DEBUG: Checking for duplicates for person: $personName at location: $lat, $lng");
+
+    final bool duplicateExists =
+        await _hasDuplicateTipForPersonNearby(personName, lat, lng, 100);
     if (duplicateExists) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1396,7 +1447,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: EdgeInsets.all(16),
           duration: Duration(seconds: 4),
         ),
@@ -1414,12 +1466,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         });
 
         final TipService tipService = TipService();
-        
+
         // Get current user ID - ensure this is never null at this point
         String userId = _auth.currentUser!.uid;
-        
+
         print("Submitting tip with userId: $userId");
-        
+
         // Prepare the image data to pass to TipService
         dynamic imageData;
         if (kIsWeb) {
@@ -1427,13 +1479,13 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         } else if (_imageFile != null) {
           imageData = _imageFile; // File for mobile
         }
-        
+
         // Update validation status for submission
         setState(() {
           _validationMessage = "Submitting tip...";
           _validationStatus = ValidationStatus.processing;
         });
-        
+
         // Submit tip with the image data
         await tipService.submitTip(
           dateLastSeen: _dateLastSeenController.text,
@@ -1450,8 +1502,10 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           userId: userId,
           address: _addressController.text,
           imageData: imageData, // Pass the image data to the service
-          validateImage: false, // Disable second validation since we already validated
-          caseId: widget.person.caseId, // Pass the caseId for missing person name lookup
+          validateImage:
+              false, // Disable second validation since we already validated
+          caseId: widget
+              .person.caseId, // Pass the caseId for missing person name lookup
           missingPersonName: widget.person.name, // Pass the name from the UI
         );
 
@@ -1461,7 +1515,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           _validationMessage = "Tip submitted successfully!";
           _validationStatus = ValidationStatus.success;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -1478,28 +1532,29 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ),
             backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: EdgeInsets.all(16),
             duration: Duration(seconds: 3),
           ),
         );
-        
+
         // Wait a moment for the user to see the success message
         await Future.delayed(Duration(seconds: 2));
-        
+
         // Navigate back to the missing person screen
         Navigator.pushReplacementNamed(context, AppRoutes.missingPerson);
-
       } catch (e) {
         print('Error saving tip: $e');
-        
+
         // Update UI to show error
         setState(() {
           _isSubmitting = false;
-          
+
           // Show user-friendly error message based on the exception
           if (e.toString().contains('No human detected in the image')) {
-            _validationMessage = 'No person detected in the image. Image has been automatically removed.';
+            _validationMessage =
+                'No person detected in the image. Image has been automatically removed.';
             _validationStatus = ValidationStatus.noHuman;
             // Clear the image
             _imageFile = null;
@@ -1510,12 +1565,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             _validationStatus = ValidationStatus.error;
           }
         });
-        
+
         _scrollToValidationSection();
       }
     }
   }
-  
+
   // Helper method to scroll to validation section
   void _scrollToValidationSection() {
     if (_validationSectionKey.currentContext != null) {
@@ -1526,19 +1581,19 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       );
     }
   }
-  
+
   Widget _buildMapSection() {
     // Add debug prints to identify platform and location status
     print("Platform is web: ${kIsWeb}");
     print("Selected location: $selectedLocation");
-    
+
     // Show a placeholder on web if there are issues with Google Maps
     if (kIsWeb) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader("Select Location on Map"),
-          
+
           // Search bar
           Container(
             margin: EdgeInsets.only(bottom: 16),
@@ -1550,24 +1605,24 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search for a place...',
                     prefixIcon: Icon(Icons.search, color: Color(0xFF0D47A1)),
-                    suffixIcon: _isSearching 
-                      ? Container(
-                          width: 20,
-                          height: 20,
-                          padding: EdgeInsets.all(12),
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchResults = [];
-                              });
-                            },
+                    suffixIcon: _isSearching
+                        ? Container(
+                            width: 20,
+                            height: 20,
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : null,
+                        : _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchResults = [];
+                                  });
+                                },
+                              )
+                            : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -1577,7 +1632,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Color(0xFF0D47A1), width: 2),
+                      borderSide:
+                          BorderSide(color: Color(0xFF0D47A1), width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.grey.shade50,
@@ -1597,7 +1653,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     }
                   },
                 ),
-                
+
                 // Search results
                 if (_searchResults.isNotEmpty)
                   Container(
@@ -1642,7 +1698,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               ],
             ),
           ),
-          
+
           Container(
             height: 300,
             decoration: BoxDecoration(
@@ -1657,7 +1713,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
-                        Text("Loading map...", style: TextStyle(color: Colors.black54)),
+                        Text("Loading map...",
+                            style: TextStyle(color: Colors.black54)),
                       ],
                     ),
                   )
@@ -1725,7 +1782,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   icon: Icon(Icons.streetview),
                   label: Text("Street View"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: selectedLocation != null ? Color(0xFF0D47A1) : Colors.grey,
+                    backgroundColor: selectedLocation != null
+                        ? Color(0xFF0D47A1)
+                        : Colors.grey,
                     padding: EdgeInsets.symmetric(vertical: 12),
                     foregroundColor: Colors.white,
                   ),
@@ -1742,7 +1801,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader("Select Location on Map"),
-        
+
         // Search bar
         Container(
           margin: EdgeInsets.only(bottom: 16),
@@ -1754,24 +1813,24 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 decoration: InputDecoration(
                   hintText: 'Search for a place...',
                   prefixIcon: Icon(Icons.search, color: Color(0xFF0D47A1)),
-                  suffixIcon: _isSearching 
-                    ? Container(
-                        width: 20,
-                        height: 20,
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchResults = [];
-                            });
-                          },
+                  suffixIcon: _isSearching
+                      ? Container(
+                          width: 20,
+                          height: 20,
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : null,
+                      : _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchResults = [];
+                                });
+                              },
+                            )
+                          : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -1801,7 +1860,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   }
                 },
               ),
-              
+
               // Search results
               if (_searchResults.isNotEmpty)
                 Container(
@@ -1846,7 +1905,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             ],
           ),
         ),
-        
+
         Container(
           height: 300,
           decoration: BoxDecoration(
@@ -1862,8 +1921,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 8),
-                        Text("Determining location...", 
-                          style: TextStyle(color: Colors.black54)),
+                        Text("Determining location...",
+                            style: TextStyle(color: Colors.black54)),
                       ],
                     ),
                   )
@@ -1954,7 +2013,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 icon: Icon(Icons.streetview),
                 label: Text("Street View"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: selectedLocation != null ? Color(0xFF0D47A1) : Colors.grey,
+                  backgroundColor: selectedLocation != null
+                      ? Color(0xFF0D47A1)
+                      : Colors.grey,
                   padding: EdgeInsets.symmetric(vertical: 12),
                   foregroundColor: Colors.white,
                 ),
@@ -2020,40 +2081,65 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                               ),
                               SizedBox(height: 8),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.calendar_today, color: Color(0xFF0D47A1), size: 20),
+                                    Icon(Icons.calendar_today,
+                                        color: Color(0xFF0D47A1), size: 20),
                                     SizedBox(width: 10),
                                     // Month dropdown
                                     Expanded(
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<int>(
                                           value: selectedMonth,
-                                          hint: Text('Month', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                                          style: TextStyle(color: Colors.black, fontSize: 14),
+                                          hint: Text('Month',
+                                              style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 14)),
+                                          style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 14),
                                           isExpanded: true,
                                           icon: SizedBox.shrink(),
                                           dropdownColor: Colors.white,
                                           items: List.generate(12, (index) {
                                             int month = index + 1;
-                                            List<String> monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                                                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                            List<String> monthNames = [
+                                              'Jan',
+                                              'Feb',
+                                              'Mar',
+                                              'Apr',
+                                              'May',
+                                              'Jun',
+                                              'Jul',
+                                              'Aug',
+                                              'Sep',
+                                              'Oct',
+                                              'Nov',
+                                              'Dec'
+                                            ];
                                             return DropdownMenuItem<int>(
                                               value: month,
-                                              child: Text(monthNames[index], style: TextStyle(color: Colors.black)),
+                                              child: Text(monthNames[index],
+                                                  style: TextStyle(
+                                                      color: Colors.black)),
                                             );
                                           }),
                                           onChanged: (int? newValue) {
                                             setState(() {
                                               selectedMonth = newValue;
                                               // Reset day if it's invalid for new month
-                                              if (selectedDay != null && selectedDay! > _getDaysInMonth().length) {
+                                              if (selectedDay != null &&
+                                                  selectedDay! >
+                                                      _getDaysInMonth()
+                                                          .length) {
                                                 selectedDay = null;
                                               }
                                               _updateDateFromDropdowns();
@@ -2066,22 +2152,30 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                       height: 20,
                                       width: 1,
                                       color: Colors.grey.shade300,
-                                      margin: EdgeInsets.symmetric(horizontal: 8),
+                                      margin:
+                                          EdgeInsets.symmetric(horizontal: 8),
                                     ),
                                     // Day dropdown
                                     Expanded(
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<int>(
                                           value: selectedDay,
-                                          hint: Text('Day', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                                          style: TextStyle(color: Colors.black, fontSize: 14),
+                                          hint: Text('Day',
+                                              style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 14)),
+                                          style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 14),
                                           isExpanded: true,
                                           icon: SizedBox.shrink(),
                                           dropdownColor: Colors.white,
                                           items: _getDaysInMonth().map((day) {
                                             return DropdownMenuItem<int>(
                                               value: day,
-                                              child: Text('$day', style: TextStyle(color: Colors.black)),
+                                              child: Text('$day',
+                                                  style: TextStyle(
+                                                      color: Colors.black)),
                                             );
                                           }).toList(),
                                           onChanged: (int? newValue) {
@@ -2097,30 +2191,43 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                       height: 20,
                                       width: 1,
                                       color: Colors.grey.shade300,
-                                      margin: EdgeInsets.symmetric(horizontal: 8),
+                                      margin:
+                                          EdgeInsets.symmetric(horizontal: 8),
                                     ),
                                     // Year dropdown
                                     Expanded(
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<int>(
                                           value: selectedYear,
-                                          hint: Text('Year', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                                          style: TextStyle(color: Colors.black, fontSize: 14),
+                                          hint: Text('Year',
+                                              style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 14)),
+                                          style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 14),
                                           isExpanded: true,
-                                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF0D47A1)),
+                                          icon: Icon(Icons.arrow_drop_down,
+                                              color: Color(0xFF0D47A1)),
                                           dropdownColor: Colors.white,
                                           items: List.generate(50, (index) {
-                                            int year = DateTime.now().year - index;
+                                            int year =
+                                                DateTime.now().year - index;
                                             return DropdownMenuItem<int>(
                                               value: year,
-                                              child: Text('$year', style: TextStyle(color: Colors.black)),
+                                              child: Text('$year',
+                                                  style: TextStyle(
+                                                      color: Colors.black)),
                                             );
                                           }),
                                           onChanged: (int? newValue) {
                                             setState(() {
                                               selectedYear = newValue;
                                               // Reset day if it's invalid for new year (leap year changes)
-                                              if (selectedDay != null && selectedDay! > _getDaysInMonth().length) {
+                                              if (selectedDay != null &&
+                                                  selectedDay! >
+                                                      _getDaysInMonth()
+                                                          .length) {
                                                 selectedDay = null;
                                               }
                                               _updateDateFromDropdowns();
@@ -2158,24 +2265,28 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.grey.shade300),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.access_time, color: Color(0xFF0D47A1), size: 20),
+                                      Icon(Icons.access_time,
+                                          color: Color(0xFF0D47A1), size: 20),
                                       SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
-                                          _timeLastSeenController.text.isEmpty 
-                                              ? 'Select time (HH:MM)' 
+                                          _timeLastSeenController.text.isEmpty
+                                              ? 'Select time (HH:MM)'
                                               : _timeLastSeenController.text,
                                           style: TextStyle(
-                                            color: _timeLastSeenController.text.isEmpty 
-                                                ? Colors.grey.shade600 
+                                            color: _timeLastSeenController
+                                                    .text.isEmpty
+                                                ? Colors.grey.shade600
                                                 : Colors.black,
                                             fontSize: 14,
-                                            fontWeight: _timeLastSeenController.text.isEmpty 
-                                                ? FontWeight.normal 
+                                            fontWeight: _timeLastSeenController
+                                                    .text.isEmpty
+                                                ? FontWeight.normal
                                                 : FontWeight.w600,
                                           ),
                                         ),
@@ -2220,7 +2331,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           "Height Range",
                           selectedHeightRange,
                           heightRanges,
-                          (value) => setState(() => selectedHeightRange = value),
+                          (value) =>
+                              setState(() => selectedHeightRange = value),
                           Icons.height,
                         ),
                         _buildDropdownField(
@@ -2239,14 +2351,23 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSectionHeader("Additional Details (Optional)"),
-                        _buildTextField(_clothingController, "Clothing Description", required: false, icon: Icons.checkroom),
-                        _buildTextField(_featuresController, "Distinguishing Features", required: false, icon: Icons.face_retouching_natural),
-                        _buildTextField(_descriptionController, "Additional Description",
-                            maxLines: 3, required: false, icon: Icons.description),
+                        _buildTextField(
+                            _clothingController, "Clothing Description",
+                            required: false, icon: Icons.checkroom),
+                        _buildTextField(
+                            _featuresController, "Distinguishing Features",
+                            required: false,
+                            icon: Icons.face_retouching_natural),
+                        _buildTextField(
+                            _descriptionController, "Additional Description",
+                            maxLines: 3,
+                            required: false,
+                            icon: Icons.description),
                       ],
                     ),
                   ),
-                  SizedBox(height: 16),                  _buildCard(
+                  SizedBox(height: 16),
+                  _buildCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -2277,9 +2398,11 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     ),
                     child: Text(
                       "Submit Sighting",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                  ),                  SizedBox(height: 32),
+                  ),
+                  SizedBox(height: 32),
                 ],
               ),
             ),
@@ -2302,6 +2425,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       ),
     );
   }
+
   Widget _buildCard({required Widget child}) {
     return Card(
       elevation: 4,
@@ -2337,7 +2461,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return TextFormField(
           key: _fieldKeys['dateLastSeen'],
           controller: controller,
-          style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600),
           decoration: _getInputDecoration(label, icon).copyWith(
             suffixIcon: IconButton(
               icon: Icon(Icons.calendar_today, color: Color(0xFF0D47A1)),
@@ -2360,17 +2485,17 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             if (value == null || value.isEmpty) {
               return 'Please enter date';
             }
-            
+
             // Try to parse the date
             try {
               final enteredDate = _dateFormatter.parse(value);
               final now = DateTime.now();
-              
+
               // Check if date is in the future
               if (enteredDate.isAfter(DateTime(now.year, now.month, now.day))) {
                 return 'Cannot enter future dates';
               }
-              
+
               return null;
             } catch (e) {
               return 'Invalid date format (YYYY-MM-DD)';
@@ -2389,7 +2514,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return TextFormField(
           key: _fieldKeys['timeLastSeen'],
           controller: controller,
-          style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w600),
           decoration: _getInputDecoration(label, icon).copyWith(
             suffixIcon: IconButton(
               icon: Icon(Icons.access_time, color: Color(0xFF0D47A1)),
@@ -2399,13 +2525,15 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                   initialTime: TimeOfDay.now(),
                   builder: (BuildContext context, Widget? child) {
                     return MediaQuery(
-                      data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                      data: MediaQuery.of(context)
+                          .copyWith(alwaysUse24HourFormat: true),
                       child: child!,
                     );
                   },
                 );
                 if (picked != null) {
-                  controller.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                  controller.text =
+                      '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
                 }
               },
             ),
@@ -2416,34 +2544,34 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             if (value == null || value.isEmpty) {
               return 'Please enter time';
             }
-            
+
             // Check time format
             final timeRegex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
             if (!timeRegex.hasMatch(value)) {
               return 'Invalid time format (HH:MM)';
             }
-            
+
             // If date is today, check if time is in the future
             final dateValue = _dateLastSeenController.text;
             try {
               final enteredDate = _dateFormatter.parse(dateValue);
               final now = DateTime.now();
-              
-              if (enteredDate.year == now.year && 
-                  enteredDate.month == now.month && 
+
+              if (enteredDate.year == now.year &&
+                  enteredDate.month == now.month &&
                   enteredDate.day == now.day) {
-                
                 // Parse the time
                 final parts = value.split(':');
                 final hour = int.parse(parts[0]);
                 final minute = int.parse(parts[1]);
-                
+
                 // Check if time is in the future
-                if (hour > now.hour || (hour == now.hour && minute > now.minute)) {
+                if (hour > now.hour ||
+                    (hour == now.hour && minute > now.minute)) {
                   return 'Cannot enter future times for today';
                 }
               }
-              
+
               return null;
             } catch (e) {
               // If there's an error parsing the date, just validate the time format
@@ -2512,9 +2640,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
       fillColor: Colors.grey.shade50,
       // Add custom error styling
       errorStyle: TextStyle(
-        color: Colors.red.shade800,  // Deeper red color
+        color: Colors.red.shade800, // Deeper red color
         fontWeight: FontWeight.bold, // Bold text for emphasis
-        fontSize: 13.0,              // Slightly larger for visibility
+        fontSize: 13.0, // Slightly larger for visibility
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -2553,7 +2681,7 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         keyName = label.toLowerCase().replaceAll(' ', '');
     }
     final fieldKey = _fieldKeys[keyName];
-    
+
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
@@ -2600,7 +2728,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     TextButton.icon(
                       onPressed: _showImageSourceOptions,
                       icon: Icon(Icons.edit, color: Color(0xFF0D47A1)),
-                      label: Text('Change Image', style: TextStyle(color: Color(0xFF0D47A1))),
+                      label: Text('Change Image',
+                          style: TextStyle(color: Color(0xFF0D47A1))),
                     ),
                     SizedBox(width: 16),
                     TextButton.icon(
@@ -2610,7 +2739,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         tipData['image'] = '';
                       }),
                       icon: Icon(Icons.delete, color: Colors.red),
-                      label: Text('Remove', style: TextStyle(color: Colors.red)),
+                      label:
+                          Text('Remove', style: TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),
@@ -2632,7 +2762,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                     SizedBox(height: 8),
                     Text(
                       'Add Photo',
-                      style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Color(0xFF0D47A1),
+                          fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 4),
                     Text(
@@ -2711,7 +2843,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.lightbulb, color: Colors.green.shade700, size: 18),
+                            Icon(Icons.lightbulb,
+                                color: Colors.green.shade700, size: 18),
                             SizedBox(width: 6),
                             Text(
                               'Tips for Better Detection',
@@ -2724,11 +2857,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                           ],
                         ),
                         SizedBox(height: 10),
-                        _buildPhotoTip(Icons.person, 'Ensure the person is clearly visible'),
-                        _buildPhotoTip(Icons.wb_sunny, 'Use good lighting conditions'),
-                        _buildPhotoTip(Icons.center_focus_strong, 'Keep person centered in frame'),
-                        _buildPhotoTip(Icons.photo_size_select_large, 'Person should fill 25%+ of image'),
-                        _buildPhotoTip(Icons.hd, 'Use high resolution (1024px+ recommended)'),
+                        _buildPhotoTip(Icons.person,
+                            'Ensure the person is clearly visible'),
+                        _buildPhotoTip(
+                            Icons.wb_sunny, 'Use good lighting conditions'),
+                        _buildPhotoTip(Icons.center_focus_strong,
+                            'Keep person centered in frame'),
+                        _buildPhotoTip(Icons.photo_size_select_large,
+                            'Person should fill 25%+ of image'),
+                        _buildPhotoTip(Icons.hd,
+                            'Use high resolution (1024px+ recommended)'),
                       ],
                     ),
                   ),
@@ -2747,7 +2885,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         width: double.infinity,
                         padding: EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
+                          border: Border.all(
+                              color: Color(0xFF0D47A1).withOpacity(0.3)),
                           borderRadius: BorderRadius.circular(12),
                           color: Colors.white,
                         ),
@@ -2798,9 +2937,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: 10),
-                  
+
                   // Camera option
                   Material(
                     color: Colors.transparent,
@@ -2864,9 +3003,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: 12),
-                  
+
                   // Cancel button
                   SizedBox(
                     width: double.infinity,
@@ -2960,14 +3099,17 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           SizedBox(height: 8),
           Text(
             _validationMessage,
-            style: TextStyle(fontSize: 14, color: Colors.black), // Changed text color to black
+            style: TextStyle(
+                fontSize: 14,
+                color: Colors.black), // Changed text color to black
           ),
           if (_validationStatus == ValidationStatus.processing)
             Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(_getValidationIconColor()),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(_getValidationIconColor()),
                 ),
               ),
             ),
@@ -3081,27 +3223,31 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         return "Success";
     }
   }
+
   /// Check for existing tip for the same person within specified radius (matches SubmitReport.jsx logic)
-  Future<bool> _hasDuplicateTipForPersonNearby(String personName, double lat, double lng, double radiusMeters) async {
+  Future<bool> _hasDuplicateTipForPersonNearby(
+      String personName, double lat, double lng, double radiusMeters) async {
     try {
       print("DEBUG: Querying reports collection for person: $personName");
-      
+
       final QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('reports')
           .where('name', isEqualTo: personName)
           .get();
-      
-      print("DEBUG: Found ${snapshot.docs.length} reports for person: $personName");
-      
+
+      print(
+          "DEBUG: Found ${snapshot.docs.length} reports for person: $personName");
+
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        print("DEBUG: Checking report ${doc.id} with data: ${data['name']} at coordinates: ${data['coordinates']}");
-        
+        print(
+            "DEBUG: Checking report ${doc.id} with data: ${data['name']} at coordinates: ${data['coordinates']}");
+
         if (data.containsKey('coordinates')) {
           final coord = data['coordinates'];
           double? tipLat;
           double? tipLng;
-          
+
           // Handle GeoPoint format (new format)
           if (coord is GeoPoint) {
             tipLat = coord.latitude;
@@ -3109,8 +3255,12 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           }
           // Handle legacy Map format
           else if (coord is Map) {
-            tipLat = coord['lat'] is double ? coord['lat'] : double.tryParse(coord['lat'].toString());
-            tipLng = coord['lng'] is double ? coord['lng'] : double.tryParse(coord['lng'].toString());
+            tipLat = coord['lat'] is double
+                ? coord['lat']
+                : double.tryParse(coord['lat'].toString());
+            tipLng = coord['lng'] is double
+                ? coord['lng']
+                : double.tryParse(coord['lng'].toString());
           }
           // Handle string format: "[lat° N, lng° E]" (old format)
           else if (coord is String) {
@@ -3121,21 +3271,25 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               tipLng = double.tryParse(match.group(2)!);
             }
           }
-          
+
           if (tipLat != null && tipLng != null) {
-            final double distance = _calculateDistance(lat, lng, tipLat, tipLng);
-            print("DEBUG: Distance to report ${doc.id}: ${distance.toStringAsFixed(2)} meters");
-              // This matches the React logic: same name AND within radius
-            final bool nameMatch = data['name'].toString().toLowerCase() == personName.toLowerCase();
+            final double distance =
+                _calculateDistance(lat, lng, tipLat, tipLng);
+            print(
+                "DEBUG: Distance to report ${doc.id}: ${distance.toStringAsFixed(2)} meters");
+            // This matches the React logic: same name AND within radius
+            final bool nameMatch = data['name'].toString().toLowerCase() ==
+                personName.toLowerCase();
             final bool withinRadius = distance <= radiusMeters;
             final bool isDuplicate = withinRadius && nameMatch;
-            
+
             print("DEBUG: Report ${doc.id} analysis:");
             print("  - Name in DB: '${data['name']}' vs Target: '$personName'");
             print("  - Name match: $nameMatch");
-            print("  - Distance: ${distance.toStringAsFixed(2)}m <= ${radiusMeters}m = $withinRadius");
+            print(
+                "  - Distance: ${distance.toStringAsFixed(2)}m <= ${radiusMeters}m = $withinRadius");
             print("  - isDuplicate: $isDuplicate");
-            
+
             if (isDuplicate) {
               print("DEBUG: *** DUPLICATE FOUND! Blocking submission. ***");
               return true;
@@ -3147,8 +3301,9 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
           print("DEBUG: Report ${doc.id} has no coordinates");
         }
       }
-      
-      print("DEBUG: No duplicates found for $personName within ${radiusMeters}m");
+
+      print(
+          "DEBUG: No duplicates found for $personName within ${radiusMeters}m");
       return false;
     } catch (e) {
       print('Error checking duplicate tip: $e');
@@ -3157,7 +3312,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   }
 
   // Helper method to calculate distance between two points using the Haversine formula
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
     const double earthRadius = 6371000; // Earth's radius in meters
     final double lat1Rad = lat1 * (3.141592653589793 / 180);
     final double lon1Rad = lon1 * (3.141592653589793 / 180);
@@ -3165,49 +3321,48 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     final double lon2Rad = lon2 * (3.141592653589793 / 180);
     final double dLat = lat2Rad - lat1Rad;
     final double dLon = lon2Rad - lon1Rad;
-    final double a = 
-        (sin(dLat/2) * sin(dLat/2)) +
-        (cos(lat1Rad) * cos(lat2Rad) * sin(dLon/2) * sin(dLon/2));
-    final double c = 2 * atan2(sqrt(a), sqrt(1-a));
+    final double a = (sin(dLat / 2) * sin(dLat / 2)) +
+        (cos(lat1Rad) * cos(lat2Rad) * sin(dLon / 2) * sin(dLon / 2));
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadius * c;
   }
 
   // Add new method to check for nearby tips
   Future<void> _checkForNearbyTips() async {
     if (selectedLocation == null) return;
-    
+
     setState(() {
       _isCheckingNearbyTips = true;
       _nearbyTips = [];
       _hasNearbyTips = false;
     });
-    
+
     try {
       final TipService tipService = TipService();
       final nearbyTips = await tipService.findNearbyTips(
-        selectedLocation!.latitude,
-        selectedLocation!.longitude,
-        _nearbyTipsRadius
-      );
-      
+          selectedLocation!.latitude,
+          selectedLocation!.longitude,
+          _nearbyTipsRadius);
+
       setState(() {
         _isCheckingNearbyTips = false;
         _nearbyTips = nearbyTips;
         _hasNearbyTips = nearbyTips.isNotEmpty;
-      });      // Debug logging only - no user notifications
+      }); // Debug logging only - no user notifications
       if (_hasNearbyTips) {
         final String personName = widget.person.name;
         int samePersonCount = 0;
         int otherPersonCount = 0;
-        
+
         for (var tip in _nearbyTips) {
-          if (tip['name']?.toString().toLowerCase() == personName.toLowerCase()) {
+          if (tip['name']?.toString().toLowerCase() ==
+              personName.toLowerCase()) {
             samePersonCount++;
           } else {
             otherPersonCount++;
           }
         }
-        
+
         // Debug logging only
         print("DEBUG: Nearby tips analysis for $personName:");
         print("  - Same person tips: $samePersonCount");

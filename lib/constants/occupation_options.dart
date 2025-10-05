@@ -1,6 +1,6 @@
 class OccupationOptions {
   static const String placeholder = 'SELECT';
-  
+
   static const List<String> options = [
     placeholder,
     // Employment Status
@@ -8,7 +8,7 @@ class OccupationOptions {
     'Unemployed',
     'Retired',
     'Housewife/Househusband',
-    
+
     // General Employment Types
     'Self-employed',
     'Government Employee',
@@ -18,7 +18,7 @@ class OccupationOptions {
     'Freelancer/Consultant',
     'Part-time Worker',
     'Contractual/Project-based',
-    
+
     // Professional Services
     'Doctor/Physician',
     'Nurse',
@@ -28,7 +28,7 @@ class OccupationOptions {
     'Physical Therapist',
     'Medical Technologist',
     'Veterinarian',
-    
+
     // Education Sector
     'Teacher (Elementary)',
     'Teacher (High School)',
@@ -38,7 +38,7 @@ class OccupationOptions {
     'Professor',
     'Tutor',
     'Training Specialist',
-    
+
     // Engineering & Technology
     'Engineer (Civil)',
     'Engineer (Mechanical)',
@@ -52,7 +52,7 @@ class OccupationOptions {
     'Web Developer',
     'Graphic Designer',
     'Architect',
-    
+
     // Business & Finance
     'Accountant',
     'Auditor',
@@ -65,7 +65,7 @@ class OccupationOptions {
     'Human Resources',
     'Manager/Supervisor',
     'Executive/CEO',
-    
+
     // Legal & Government
     'Lawyer/Attorney',
     'Judge',
@@ -76,7 +76,7 @@ class OccupationOptions {
     'Military Personnel',
     'Security Guard',
     'Firefighter',
-    
+
     // Skilled Trades
     'Electrician',
     'Plumber',
@@ -87,7 +87,7 @@ class OccupationOptions {
     'Technician',
     'Machinist',
     'Construction Worker',
-    
+
     // Transportation
     'Driver (Private)',
     'Driver (Public Transport)',
@@ -97,7 +97,7 @@ class OccupationOptions {
     'Delivery Driver',
     'Pilot',
     'Seaman/Seafarer',
-    
+
     // Agriculture & Food
     'Farmer',
     'Fisher/Fisherman',
@@ -107,7 +107,7 @@ class OccupationOptions {
     'Chef/Cook',
     'Waiter/Waitress',
     'Baker',
-    
+
     // Service Industry
     'Domestic Helper',
     'Caregiver',
@@ -119,7 +119,7 @@ class OccupationOptions {
     'Cashier',
     'Store Clerk',
     'Vendor',
-    
+
     // Arts & Media
     'Artist',
     'Writer/Author',
@@ -128,14 +128,14 @@ class OccupationOptions {
     'Musician',
     'Actor/Actress',
     'TV/Radio Personality',
-    
+
     // Religious & Social Work
     'Priest/Pastor/Minister',
     'Religious Worker',
     'Social Worker',
     'Community Organizer',
     'NGO Worker',
-    
+
     // Other
     'Craftsman/Artisan',
     'Factory Worker',

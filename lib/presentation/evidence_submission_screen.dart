@@ -18,33 +18,35 @@ class EvidenceSubmissionScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _EvidenceSubmissionScreenState createState() => _EvidenceSubmissionScreenState();
+  _EvidenceSubmissionScreenState createState() =>
+      _EvidenceSubmissionScreenState();
 }
 
 class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
-  final TextEditingController _missingPersonNameController = TextEditingController();
+  final TextEditingController _missingPersonNameController =
+      TextEditingController();
   final TextEditingController _statementController = TextEditingController();
   final List<File> _selectedImages = [];
   bool _isSubmitting = false;
   final ImagePicker _picker = ImagePicker();
-  
+
   // Validation state variables for OCR
   ValidationStatus _validationStatus = ValidationStatus.none;
   String _validationMessage = '';
   String _validationConfidence = '0.0';
   bool _isProcessingImage = false;
-  
+
   // Service for image validation (reuse TipService for consistency)
   final TipService _tipService = TipService();
   final GlobalKey _validationSectionKey = GlobalKey();
-  
+
   // Global keys for auto-scrolling to error fields
   final GlobalKey _missingPersonNameKey = GlobalKey();
   final GlobalKey _photoEvidenceKey = GlobalKey();
   final GlobalKey _statementKey = GlobalKey();
   final GlobalKey _signatureKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
-  
+
   // Signature controller
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 2,
@@ -104,18 +106,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   // Function to scroll to a specific field when there's an error
   void _scrollToErrorField(GlobalKey fieldKey, String errorMessage) {
     _showErrorSnackBar(errorMessage);
-    
+
     // Use a slight delay to ensure the snackbar is shown first
     Future.delayed(Duration(milliseconds: 100), () {
       // Find the render object and scroll to it
-      final RenderObject? renderObject = fieldKey.currentContext?.findRenderObject();
+      final RenderObject? renderObject =
+          fieldKey.currentContext?.findRenderObject();
       if (renderObject != null) {
         final RenderBox renderBox = renderObject as RenderBox;
         final position = renderBox.localToGlobal(Offset.zero);
-        
+
         // Calculate scroll position with offset to center the field in view
         final scrollPosition = _scrollController.offset + position.dy - 150;
-        
+
         _scrollController.animateTo(
           scrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent),
           duration: Duration(milliseconds: 600),
@@ -135,7 +138,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
       // Get all documents with today's date prefix by document ID in the CaseEvidence collection
       final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('CaseEvidence')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: idPrefix + '0001')
+          .where(FieldPath.documentId,
+              isGreaterThanOrEqualTo: idPrefix + '0001')
           .where(FieldPath.documentId, isLessThanOrEqualTo: idPrefix + '9999')
           .get();
 
@@ -167,14 +171,15 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   // Helper method to scroll to validation section
   void _scrollToValidationSection() {
     if (_validationSectionKey.currentContext != null) {
-      final RenderObject? renderObject = _validationSectionKey.currentContext?.findRenderObject();
+      final RenderObject? renderObject =
+          _validationSectionKey.currentContext?.findRenderObject();
       if (renderObject != null) {
         final RenderBox renderBox = renderObject as RenderBox;
         final position = renderBox.localToGlobal(Offset.zero);
-        
+
         // Calculate scroll position with offset
         final scrollPosition = _scrollController.offset + position.dy - 100;
-        
+
         _scrollController.animateTo(
           scrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent),
           duration: Duration(milliseconds: 500),
@@ -201,42 +206,52 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
 
         List<File> validImages = [];
         List<String> rejectedReasons = [];
-        
+
         for (var image in images) {
           if (_selectedImages.length + validImages.length < 5) {
             final file = File(image.path);
-            
+
             // Validate each image with enhanced logic from fill up form
             try {
-              Map<String, dynamic> validationResult = await _tipService.validateImageWithGoogleVision(file);
-              
+              Map<String, dynamic> validationResult =
+                  await _tipService.validateImageWithGoogleVision(file);
+
               print('Enhanced validation result for image: $validationResult');
-              
+
               if (!validationResult['isValid']) {
-                rejectedReasons.add('Validation error: ${validationResult['message']}');
+                rejectedReasons
+                    .add('Validation error: ${validationResult['message']}');
               } else if (!validationResult['containsHuman']) {
                 double confidence = (validationResult['confidence'] * 100);
-                
+
                 // Check if confidence is above 50% - keep image but warn user (similar to fill up form)
                 if (confidence > 50.0) {
                   validImages.add(file);
                   // Add to validation message that this was low confidence but kept
-                  String reason = 'Low confidence (${confidence.toStringAsFixed(1)}%)';
-                  if (validationResult['details'] != null && 
+                  String reason =
+                      'Low confidence (${confidence.toStringAsFixed(1)}%)';
+                  if (validationResult['details'] != null &&
                       validationResult['details']['detectedFeatures'] != null &&
-                      validationResult['details']['detectedFeatures'].isNotEmpty) {
-                    List<String> features = List<String>.from(validationResult['details']['detectedFeatures']);
-                    reason += ' - weak features: ${features.take(2).join(', ')}';
+                      validationResult['details']['detectedFeatures']
+                          .isNotEmpty) {
+                    List<String> features = List<String>.from(
+                        validationResult['details']['detectedFeatures']);
+                    reason +=
+                        ' - weak features: ${features.take(2).join(', ')}';
                   }
                   rejectedReasons.add(reason);
                 } else {
                   // Confidence is 50% or below - reject image
-                  String reason = 'No person detected (${confidence.toStringAsFixed(1)}% confidence)';
-                  if (validationResult['details'] != null && 
+                  String reason =
+                      'No person detected (${confidence.toStringAsFixed(1)}% confidence)';
+                  if (validationResult['details'] != null &&
                       validationResult['details']['detectedFeatures'] != null &&
-                      validationResult['details']['detectedFeatures'].isNotEmpty) {
-                    List<String> features = List<String>.from(validationResult['details']['detectedFeatures']);
-                    reason += ' - weak features: ${features.take(2).join(', ')}';
+                      validationResult['details']['detectedFeatures']
+                          .isNotEmpty) {
+                    List<String> features = List<String>.from(
+                        validationResult['details']['detectedFeatures']);
+                    reason +=
+                        ' - weak features: ${features.take(2).join(', ')}';
                   }
                   rejectedReasons.add(reason);
                 }
@@ -255,15 +270,18 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
           _selectedImages.addAll(validImages);
           if (validImages.isNotEmpty) {
             _validationStatus = ValidationStatus.humanDetected;
-            _validationMessage = '${validImages.length} valid image(s) added with person detection confirmed';
+            _validationMessage =
+                '${validImages.length} valid image(s) added with person detection confirmed';
             if (rejectedReasons.isNotEmpty) {
-              _validationMessage += '\n\n${rejectedReasons.length} image(s) rejected: ${rejectedReasons.take(2).join(', ')}';
+              _validationMessage +=
+                  '\n\n${rejectedReasons.length} image(s) rejected: ${rejectedReasons.take(2).join(', ')}';
             }
           } else {
             _validationStatus = ValidationStatus.noHuman;
             _validationMessage = 'No valid images with persons detected';
             if (rejectedReasons.isNotEmpty) {
-              _validationMessage += '\n\nReasons: ${rejectedReasons.take(3).join(', ')}';
+              _validationMessage +=
+                  '\n\nReasons: ${rejectedReasons.take(3).join(', ')}';
             }
           }
         });
@@ -291,7 +309,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                          child: Icon(Icons.warning_amber_rounded,
+                              color: Colors.white, size: 20),
                         ),
                         SizedBox(width: 16),
                         Expanded(
@@ -322,7 +341,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                     if (rejectedReasons.isNotEmpty)
                       Container(
                         margin: EdgeInsets.only(top: 12, left: 56),
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -341,7 +361,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
               ),
               backgroundColor: Colors.amber.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               margin: EdgeInsets.all(20),
               duration: Duration(seconds: 8),
               elevation: 8,
@@ -362,7 +383,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                      child: Icon(Icons.check_circle_rounded,
+                          color: Colors.white, size: 20),
                     ),
                     SizedBox(width: 16),
                     Expanded(
@@ -394,7 +416,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
               ),
               backgroundColor: Colors.green.shade600,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               margin: EdgeInsets.all(20),
               duration: Duration(seconds: 5),
               elevation: 8,
@@ -428,40 +451,44 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
         });
 
         final file = File(image.path);
-        
+
         // Validate the image with enhanced logic from fill up form
         try {
           setState(() {
             _isProcessingImage = true;
           });
 
-          Map<String, dynamic> validationResult = await _tipService.validateImageWithGoogleVision(file);
-          
+          Map<String, dynamic> validationResult =
+              await _tipService.validateImageWithGoogleVision(file);
+
           print('Enhanced camera validation result: $validationResult');
-          
+
           setState(() {
             if (!validationResult['isValid']) {
-              _validationMessage = 'Error validating image: ${validationResult['message']}';
+              _validationMessage =
+                  'Error validating image: ${validationResult['message']}';
               _validationStatus = ValidationStatus.error;
             } else if (!validationResult['containsHuman']) {
               double confidence = (validationResult['confidence'] * 100);
               _validationConfidence = confidence.toStringAsFixed(1);
-              
+
               // Check if confidence is above 50% - keep image but warn user
               if (confidence > 50.0) {
-                _validationMessage = validationResult['message'] ?? 'Low confidence detection. Consider a clearer image.';
+                _validationMessage = validationResult['message'] ??
+                    'Low confidence detection. Consider a clearer image.';
                 _validationStatus = ValidationStatus.lowConfidenceHuman;
-                
+
                 // Keep the image
                 _selectedImages.add(file);
-                
+
                 // Show warning snackbar encouraging reupload
                 List<String> detectedFeatures = [];
-                if (validationResult['details'] != null && 
+                if (validationResult['details'] != null &&
                     validationResult['details']['detectedFeatures'] != null) {
-                  detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                  detectedFeatures = List<String>.from(
+                      validationResult['details']['detectedFeatures']);
                 }
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Container(
@@ -478,7 +505,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                                child: Icon(Icons.warning_amber_rounded,
+                                    color: Colors.white, size: 20),
                               ),
                               SizedBox(width: 16),
                               Expanded(
@@ -509,7 +537,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                           if (detectedFeatures.isNotEmpty)
                             Container(
                               margin: EdgeInsets.only(top: 12, left: 56),
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
@@ -528,7 +557,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                     ),
                     backgroundColor: Colors.amber.shade700,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     margin: EdgeInsets.all(20),
                     duration: Duration(seconds: 10),
                     elevation: 8,
@@ -536,16 +566,18 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                 );
               } else {
                 // Confidence is 50% or below - remove image
-                _validationMessage = validationResult['message'] ?? 'No person detected in the image. Image has been removed.';
+                _validationMessage = validationResult['message'] ??
+                    'No person detected in the image. Image has been removed.';
                 _validationStatus = ValidationStatus.noHuman;
-                
+
                 // Show detailed snackbar with detected features
                 List<String> detectedFeatures = [];
-                if (validationResult['details'] != null && 
+                if (validationResult['details'] != null &&
                     validationResult['details']['detectedFeatures'] != null) {
-                  detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                  detectedFeatures = List<String>.from(
+                      validationResult['details']['detectedFeatures']);
                 }
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Container(
@@ -562,7 +594,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: Icon(Icons.person_off_rounded, color: Colors.white, size: 20),
+                                child: Icon(Icons.person_off_rounded,
+                                    color: Colors.white, size: 20),
                               ),
                               SizedBox(width: 16),
                               Expanded(
@@ -593,7 +626,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                           if (detectedFeatures.isNotEmpty)
                             Container(
                               margin: EdgeInsets.only(top: 12, left: 56),
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
@@ -612,7 +646,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                     ),
                     backgroundColor: Colors.orange.shade600,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     margin: EdgeInsets.all(20),
                     duration: Duration(seconds: 8),
                     elevation: 8,
@@ -620,20 +655,23 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                 );
               }
             } else {
-              _validationMessage = validationResult['message'] ?? 'Person detected in image!';
-              _validationConfidence = (validationResult['confidence'] * 100).toStringAsFixed(1);
+              _validationMessage =
+                  validationResult['message'] ?? 'Person detected in image!';
+              _validationConfidence =
+                  (validationResult['confidence'] * 100).toStringAsFixed(1);
               _validationStatus = ValidationStatus.humanDetected;
-              
+
               // Keep the image
               _selectedImages.add(file);
-              
+
               // Show detailed success snackbar with detected features
               List<String> detectedFeatures = [];
-              if (validationResult['details'] != null && 
+              if (validationResult['details'] != null &&
                   validationResult['details']['detectedFeatures'] != null) {
-                detectedFeatures = List<String>.from(validationResult['details']['detectedFeatures']);
+                detectedFeatures = List<String>.from(
+                    validationResult['details']['detectedFeatures']);
               }
-              
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Container(
@@ -650,7 +688,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                              child: Icon(Icons.check_circle_rounded,
+                                  color: Colors.white, size: 20),
                             ),
                             SizedBox(width: 16),
                             Expanded(
@@ -681,7 +720,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                         if (detectedFeatures.isNotEmpty)
                           Container(
                             margin: EdgeInsets.only(top: 12, left: 56),
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -700,7 +740,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                   ),
                   backgroundColor: Colors.green.shade600,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   margin: EdgeInsets.all(20),
                   duration: Duration(seconds: 6),
                   elevation: 8,
@@ -708,12 +749,11 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
               );
             }
           });
-          
+
           // Scroll to validation section to show results
           Future.delayed(Duration(milliseconds: 100), () {
             _scrollToValidationSection();
           });
-          
         } catch (e) {
           setState(() {
             _validationMessage = 'Image validation error: ${e.toString()}';
@@ -721,7 +761,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
             // Still add the image if validation fails with a warning
             _selectedImages.add(file);
           });
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Container(
@@ -734,7 +774,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+                      child: Icon(Icons.warning_rounded,
+                          color: Colors.white, size: 20),
                     ),
                     SizedBox(width: 16),
                     Expanded(
@@ -766,7 +807,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
               ),
               backgroundColor: Colors.amber.shade600,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               margin: EdgeInsets.all(20),
               duration: Duration(seconds: 5),
               elevation: 8,
@@ -834,22 +876,23 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   Future<void> _submitEvidence() async {
     // Validation with auto-scroll to error fields
     final statement = _statementController.text;
-    
+
     if (_selectedImages.isEmpty) {
       _scrollToErrorField(_photoEvidenceKey, 'Photo evidence is required');
       return;
     }
-    
+
     // Check statement - empty or only whitespace
     if (!_isValidTextInput(statement)) {
       if (statement.isEmpty) {
         _scrollToErrorField(_statementKey, 'Statement of reunion is required');
       } else if (_isOnlyWhitespace(statement)) {
-        _scrollToErrorField(_statementKey, 'Statement cannot contain only spaces');
+        _scrollToErrorField(
+            _statementKey, 'Statement cannot contain only spaces');
       }
       return;
     }
-    
+
     if (_signatureImage == null) {
       _scrollToErrorField(_signatureKey, 'E-Signature is required');
       return;
@@ -869,7 +912,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
       int attempt = 0;
       do {
         formalId = await generateFormalDocumentId();
-        docRef = FirebaseFirestore.instance.collection('CaseEvidence').doc(formalId);
+        docRef =
+            FirebaseFirestore.instance.collection('CaseEvidence').doc(formalId);
         final docSnap = await docRef.get();
         if (!docSnap.exists) break;
         // If exists, increment the highest number and try again
@@ -886,7 +930,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
       List<String> imageUrls = [];
       for (int i = 0; i < _selectedImages.length; i++) {
         final file = _selectedImages[i];
-        final fileName = 'evidence_${formalId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final fileName =
+            'evidence_${formalId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('caseEvidencePhotos')
@@ -901,20 +946,24 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
       // Upload signature to Firebase Storage - "caseEvidenceSignatures" bucket
       String signatureUrl = '';
       if (_signatureImage != null) {
-        final signatureFileName = 'signature_${formalId}_${DateTime.now().millisecondsSinceEpoch}.png';
+        final signatureFileName =
+            'signature_${formalId}_${DateTime.now().millisecondsSinceEpoch}.png';
         final signatureRef = FirebaseStorage.instance
             .ref()
             .child('caseEvidenceSignatures')
             .child(formalId)
             .child(signatureFileName);
 
-        final signatureUploadTask = await signatureRef.putData(_signatureImage!);
+        final signatureUploadTask =
+            await signatureRef.putData(_signatureImage!);
         signatureUrl = await signatureUploadTask.ref.getDownloadURL();
       }
 
       // Create evidence document with your specified field names
       final evidenceData = {
-        'EvidenceimageUrl': imageUrls.isNotEmpty ? imageUrls.first : '', // First image URL as string
+        'EvidenceimageUrl': imageUrls.isNotEmpty
+            ? imageUrls.first
+            : '', // First image URL as string
         'MissingPersonName': _missingPersonNameController.text.trim(),
         'Statement': _statementController.text.trim(),
         'alarm_id': widget.caseId, // Using caseId as alarm_id
@@ -960,7 +1009,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
           .get();
 
       if (missingPersonDoc.exists) {
-        await missingPersonDoc.reference.update({'status': 'Evidence Submitted'});
+        await missingPersonDoc.reference
+            .update({'status': 'Evidence Submitted'});
         return;
       }
 
@@ -974,10 +1024,9 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   void _showSuccessDialog() {
     // Show success snackbar instead of dialog
     _showSuccessSnackBar(
-      'Evidence submitted successfully for case ${widget.caseNumber}. '
-      'Case status updated to "Evidence Submitted".'
-    );
-    
+        'Evidence submitted successfully for case ${widget.caseNumber}. '
+        'Case status updated to "Evidence Submitted".');
+
     // Navigate back to the previous screen after a short delay
     Future.delayed(Duration(seconds: 2), () {
       if (mounted) {
@@ -1052,7 +1101,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                child: Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 20),
               ),
               SizedBox(width: 16),
               Expanded(
@@ -1097,7 +1147,7 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
     if (_validationStatus == ValidationStatus.none) {
       return SizedBox.shrink();
     }
-    
+
     return Container(
       key: _validationSectionKey,
       margin: EdgeInsets.only(top: 16),
@@ -1143,7 +1193,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(_getValidationIconColor()),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(_getValidationIconColor()),
                 ),
               ),
             ),
@@ -1262,7 +1313,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Evidence Submission", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text("Evidence Submission",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
         elevation: 0,
         centerTitle: false,
@@ -1301,7 +1353,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: Column(
                           children: [
@@ -1344,7 +1397,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                   child: Card(
                     elevation: 8,
                     shadowColor: Colors.black.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
@@ -1416,23 +1470,32 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                               child: TextField(
                                 controller: _missingPersonNameController,
                                 readOnly: true,
-                                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey.shade700),
                                 decoration: InputDecoration(
-                                  hintText: 'Missing person\'s name (auto-filled)',
-                                  hintStyle: TextStyle(color: Colors.grey.shade500),
-                                  helperText: 'This field is automatically filled from case data',
-                                  helperStyle: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                  hintText:
+                                      'Missing person\'s name (auto-filled)',
+                                  hintStyle:
+                                      TextStyle(color: Colors.grey.shade500),
+                                  helperText:
+                                      'This field is automatically filled from case data',
+                                  helperStyle: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12),
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade300),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade300),
                                   ),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 16),
                                 ),
                               ),
                             ),
@@ -1450,7 +1513,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                   child: Card(
                     elevation: 8,
                     shadowColor: Colors.black.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
@@ -1529,14 +1593,17 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                       icon: Icon(Icons.photo_library, size: 20),
                                       label: Text(
                                         'Gallery',
-                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w600),
                                       ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.blue.shade600,
                                         foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(vertical: 14),
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 14),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         elevation: 0,
                                       ),
@@ -1562,14 +1629,17 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                       icon: Icon(Icons.camera_alt, size: 20),
                                       label: Text(
                                         'Camera',
-                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w600),
                                       ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.green.shade600,
                                         foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(vertical: 14),
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 14),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         elevation: 0,
                                       ),
@@ -1586,15 +1656,18 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                             // Enhanced selected images grid
                             if (_selectedImages.isNotEmpty) ...[
                               Container(
-                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 8, horizontal: 12),
                                 decoration: BoxDecoration(
                                   color: Colors.green.shade50,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.green.shade200),
+                                  border:
+                                      Border.all(color: Colors.green.shade200),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.check_circle, color: Colors.green.shade600, size: 16),
+                                    Icon(Icons.check_circle,
+                                        color: Colors.green.shade600, size: 16),
                                     SizedBox(width: 8),
                                     Text(
                                       'Selected Images (${_selectedImages.length}/5)',
@@ -1610,7 +1683,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                               GridView.builder(
                                 shrinkWrap: true,
                                 physics: NeverScrollableScrollPhysics(),
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
                                   crossAxisSpacing: 12,
                                   mainAxisSpacing: 12,
@@ -1633,9 +1707,11 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                       children: [
                                         Container(
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                             image: DecorationImage(
-                                              image: FileImage(_selectedImages[index]),
+                                              image: FileImage(
+                                                  _selectedImages[index]),
                                               fit: BoxFit.cover,
                                             ),
                                           ),
@@ -1652,7 +1728,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                                 shape: BoxShape.circle,
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: Colors.black.withOpacity(0.3),
+                                                    color: Colors.black
+                                                        .withOpacity(0.3),
                                                     spreadRadius: 1,
                                                     blurRadius: 2,
                                                   ),
@@ -1686,7 +1763,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                   child: Card(
                     elevation: 8,
                     shadowColor: Colors.black.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
@@ -1758,15 +1836,23 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                               child: TextField(
                                 controller: _statementController,
                                 maxLines: 6,
-                                style: TextStyle(fontSize: 16, height: 1.5, color: Colors.black),
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    height: 1.5,
+                                    color: Colors.black),
                                 inputFormatters: [
                                   NoOnlyWhitespaceFormatter(),
                                 ],
                                 decoration: InputDecoration(
-                                  hintText: 'Describe the circumstances of the reunion...',
-                                  hintStyle: TextStyle(color: Colors.grey.shade500),
-                                  helperText: 'Statement cannot be empty or contain only spaces',
-                                  helperStyle: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                  hintText:
+                                      'Describe the circumstances of the reunion...',
+                                  hintStyle:
+                                      TextStyle(color: Colors.grey.shade500),
+                                  helperText:
+                                      'Statement cannot be empty or contain only spaces',
+                                  helperStyle: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12),
                                   filled: true,
                                   fillColor: Colors.white,
                                   border: OutlineInputBorder(
@@ -1775,9 +1861,11 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Color(0xFF0D47A1), width: 2),
+                                    borderSide: BorderSide(
+                                        color: Color(0xFF0D47A1), width: 2),
                                   ),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 16),
                                 ),
                               ),
                             ),
@@ -1795,7 +1883,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                   child: Card(
                     elevation: 8,
                     shadowColor: Colors.black.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
@@ -1852,13 +1941,14 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                               ],
                             ),
                             SizedBox(height: 16),
-                            
+
                             // Enhanced signature pad or saved signature
                             if (_signatureImage == null) ...[
                               Container(
                                 height: 200,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                                  border: Border.all(
+                                      color: Colors.grey.shade300, width: 2),
                                   borderRadius: BorderRadius.circular(12),
                                   color: Colors.white,
                                   boxShadow: [
@@ -1909,14 +1999,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                         icon: Icon(Icons.clear, size: 18),
                                         label: Text(
                                           'Clear',
-                                          style: TextStyle(fontWeight: FontWeight.w600),
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w600),
                                         ),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.red.shade600,
-                                          side: BorderSide(color: Colors.red.shade600, width: 2),
-                                          padding: EdgeInsets.symmetric(vertical: 14),
+                                          side: BorderSide(
+                                              color: Colors.red.shade600,
+                                              width: 2),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 14),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           backgroundColor: Colors.white,
                                         ),
@@ -1930,7 +2025,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Color(0xFF0D47A1).withOpacity(0.3),
+                                            color: Color(0xFF0D47A1)
+                                                .withOpacity(0.3),
                                             spreadRadius: 1,
                                             blurRadius: 4,
                                             offset: Offset(0, 2),
@@ -1942,14 +2038,17 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                         icon: Icon(Icons.save, size: 18),
                                         label: Text(
                                           'Save',
-                                          style: TextStyle(fontWeight: FontWeight.w600),
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w600),
                                         ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Color(0xFF0D47A1),
                                           foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(vertical: 14),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 14),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           elevation: 0,
                                         ),
@@ -1963,7 +2062,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                 height: 200,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.green.shade400, width: 3),
+                                  border: Border.all(
+                                      color: Colors.green.shade400, width: 3),
                                   borderRadius: BorderRadius.circular(12),
                                   color: Colors.green.shade50,
                                   boxShadow: [
@@ -1989,15 +2089,19 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                         top: 8,
                                         right: 8,
                                         child: Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: Colors.green.shade600,
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.check, color: Colors.white, size: 16),
+                                              Icon(Icons.check,
+                                                  color: Colors.white,
+                                                  size: 16),
                                               SizedBox(width: 4),
                                               Text(
                                                 'Saved',
@@ -2022,7 +2126,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Color(0xFF0D47A1).withOpacity(0.2),
+                                        color:
+                                            Color(0xFF0D47A1).withOpacity(0.2),
                                         spreadRadius: 1,
                                         blurRadius: 4,
                                         offset: Offset(0, 2),
@@ -2036,7 +2141,8 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                       });
                                       _signatureController.clear();
                                     },
-                                    icon: Icon(Icons.edit, color: Color(0xFF0D47A1), size: 18),
+                                    icon: Icon(Icons.edit,
+                                        color: Color(0xFF0D47A1), size: 18),
                                     label: Text(
                                       'Edit Signature',
                                       style: TextStyle(
@@ -2046,10 +2152,12 @@ class _EvidenceSubmissionScreenState extends State<EvidenceSubmissionScreen> {
                                     ),
                                     style: TextButton.styleFrom(
                                       backgroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        side: BorderSide(color: Color(0xFF0D47A1), width: 2),
+                                        side: BorderSide(
+                                            color: Color(0xFF0D47A1), width: 2),
                                       ),
                                     ),
                                   ),

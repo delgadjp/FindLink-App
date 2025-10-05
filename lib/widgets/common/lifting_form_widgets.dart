@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 /// Utility class for common lifting form UI widgets
 /// Consolidates duplicate widgets used across profile and lifting form screens
 class LiftingFormWidgets {
-  
   /// Builds an image widget for lifting forms with consistent error handling
   static Widget buildFormImage(
     Map<String, dynamic> form, {
@@ -21,7 +20,7 @@ class LiftingFormWidgets {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (context, error, stackTrace) => 
+        errorBuilder: (context, error, stackTrace) =>
             _buildPlaceholderImage(iconSize, bgColor, icColor),
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
@@ -30,9 +29,7 @@ class LiftingFormWidgets {
             child: Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Color(0xFF2c2c78)
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2c2c78)),
               ),
             ),
           );
@@ -45,8 +42,8 @@ class LiftingFormWidgets {
 
   /// Builds a placeholder image when no image is available
   static Widget _buildPlaceholderImage(
-    double iconSize, 
-    Color backgroundColor, 
+    double iconSize,
+    Color backgroundColor,
     Color iconColor,
   ) {
     return Container(
@@ -74,30 +71,32 @@ class LiftingFormWidgets {
           Container(
             padding: EdgeInsets.all(isEnhanced ? 32 : 20),
             decoration: BoxDecoration(
-              gradient: isEnhanced 
-                ? LinearGradient(
-                    colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
+              gradient: isEnhanced
+                  ? LinearGradient(
+                      colors: [Color(0xFFf8fafc), Color(0xFFe3e8ff)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
               color: isEnhanced ? null : Colors.grey.shade100,
               shape: BoxShape.circle,
-              boxShadow: isEnhanced ? [
-                BoxShadow(
-                  color: Color(0xFF2c2c78).withOpacity(0.1),
-                  spreadRadius: 2,
-                  blurRadius: 15,
-                  offset: Offset(0, 5),
-                ),
-              ] : null,
+              boxShadow: isEnhanced
+                  ? [
+                      BoxShadow(
+                        color: Color(0xFF2c2c78).withOpacity(0.1),
+                        spreadRadius: 2,
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                      ),
+                    ]
+                  : null,
             ),
             child: Icon(
               Icons.flash_off,
               size: isEnhanced ? 80 : 64,
-              color: isEnhanced 
-                ? Color(0xFF2c2c78).withOpacity(0.6)
-                : Colors.grey.shade400,
+              color: isEnhanced
+                  ? Color(0xFF2c2c78).withOpacity(0.6)
+                  : Colors.grey.shade400,
             ),
           ),
           SizedBox(height: isEnhanced ? 32 : 24),
@@ -112,9 +111,10 @@ class LiftingFormWidgets {
           ),
           SizedBox(height: 16),
           Text(
-            subtitle ?? (isEnhanced 
-              ? 'No lifting forms submitted by you.'
-              : 'You don\'t have any lifting form notifications at the moment.'),
+            subtitle ??
+                (isEnhanced
+                    ? 'No lifting forms submitted for you.'
+                    : 'You don\'t have any lifting form notifications at the moment.'),
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey.shade600,
@@ -139,13 +139,13 @@ class LiftingFormWidgets {
 
   /// Builds a detail card for lifting form information
   static Widget buildDetailCard(
-    String label, 
-    String value, 
+    String label,
+    String value,
     IconData icon, {
     Color? primaryColor,
   }) {
     final color = primaryColor ?? Color(0xFF2c2c78);
-    
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20),
@@ -225,7 +225,7 @@ class LiftingFormWidgets {
     Color? primaryColor,
   }) {
     final color = primaryColor ?? Color(0xFF2c2c78);
-    
+
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(

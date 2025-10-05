@@ -13,13 +13,15 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
-  final TextEditingController phoneNumberController = TextEditingController(); // Add phone number controller
-  
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+  final TextEditingController phoneNumberController =
+      TextEditingController(); // Add phone number controller
+
   String selectedGender = 'Male'; // Default gender value
   DateTime? selectedDate;
   int? age;
-  
+
   // Date dropdown variables
   int? selectedDay;
   int? selectedMonth;
@@ -38,7 +40,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // ScrollController for auto-scrolling to validation errors
   final ScrollController _scrollController = ScrollController();
-  
+
   // GlobalKeys for form fields to track their positions
   final GlobalKey _firstNameKey = GlobalKey();
   final GlobalKey _middleNameKey = GlobalKey();
@@ -51,7 +53,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Philippines country code
   final String countryCode = '+63';
-  
+
   // Phone number validation regex - expects exactly 10 digits
   final RegExp phoneRegex = RegExp(r'^\d{10}$');
 
@@ -102,28 +104,39 @@ class _RegisterPageState extends State<RegisterPage> {
                           style: TextStyle(fontSize: 14, color: Colors.black87),
                         ),
                         SizedBox(height: 10),
-                        _buildTermItem('You will provide accurate and truthful information when submitting or updating any case or report.'),
-                        _buildTermItem('All tips, sightings, or leads submitted are subject to verification by authorized personnel.'),
-                        _buildTermItem('You will not misuse or falsify information that may hinder active investigations or cause unnecessary panic.'),
-                        _buildTermItem('Your personal data will be kept confidential and used solely for case coordination and communication purposes.'),
-                        _buildTermItem('Authorities have the right to deactivate accounts found misusing the platform.'),
-                        _buildTermItem('This platform is for community help and should not be treated as a substitute for direct police reporting.'),
+                        _buildTermItem(
+                            'You will provide accurate and truthful information when submitting or updating any case or report.'),
+                        _buildTermItem(
+                            'All tips, sightings, or leads submitted are subject to verification by authorized personnel.'),
+                        _buildTermItem(
+                            'You will not misuse or falsify information that may hinder active investigations or cause unnecessary panic.'),
+                        _buildTermItem(
+                            'Your personal data will be kept confidential and used solely for case coordination and communication purposes.'),
+                        _buildTermItem(
+                            'Authorities have the right to deactivate accounts found misusing the platform.'),
+                        _buildTermItem(
+                            'This platform is for community help and should not be treated as a substitute for direct police reporting.'),
                         SizedBox(height: 10),
                         Text(
                           'For more information, please contact our support team. Your cooperation helps save lives.',
-                          style: TextStyle(fontSize: 14, color: Colors.black87, fontStyle: FontStyle.italic),
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic),
                         ),
                       ],
                     ),
                   ),
-                ),                SizedBox(height: 15),
+                ),
+                SizedBox(height: 15),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.grey,
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -151,7 +164,11 @@ class _RegisterPageState extends State<RegisterPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('• ', style: TextStyle(fontSize: 14, color: Color(0xFF2A5298), fontWeight: FontWeight.bold)),
+          Text('• ',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF2A5298),
+                  fontWeight: FontWeight.bold)),
           Expanded(
             child: Text(
               text,
@@ -172,12 +189,12 @@ class _RegisterPageState extends State<RegisterPage> {
   String _formatPhoneNumber(String text) {
     return text.replaceAll(RegExp(r'[^0-9]'), '');
   }
-  
+
   // Get the full phone number with country code
   String get fullPhoneNumber {
     return '$countryCode${phoneNumberController.text}';
   }
-  
+
   // Format date display text
   String getDateDisplayText() {
     if (selectedMonth != null && selectedDay != null && selectedYear != null) {
@@ -191,7 +208,7 @@ class _RegisterPageState extends State<RegisterPage> {
   void _calculateAge(DateTime birthDate) {
     final today = DateTime.now();
     int calculatedAge = today.year - birthDate.year;
-    if (today.month < birthDate.month || 
+    if (today.month < birthDate.month ||
         (today.month == birthDate.month && today.day < birthDate.day)) {
       calculatedAge--;
     }
@@ -199,7 +216,7 @@ class _RegisterPageState extends State<RegisterPage> {
       age = calculatedAge;
     });
   }
-  
+
   // Calculate age from dropdown selections
   void _calculateAgeFromDropdowns() {
     if (selectedDay != null && selectedMonth != null && selectedYear != null) {
@@ -215,7 +232,7 @@ class _RegisterPageState extends State<RegisterPage> {
       });
     }
   }
-  
+
   bool _validateEmail(String email) {
     final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegExp.hasMatch(email);
@@ -231,15 +248,21 @@ class _RegisterPageState extends State<RegisterPage> {
         _scrollToWidget(_middleNameKey);
       } else if (lastNameController.text.isEmpty) {
         _scrollToWidget(_lastNameKey);
-      } else if (selectedDay == null || selectedMonth == null || selectedYear == null) {
+      } else if (selectedDay == null ||
+          selectedMonth == null ||
+          selectedYear == null) {
         _scrollToWidget(_dateOfBirthKey);
-      } else if (emailController.text.isEmpty || !_validateEmail(emailController.text)) {
+      } else if (emailController.text.isEmpty ||
+          !_validateEmail(emailController.text)) {
         _scrollToWidget(_emailKey);
-      } else if (phoneNumberController.text.isEmpty || !_validatePhoneNumber(phoneNumberController.text)) {
+      } else if (phoneNumberController.text.isEmpty ||
+          !_validatePhoneNumber(phoneNumberController.text)) {
         _scrollToWidget(_phoneKey);
-      } else if (passwordController.text.isEmpty || passwordController.text.length < 8) {
+      } else if (passwordController.text.isEmpty ||
+          passwordController.text.length < 8) {
         _scrollToWidget(_passwordKey);
-      } else if (confirmPasswordController.text.isEmpty || confirmPasswordController.text != passwordController.text) {
+      } else if (confirmPasswordController.text.isEmpty ||
+          confirmPasswordController.text != passwordController.text) {
         _scrollToWidget(_confirmPasswordKey);
       }
     });
@@ -248,13 +271,15 @@ class _RegisterPageState extends State<RegisterPage> {
   // Helper method to scroll to a specific widget
   void _scrollToWidget(GlobalKey key) {
     if (key.currentContext != null) {
-      final RenderBox renderBox = key.currentContext!.findRenderObject() as RenderBox;
+      final RenderBox renderBox =
+          key.currentContext!.findRenderObject() as RenderBox;
       final position = renderBox.localToGlobal(Offset.zero);
       final screenHeight = MediaQuery.of(context).size.height;
-      
+
       // Calculate scroll offset to center the field on screen
-      final targetOffset = _scrollController.offset + position.dy - (screenHeight * 0.3);
-      
+      final targetOffset =
+          _scrollController.offset + position.dy - (screenHeight * 0.3);
+
       _scrollController.animateTo(
         targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
         duration: Duration(milliseconds: 500),
@@ -266,17 +291,18 @@ class _RegisterPageState extends State<RegisterPage> {
   // Method to validate form and proceed to ID validation
   void _validateAndProceedToIDValidation() {
     // Custom validation for phone number since we removed validator
-    bool isPhoneValid = phoneNumberController.text.isNotEmpty && _validatePhoneNumber(phoneNumberController.text);
-    
+    bool isPhoneValid = phoneNumberController.text.isNotEmpty &&
+        _validatePhoneNumber(phoneNumberController.text);
+
     if (!_formKey.currentState!.validate() || !isPhoneValid) {
       // Update phone validation state
       setState(() {
         _isPhoneNumberValid = isPhoneValid;
       });
-      
+
       // If validation fails, scroll to the first error
       _scrollToFirstError();
-      
+
       // Show phone-specific error if needed
       if (!isPhoneValid) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -288,7 +314,7 @@ class _RegisterPageState extends State<RegisterPage> {
       }
       return;
     }
-    
+
     if (selectedDay == null || selectedMonth == null || selectedYear == null) {
       _scrollToWidget(_dateOfBirthKey);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -299,7 +325,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       return;
     }
-    
+
     // Create a map with user registration data to pass to ID validation
     Map<String, dynamic> registrationData = {
       'email': emailController.text.trim(),
@@ -312,7 +338,7 @@ class _RegisterPageState extends State<RegisterPage> {
       'gender': selectedGender,
       'phoneNumber': fullPhoneNumber,
     };
-    
+
     // Navigate to ID validation with registration data
     Navigator.push(
       context,
@@ -331,7 +357,7 @@ class _RegisterPageState extends State<RegisterPage> {
     int? localMonth = selectedMonth;
     int? localDay = selectedDay;
     int? localYear = selectedYear;
-    
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -374,7 +400,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ],
                     ),
                     SizedBox(height: 24),
-                    
+
                     // Date selection row
                     Row(
                       children: [
@@ -396,7 +422,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 isDense: true,
                               ),
                               isExpanded: true,
@@ -404,14 +431,25 @@ class _RegisterPageState extends State<RegisterPage> {
                               items: List.generate(12, (index) {
                                 int month = index + 1;
                                 List<String> monthNames = [
-                                  'January', 'February', 'March', 'April', 'May', 'June',
-                                  'July', 'August', 'September', 'October', 'November', 'December'
+                                  'January',
+                                  'February',
+                                  'March',
+                                  'April',
+                                  'May',
+                                  'June',
+                                  'July',
+                                  'August',
+                                  'September',
+                                  'October',
+                                  'November',
+                                  'December'
                                 ];
                                 return DropdownMenuItem<int>(
                                   value: month,
                                   child: Text(
                                     monthNames[index],
-                                    style: TextStyle(fontSize: 14, color: Colors.black),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.black),
                                   ),
                                 );
                               }),
@@ -420,7 +458,11 @@ class _RegisterPageState extends State<RegisterPage> {
                                   localMonth = newValue;
                                   // Reset day if it's invalid for new month
                                   if (localDay != null && newValue != null) {
-                                    int daysInNewMonth = DateTime(localYear ?? DateTime.now().year, newValue + 1, 0).day;
+                                    int daysInNewMonth = DateTime(
+                                            localYear ?? DateTime.now().year,
+                                            newValue + 1,
+                                            0)
+                                        .day;
                                     if (localDay! > daysInNewMonth) {
                                       localDay = null;
                                     }
@@ -431,7 +473,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         SizedBox(width: 8),
-                        
+
                         // Day dropdown
                         Expanded(
                           flex: 4,
@@ -450,22 +492,29 @@ class _RegisterPageState extends State<RegisterPage> {
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 isDense: true,
                               ),
                               isExpanded: true,
                               dropdownColor: Colors.white,
-                              items: localMonth != null ? 
-                                List.generate(DateTime(localYear ?? DateTime.now().year, localMonth! + 1, 0).day, (index) {
-                                  int day = index + 1;
-                                  return DropdownMenuItem<int>(
-                                    value: day,
-                                    child: Text(
-                                      '$day',
-                                      style: TextStyle(fontSize: 14, color: Colors.black),
-                                    ),
-                                  );
-                                }) : [],
+                              items: localMonth != null
+                                  ? List.generate(
+                                      DateTime(localYear ?? DateTime.now().year,
+                                              localMonth! + 1, 0)
+                                          .day, (index) {
+                                      int day = index + 1;
+                                      return DropdownMenuItem<int>(
+                                        value: day,
+                                        child: Text(
+                                          '$day',
+                                          style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black),
+                                        ),
+                                      );
+                                    })
+                                  : [],
                               onChanged: (int? newValue) {
                                 setState(() {
                                   localDay = newValue;
@@ -475,7 +524,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         SizedBox(width: 8),
-                        
+
                         // Year dropdown
                         Expanded(
                           flex: 5,
@@ -494,7 +543,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   fontWeight: FontWeight.w500,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 isDense: true,
                               ),
                               isExpanded: true,
@@ -505,7 +555,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   value: year,
                                   child: Text(
                                     '$year',
-                                    style: TextStyle(fontSize: 14, color: Colors.black),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.black),
                                   ),
                                 );
                               }),
@@ -513,8 +564,12 @@ class _RegisterPageState extends State<RegisterPage> {
                                 setState(() {
                                   localYear = newValue;
                                   // Reset day if it's invalid for new year (leap year changes)
-                                  if (localDay != null && localMonth != null && newValue != null) {
-                                    int daysInNewYear = DateTime(newValue, localMonth! + 1, 0).day;
+                                  if (localDay != null &&
+                                      localMonth != null &&
+                                      newValue != null) {
+                                    int daysInNewYear =
+                                        DateTime(newValue, localMonth! + 1, 0)
+                                            .day;
                                     if (localDay! > daysInNewYear) {
                                       localDay = null;
                                     }
@@ -526,18 +581,21 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ],
                     ),
-                    
+
                     SizedBox(height: 24),
-                    
+
                     // Selected date preview
-                    if (localMonth != null && localDay != null && localYear != null)
+                    if (localMonth != null &&
+                        localDay != null &&
+                        localYear != null)
                       Container(
                         width: double.infinity,
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Color(0xFF2A5298).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Color(0xFF2A5298).withOpacity(0.3)),
+                          border: Border.all(
+                              color: Color(0xFF2A5298).withOpacity(0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,9 +620,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           ],
                         ),
                       ),
-                    
+
                     SizedBox(height: 24),
-                    
+
                     // Action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -572,7 +630,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         TextButton(
                           onPressed: () => Navigator.of(dialogContext).pop(),
                           style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -587,20 +646,25 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         SizedBox(width: 12),
                         ElevatedButton(
-                          onPressed: (localMonth != null && localDay != null && localYear != null) ? () {
-                            // Update the actual values
-                            this.setState(() {
-                              selectedMonth = localMonth;
-                              selectedDay = localDay;
-                              selectedYear = localYear;
-                              _calculateAgeFromDropdowns();
-                            });
-                            Navigator.of(dialogContext).pop();
-                          } : null,
+                          onPressed: (localMonth != null &&
+                                  localDay != null &&
+                                  localYear != null)
+                              ? () {
+                                  // Update the actual values
+                                  this.setState(() {
+                                    selectedMonth = localMonth;
+                                    selectedDay = localDay;
+                                    selectedYear = localYear;
+                                    _calculateAgeFromDropdowns();
+                                  });
+                                  Navigator.of(dialogContext).pop();
+                                }
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFF2A5298),
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -676,7 +740,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     child: Column(
                       children: [
-                        
                         // Logo above the form title
                         Image.asset(
                           ImageConstant.logoFinal,
@@ -685,7 +748,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           fit: BoxFit.contain,
                         ),
                         SizedBox(height: 10),
-                        
+
                         // Create Account title inside the form container
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20),
@@ -703,7 +766,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         // Step Indicator (Step 1 of 3)
                         StepIndicator(currentStep: 1),
                         SizedBox(height: 24),
-                        
+
                         Form(
                           key: _formKey,
                           child: Column(
@@ -711,7 +774,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             children: [
                               // Personal Information Section
                               _buildSectionHeader("Personal Information"),
-                              
+
                               // First Name
                               _buildInputLabel('First Name'),
                               SizedBox(height: 5),
@@ -803,7 +866,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   Expanded(
                                     flex: 2,
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         _buildInputLabel('Date of Birth'),
                                         SizedBox(height: 5),
@@ -812,31 +876,41 @@ class _RegisterPageState extends State<RegisterPage> {
                                           height: 50,
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(color: Colors.grey.shade300),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                                color: Colors.grey.shade300),
                                           ),
                                           child: Material(
                                             color: Colors.transparent,
                                             child: InkWell(
-                                              borderRadius: BorderRadius.circular(10),
-                                              onTap: () => _showDatePickerDialog(),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              onTap: () =>
+                                                  _showDatePickerDialog(),
                                               child: Padding(
-                                                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 15,
+                                                    vertical: 12),
                                                 child: Row(
                                                   children: [
-                                                    Icon(
-                                                      Icons.calendar_today, 
-                                                      color: Color(0xFF53C0FF), 
-                                                      size: 20
-                                                    ),
+                                                    Icon(Icons.calendar_today,
+                                                        color:
+                                                            Color(0xFF53C0FF),
+                                                        size: 20),
                                                     SizedBox(width: 10),
                                                     Expanded(
                                                       child: Text(
                                                         getDateDisplayText(),
                                                         style: TextStyle(
-                                                          color: (selectedMonth != null && selectedDay != null && selectedYear != null) 
+                                                          color: (selectedMonth != null &&
+                                                                  selectedDay !=
+                                                                      null &&
+                                                                  selectedYear !=
+                                                                      null)
                                                               ? Colors.black
-                                                              : Colors.grey.shade600,
+                                                              : Colors.grey
+                                                                  .shade600,
                                                           fontSize: 14,
                                                         ),
                                                       ),
@@ -851,27 +925,33 @@ class _RegisterPageState extends State<RegisterPage> {
                                     ),
                                   ),
                                   SizedBox(width: 10),
-                                  
+
                                   // Age - Takes 1/3 of the width
                                   Expanded(
                                     flex: 1,
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         _buildInputLabel('Age'),
                                         SizedBox(height: 5),
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 15, vertical: 12),
                                           decoration: BoxDecoration(
                                             color: Colors.grey.shade100,
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(color: Colors.grey.shade300),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                                color: Colors.grey.shade300),
                                           ),
                                           alignment: Alignment.centerLeft,
                                           child: Text(
                                             age == null ? '-' : '$age',
                                             style: TextStyle(
-                                              color: age == null ? Colors.grey : Colors.black,
+                                              color: age == null
+                                                  ? Colors.grey
+                                                  : Colors.black,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -882,7 +962,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ],
                               ),
                               SizedBox(height: 15),
-                              
+
                               // Gender field
                               _buildInputLabel('Gender'),
                               SizedBox(height: 5),
@@ -891,11 +971,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.people_outline, color: Color(0xFF53C0FF)),
+                                    Icon(Icons.people_outline,
+                                        color: Color(0xFF53C0FF)),
                                     SizedBox(width: 10),
                                     Expanded(
                                       child: DropdownButtonHideUnderline(
@@ -904,12 +986,19 @@ class _RegisterPageState extends State<RegisterPage> {
                                           style: TextStyle(color: Colors.black),
                                           isExpanded: true,
                                           dropdownColor: Colors.white,
-                                          icon: Icon(Icons.arrow_drop_down, color: Color(0xFF53C0FF)),
-                                          items: <String>['Male', 'Female', 'Prefer not to say']
-                                              .map<DropdownMenuItem<String>>((String value) {
+                                          icon: Icon(Icons.arrow_drop_down,
+                                              color: Color(0xFF53C0FF)),
+                                          items: <String>[
+                                            'Male',
+                                            'Female',
+                                            'Prefer not to say'
+                                          ].map<DropdownMenuItem<String>>(
+                                              (String value) {
                                             return DropdownMenuItem<String>(
                                               value: value,
-                                              child: Text(value, style: TextStyle(color: Colors.black)),
+                                              child: Text(value,
+                                                  style: TextStyle(
+                                                      color: Colors.black)),
                                             );
                                           }).toList(),
                                           onChanged: (String? newValue) {
@@ -924,10 +1013,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                               ),
                               SizedBox(height: 25),
-                              
+
                               // Account Information Section
                               _buildSectionHeader("Account Information"),
-                              
+
                               // Email address
                               _buildInputLabel('Email Address'),
                               SizedBox(height: 5),
@@ -944,7 +1033,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                   onChanged: (value) {
                                     setState(() {
-                                      _isEmailValid = value.isEmpty || _validateEmail(value);
+                                      _isEmailValid = value.isEmpty ||
+                                          _validateEmail(value);
                                     });
                                   },
                                   validator: (value) {
@@ -954,8 +1044,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                     if (!_validateEmail(value)) {
                                       return 'Please enter a valid email address';
                                     }
-                                  return null;
-                                },
+                                    return null;
+                                  },
                                 ),
                               ),
                               SizedBox(height: 15),
@@ -971,13 +1061,17 @@ class _RegisterPageState extends State<RegisterPage> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: _isPhoneNumberValid ? Colors.grey.shade300 : Colors.red),
+                                      border: Border.all(
+                                          color: _isPhoneNumberValid
+                                              ? Colors.grey.shade300
+                                              : Colors.red),
                                     ),
                                     child: Row(
                                       children: [
                                         // Country code prefix container
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 15),
                                           decoration: BoxDecoration(
                                             color: Colors.grey.shade100,
                                             borderRadius: BorderRadius.only(
@@ -985,7 +1079,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                               bottomLeft: Radius.circular(9),
                                             ),
                                             border: Border(
-                                              right: BorderSide(color: Colors.grey.shade300),
+                                              right: BorderSide(
+                                                  color: Colors.grey.shade300),
                                             ),
                                           ),
                                           child: Text(
@@ -1001,25 +1096,42 @@ class _RegisterPageState extends State<RegisterPage> {
                                         Expanded(
                                           child: TextFormField(
                                             controller: phoneNumberController,
-                                            style: TextStyle(color: Colors.black),
+                                            style:
+                                                TextStyle(color: Colors.black),
                                             keyboardType: TextInputType.phone,
                                             decoration: InputDecoration(
-                                              hintText: 'Enter your phone number',
+                                              hintText:
+                                                  'Enter your phone number',
                                               prefixIcon: Icon(
                                                 Icons.phone_outlined,
-                                                color: _isPhoneNumberValid ? Color(0xFF53C0FF) : Colors.red,
+                                                color: _isPhoneNumberValid
+                                                    ? Color(0xFF53C0FF)
+                                                    : Colors.red,
                                               ),
                                               border: InputBorder.none,
-                                              contentPadding: EdgeInsets.symmetric(vertical: 15),
-                                              errorStyle: TextStyle(height: 0), // Hide default error text
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                      vertical: 15),
+                                              errorStyle: TextStyle(
+                                                  height:
+                                                      0), // Hide default error text
                                             ),
                                             onChanged: (value) {
                                               setState(() {
-                                                phoneNumberController.text = _formatPhoneNumber(value);
-                                                phoneNumberController.selection = TextSelection.fromPosition(
-                                                  TextPosition(offset: phoneNumberController.text.length),
+                                                phoneNumberController.text =
+                                                    _formatPhoneNumber(value);
+                                                phoneNumberController
+                                                        .selection =
+                                                    TextSelection.fromPosition(
+                                                  TextPosition(
+                                                      offset:
+                                                          phoneNumberController
+                                                              .text.length),
                                                 );
-                                                _isPhoneNumberValid = _validatePhoneNumber(phoneNumberController.text);
+                                                _isPhoneNumberValid =
+                                                    _validatePhoneNumber(
+                                                        phoneNumberController
+                                                            .text);
                                               });
                                             },
                                             validator: (value) {
@@ -1036,11 +1148,14 @@ class _RegisterPageState extends State<RegisterPage> {
                                   Padding(
                                     padding: EdgeInsets.only(left: 5),
                                     child: Text(
-                                      phoneNumberController.text.isNotEmpty && !_isPhoneNumberValid
+                                      phoneNumberController.text.isNotEmpty &&
+                                              !_isPhoneNumberValid
                                           ? 'Please enter a valid 10-digit phone number'
                                           : 'Enter 10 digits (e.g., 9123456789)',
                                       style: TextStyle(
-                                        color: phoneNumberController.text.isNotEmpty && !_isPhoneNumberValid
+                                        color: phoneNumberController
+                                                    .text.isNotEmpty &&
+                                                !_isPhoneNumberValid
                                             ? Colors.red
                                             : Colors.grey.shade600,
                                         fontSize: 12,
@@ -1062,47 +1177,51 @@ class _RegisterPageState extends State<RegisterPage> {
                                   style: TextStyle(color: Colors.black),
                                   obscureText: _obscurePassword,
                                   decoration: _buildInputDecoration(
-                                  hintText: 'Enter your password',
-                                  prefixIcon: Icons.lock_outline,
-                                  isValid: _isPasswordValid,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                      color: Colors.grey,
+                                    hintText: 'Enter your password',
+                                    prefixIcon: Icons.lock_outline,
+                                    isValid: _isPasswordValid,
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
                                   ),
-                                ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isPasswordValid = value.length >= 8;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter a password';
-                                  }
-                                  if (value.length < 8) {
-                                    return 'Password must be at least 8 characters';
-                                  }
-                                  if (!value.contains(RegExp(r'[A-Z]'))) {
-                                    return 'Password must contain at least one uppercase letter';
-                                  }
-                                  if (!value.contains(RegExp(r'[0-9]'))) {
-                                    return 'Password must contain at least one number';
-                                  }
-                                  if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                                    return 'Password must contain at least one special character';
-                                  }
-                                  return null;
-                                },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _isPasswordValid = value.length >= 8;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a password';
+                                    }
+                                    if (value.length < 8) {
+                                      return 'Password must be at least 8 characters';
+                                    }
+                                    if (!value.contains(RegExp(r'[A-Z]'))) {
+                                      return 'Password must contain at least one uppercase letter';
+                                    }
+                                    if (!value.contains(RegExp(r'[0-9]'))) {
+                                      return 'Password must contain at least one number';
+                                    }
+                                    if (!value.contains(
+                                        RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                                      return 'Password must contain at least one special character';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
-                              _buildPasswordStrengthIndicator(passwordController.text),
+                              _buildPasswordStrengthIndicator(
+                                  passwordController.text),
                               SizedBox(height: 15),
 
                               // Confirm Password
@@ -1115,32 +1234,35 @@ class _RegisterPageState extends State<RegisterPage> {
                                   style: TextStyle(color: Colors.black),
                                   obscureText: _obscureConfirmPassword,
                                   decoration: _buildInputDecoration(
-                                  hintText: 'Confirm your password',
-                                  prefixIcon: Icons.lock_outline,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                                      color: Colors.grey,
+                                    hintText: 'Confirm your password',
+                                    prefixIcon: Icons.lock_outline,
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscureConfirmPassword
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscureConfirmPassword =
+                                              !_obscureConfirmPassword;
+                                        });
+                                      },
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                                      });
-                                    },
                                   ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please confirm your password';
-                                  }
-                                  if (value != passwordController.text) {
-                                    return 'Passwords do not match';
-                                  }
-                                  return null;
-                                },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please confirm your password';
+                                    }
+                                    if (value != passwordController.text) {
+                                      return 'Passwords do not match';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
-                              SizedBox(height: 15),                              // Terms of Service checkbox
+                              SizedBox(height: 15), // Terms of Service checkbox
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -1163,7 +1285,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                         ),
                                         children: [
                                           TextSpan(
-                                            text: 'I agree to all statements in ',
+                                            text:
+                                                'I agree to all statements in ',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -1171,7 +1294,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                           TextSpan(
                                             text: 'Terms of Service',
                                             style: TextStyle(
-                                              color: Color.fromARGB(255, 13, 95, 236),
+                                              color: Color.fromARGB(
+                                                  255, 13, 95, 236),
                                               fontWeight: FontWeight.bold,
                                             ),
                                             recognizer: TapGestureRecognizer()
@@ -1185,16 +1309,20 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 30),// Continue Button - Changed from Register to Continue
+                              SizedBox(
+                                  height:
+                                      30), // Continue Button - Changed from Register to Continue
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
                                   onPressed: () {
                                     // Validate that the Terms of Service checkbox is checked
                                     if (!_termsAccepted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text('Please accept the Terms of Service to continue'),
+                                          content: Text(
+                                              'Please accept the Terms of Service to continue'),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -1224,7 +1352,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             ],
                           ),
                         ),
-                        
+
                         // Already have an account row
                         Padding(
                           padding: const EdgeInsets.only(top: 20),
@@ -1311,7 +1439,8 @@ class _RegisterPageState extends State<RegisterPage> {
       fillColor: Colors.white,
       hintText: hintText,
       hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-      prefixIcon: Icon(prefixIcon, color: isValid ? Color(0xFF53C0FF) : Colors.red),
+      prefixIcon:
+          Icon(prefixIcon, color: isValid ? Color(0xFF53C0FF) : Colors.red),
       suffixIcon: suffixIcon,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),

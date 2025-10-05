@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '677216091931',
     projectId: 'missingperson-345a8',
     storageBucket: 'missingperson-345a8.firebasestorage.app',
-    iosClientId: '677216091931-nj3n1k5hf7o79r6s0p7o1h3evnreq9q7.apps.googleusercontent.com',
+    iosClientId:
+        '677216091931-nj3n1k5hf7o79r6s0p7o1h3evnreq9q7.apps.googleusercontent.com',
     iosBundleId: 'com.example.findlink',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '677216091931',
     projectId: 'missingperson-345a8',
     storageBucket: 'missingperson-345a8.firebasestorage.app',
-    iosClientId: '677216091931-nj3n1k5hf7o79r6s0p7o1h3evnreq9q7.apps.googleusercontent.com',
+    iosClientId:
+        '677216091931-nj3n1k5hf7o79r6s0p7o1h3evnreq9q7.apps.googleusercontent.com',
     iosBundleId: 'com.example.findlink',
   );
 
@@ -87,5 +89,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'missingperson-345a8.firebasestorage.app',
     measurementId: 'G-QBD9E7376M',
   );
-
 }

@@ -12,9 +12,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   Future<void> _sendPasswordResetEmail() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text.trim());
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: emailController.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Password reset email sent!')),
       );
@@ -24,7 +27,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         SnackBar(content: Text(e.message ?? 'Error sending reset email')),
       );
     } finally {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -106,7 +111,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             children: [
                               Text(
                                 'Enter your email to receive a password reset link.',
-                                style: TextStyle(fontSize: 15, color: Color(0xFF424242)),
+                                style: TextStyle(
+                                    fontSize: 15, color: Color(0xFF424242)),
                               ),
                               SizedBox(height: 20),
                               Text(
@@ -127,32 +133,42 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   filled: true,
                                   fillColor: Colors.white,
                                   hintText: 'Enter your email',
-                                  hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                                  prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF53C0FF)),
+                                  hintStyle: TextStyle(
+                                      color: Colors.grey, fontSize: 14),
+                                  prefixIcon: Icon(Icons.email_outlined,
+                                      color: Color(0xFF53C0FF)),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Color(0xFF53C0FF), width: 2.0),
+                                    borderSide: BorderSide(
+                                        color: Color(0xFF53C0FF), width: 2.0),
                                   ),
                                   errorBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.red, width: 1.0),
+                                    borderSide: BorderSide(
+                                        color: Colors.red, width: 1.0),
                                   ),
                                   focusedErrorBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(color: Colors.red, width: 2.0),
+                                    borderSide: BorderSide(
+                                        color: Colors.red, width: 2.0),
                                   ),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                                  errorStyle: TextStyle(color: Colors.red, fontSize: 12),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 15, vertical: 15),
+                                  errorStyle: TextStyle(
+                                      color: Colors.red, fontSize: 12),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
                                   }
-                                  final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                                  final emailRegExp = RegExp(
+                                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                                   if (!emailRegExp.hasMatch(value)) {
                                     return 'Enter a valid email';
                                   }
@@ -163,7 +179,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _sendPasswordResetEmail,
+                                  onPressed: _isLoading
+                                      ? null
+                                      : _sendPasswordResetEmail,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Color(0xFFFFD27E),
                                     foregroundColor: Color(0xFF424242),
@@ -174,8 +192,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                     ),
                                   ),
                                   child: _isLoading
-                                      ? CircularProgressIndicator(color: Color(0xFF2A5298))
-                                      : Text('Send Reset Link', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                      ? CircularProgressIndicator(
+                                          color: Color(0xFF2A5298))
+                                      : Text('Send Reset Link',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600)),
                                 ),
                               ),
                             ],

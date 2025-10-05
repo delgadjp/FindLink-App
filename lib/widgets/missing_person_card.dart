@@ -13,7 +13,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
   static const int _descMaxLength = 100; // Character limit for description
   bool _isExpanded = false;
   Widget _buildStatusLabel() {
-    final status = widget.person.status.isNotEmpty ? widget.person.status : 'UNRESOLVED';
+    final status =
+        widget.person.status.isNotEmpty ? widget.person.status : 'UNRESOLVED';
     Color bgColor;
     Color textColor;
 
@@ -43,7 +44,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
       ),
       child: Text(
         status,
-        style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+            color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -74,7 +76,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 32, color: Colors.grey[600]),
+                      Icon(Icons.error_outline,
+                          size: 32, color: Colors.grey[600]),
                       SizedBox(height: 8),
                       Text('Image not available',
                           style: TextStyle(color: Colors.grey[600])),
@@ -122,7 +125,9 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                     ),
                   ),
                   Icon(
-                    _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     size: 16,
                     color: Colors.blue,
                   )
@@ -155,7 +160,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 widget.person.name,
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
               trailing: _buildStatusLabel(),
             ),
@@ -165,33 +171,40 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
             child: _buildImage(),
           ),
           Padding(
-            padding: EdgeInsets.all(16),                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Last seen at ${widget.person.placeLastSeen}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.white, // Changed to black for better readability
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      DefaultTextStyle(
-                        style: TextStyle(fontSize: 14, height: 1.4, color: Colors.white), // Changed to dark color
-                        child: _buildDescription(),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, size: 16, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text(
-                            'Missing since: ${widget.person.datetimeLastSeen}',
-                            style: TextStyle(color: Colors.white), // Changed to dark color for readability
-                          ),
-                        ],
-                      ),
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Last seen at ${widget.person.placeLastSeen}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color:
+                        Colors.white, // Changed to black for better readability
+                  ),
+                ),
+                SizedBox(height: 8),
+                DefaultTextStyle(
+                  style: TextStyle(
+                      fontSize: 14,
+                      height: 1.4,
+                      color: Colors.white), // Changed to dark color
+                  child: _buildDescription(),
+                ),
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 16, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Missing since: ${widget.person.datetimeLastSeen}',
+                      style: TextStyle(
+                          color: Colors
+                              .white), // Changed to dark color for readability
+                    ),
+                  ],
+                ),
                 SizedBox(height: 16),
                 Divider(color: Colors.white54, thickness: 1),
                 SizedBox(height: 12),
@@ -205,7 +218,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => SubmitTipScreen(person: widget.person),
+                            builder: (context) =>
+                                SubmitTipScreen(person: widget.person),
                           ),
                         );
                       },
@@ -216,7 +230,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        textStyle: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 10),
@@ -227,7 +242,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CaseDetailsScreen(person: widget.person),
+                            builder: (context) =>
+                                CaseDetailsScreen(person: widget.person),
                           ),
                         );
                       },
@@ -238,7 +254,8 @@ class _MissingPersonCardState extends State<MissingPersonCard> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        textStyle: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

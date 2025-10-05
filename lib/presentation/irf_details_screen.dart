@@ -20,7 +20,8 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final rawData = widget.caseData['rawData'] as Map<String, dynamic>? ?? {};
-    final incidentDetails = rawData['incidentDetails'] as Map<String, dynamic>? ?? {};
+    final incidentDetails =
+        rawData['incidentDetails'] as Map<String, dynamic>? ?? {};
     final itemA = rawData['itemA'] as Map<String, dynamic>? ?? {};
     final itemC = rawData['itemC'] as Map<String, dynamic>? ?? {};
 
@@ -67,19 +68,19 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
                       // Header Card with Case Information
                       _buildHeaderCard(),
                       SizedBox(height: 16),
-                      
+
                       // Incident Details Section
                       _buildIncidentDetailsSection(incidentDetails),
                       SizedBox(height: 16),
-                      
+
                       // Reporting Person Section (Item A)
                       _buildReportingPersonSection(itemA),
                       SizedBox(height: 16),
-                      
+
                       // Missing Person Section (Item C)
                       _buildMissingPersonSection(itemC),
                       SizedBox(height: 16),
-                      
+
                       // Case Status and History Section
                       _buildCaseStatusSection(),
                       SizedBox(height: 20),
@@ -153,7 +154,8 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: _getStatusColor(widget.caseData['status']).withOpacity(0.1),
+                color:
+                    _getStatusColor(widget.caseData['status']).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: _getStatusColor(widget.caseData['status']),
@@ -191,13 +193,19 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
       title: 'Incident Details',
       icon: Icons.event_note,
       children: [
-        _buildDetailRow('Type of Incident', incidentDetails['typeOfIncident'] ?? 'N/A'),
-        _buildDetailRow('Date & Time of Incident', _formatDateTime(incidentDetails['dateTimeOfIncident'])),
-        _buildDetailRow('Place of Incident', incidentDetails['placeOfIncident'] ?? 'N/A'),
-        _buildDetailRow('Date Reported', _formatDateTime(incidentDetails['reportedAt'])),
-        if (incidentDetails['narrative'] != null && incidentDetails['narrative'].toString().isNotEmpty)
+        _buildDetailRow(
+            'Type of Incident', incidentDetails['typeOfIncident'] ?? 'N/A'),
+        _buildDetailRow('Date & Time of Incident',
+            _formatDateTime(incidentDetails['dateTimeOfIncident'])),
+        _buildDetailRow(
+            'Place of Incident', incidentDetails['placeOfIncident'] ?? 'N/A'),
+        _buildDetailRow(
+            'Date Reported', _formatDateTime(incidentDetails['reportedAt'])),
+        if (incidentDetails['narrative'] != null &&
+            incidentDetails['narrative'].toString().isNotEmpty)
           _buildNarrativeRow('Narrative', incidentDetails['narrative']),
-        if (incidentDetails['imageUrl'] != null && incidentDetails['imageUrl'].toString().isNotEmpty)
+        if (incidentDetails['imageUrl'] != null &&
+            incidentDetails['imageUrl'].toString().isNotEmpty)
           _buildImageRow('Attached Image', incidentDetails['imageUrl']),
       ],
     );
@@ -222,7 +230,8 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
         _buildDetailRow('Home Phone', itemA['homePhone'] ?? 'N/A'),
         _buildDetailRow('Email', itemA['email'] ?? 'N/A'),
         _buildDetailRow('Current Address', _buildFullAddress(itemA)),
-        if (itemA['otherAddress'] != null && itemA['otherAddress'].toString().isNotEmpty)
+        if (itemA['otherAddress'] != null &&
+            itemA['otherAddress'].toString().isNotEmpty)
           _buildDetailRow('Other Address', _buildOtherAddress(itemA)),
         _buildDetailRow('ID Card Presented', itemA['idCard'] ?? 'N/A'),
       ],
@@ -248,7 +257,8 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
         _buildDetailRow('Home Phone', itemC['homePhone'] ?? 'N/A'),
         _buildDetailRow('Email', itemC['email'] ?? 'N/A'),
         _buildDetailRow('Current Address', _buildFullAddress(itemC)),
-        if (itemC['otherAddress'] != null && itemC['otherAddress'].toString().isNotEmpty)
+        if (itemC['otherAddress'] != null &&
+            itemC['otherAddress'].toString().isNotEmpty)
           _buildDetailRow('Other Address', _buildOtherAddress(itemC)),
         if (itemC['idCard'] != null && itemC['idCard'].toString().isNotEmpty)
           _buildDetailRow('ID Card Information', itemC['idCard'] ?? 'N/A'),
@@ -263,8 +273,10 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
       children: [
         _buildDetailRow('Case Type', widget.caseData['type'] ?? 'N/A'),
         _buildDetailRow('Current Status', widget.caseData['status'] ?? 'N/A'),
-        _buildDetailRow('Date Created', widget.caseData['dateCreated'] ?? 'N/A'),
-        _buildDetailRow('Last Updated', _formatDateTime(widget.caseData['rawData']['updatedAt'])),
+        _buildDetailRow(
+            'Date Created', widget.caseData['dateCreated'] ?? 'N/A'),
+        _buildDetailRow('Last Updated',
+            _formatDateTime(widget.caseData['rawData']['updatedAt'])),
       ],
     );
   }
@@ -508,7 +520,8 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error, color: Colors.grey[400], size: 60),
+                              Icon(Icons.error,
+                                  color: Colors.grey[400], size: 60),
                               SizedBox(height: 16),
                               Text(
                                 'Unable to load image',
@@ -531,81 +544,92 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
 
   String _buildFullName(Map<String, dynamic> data) {
     List<String> nameParts = [];
-    
+
     if (data['firstName'] != null && data['firstName'].toString().isNotEmpty) {
       nameParts.add(data['firstName'].toString());
     }
-    
-    if (data['middleName'] != null && data['middleName'].toString().isNotEmpty) {
+
+    if (data['middleName'] != null &&
+        data['middleName'].toString().isNotEmpty) {
       nameParts.add(data['middleName'].toString());
     }
-    
-    if (data['familyName'] != null && data['familyName'].toString().isNotEmpty) {
+
+    if (data['familyName'] != null &&
+        data['familyName'].toString().isNotEmpty) {
       nameParts.add(data['familyName'].toString());
     }
-    
-    if (data['qualifier'] != null && data['qualifier'].toString().isNotEmpty && data['qualifier'] != 'None') {
+
+    if (data['qualifier'] != null &&
+        data['qualifier'].toString().isNotEmpty &&
+        data['qualifier'] != 'None') {
       nameParts.add(data['qualifier'].toString());
     }
-    
+
     return nameParts.isNotEmpty ? nameParts.join(' ') : 'N/A';
   }
 
   String _buildFullAddress(Map<String, dynamic> data) {
     List<String> addressParts = [];
-    
-    if (data['currentAddress'] != null && data['currentAddress'].toString().isNotEmpty) {
+
+    if (data['currentAddress'] != null &&
+        data['currentAddress'].toString().isNotEmpty) {
       addressParts.add(data['currentAddress'].toString());
     }
-    
-    if (data['villageSitio'] != null && data['villageSitio'].toString().isNotEmpty) {
+
+    if (data['villageSitio'] != null &&
+        data['villageSitio'].toString().isNotEmpty) {
       addressParts.add(data['villageSitio'].toString());
     }
-    
+
     if (data['barangay'] != null && data['barangay'].toString().isNotEmpty) {
       addressParts.add(data['barangay'].toString());
     }
-    
+
     if (data['town'] != null && data['town'].toString().isNotEmpty) {
       addressParts.add(data['town'].toString());
     }
-    
+
     if (data['province'] != null && data['province'].toString().isNotEmpty) {
       addressParts.add(data['province'].toString());
     }
-    
+
     return addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
   }
 
   String _buildOtherAddress(Map<String, dynamic> data) {
     List<String> addressParts = [];
-    
-    if (data['otherAddress'] != null && data['otherAddress'].toString().isNotEmpty) {
+
+    if (data['otherAddress'] != null &&
+        data['otherAddress'].toString().isNotEmpty) {
       addressParts.add(data['otherAddress'].toString());
     }
-    
-    if (data['otherVillage'] != null && data['otherVillage'].toString().isNotEmpty) {
+
+    if (data['otherVillage'] != null &&
+        data['otherVillage'].toString().isNotEmpty) {
       addressParts.add(data['otherVillage'].toString());
     }
-    
-    if (data['otherBarangay'] != null && data['otherBarangay'].toString().isNotEmpty) {
+
+    if (data['otherBarangay'] != null &&
+        data['otherBarangay'].toString().isNotEmpty) {
       addressParts.add(data['otherBarangay'].toString());
     }
-    
-    if (data['otherTownCity'] != null && data['otherTownCity'].toString().isNotEmpty) {
+
+    if (data['otherTownCity'] != null &&
+        data['otherTownCity'].toString().isNotEmpty) {
       addressParts.add(data['otherTownCity'].toString());
     }
-    
-    if (data['otherProvince'] != null && data['otherProvince'].toString().isNotEmpty) {
+
+    if (data['otherProvince'] != null &&
+        data['otherProvince'].toString().isNotEmpty) {
       addressParts.add(data['otherProvince'].toString());
     }
-    
+
     return addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
   }
 
   String _formatDateTime(dynamic dateTime) {
     if (dateTime == null) return 'N/A';
-    
+
     try {
       DateTime dt;
       if (dateTime is Timestamp) {
@@ -619,7 +643,7 @@ class _IRFDetailsScreenState extends State<IRFDetailsScreen> {
       } else {
         return dateTime.toString();
       }
-      
+
       return DateFormat('MMM dd, yyyy hh:mm a').format(dt);
     } catch (e) {
       return dateTime.toString();

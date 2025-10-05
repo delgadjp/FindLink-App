@@ -70,7 +70,7 @@ class _LoginPageState extends State<LoginPage> {
                           fit: BoxFit.contain,
                         ),
                         SizedBox(height: 10),
-                        
+
                         // Login title inside the form container
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20),
@@ -84,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-                        
+
                         Form(
                           key: _formKey,
                           child: Column(
@@ -92,7 +92,7 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               // Account Information Section
                               _buildSectionHeader("Account Information"),
-                              
+
                               // Email address
                               _buildInputLabel('Email Address'),
                               SizedBox(height: 5),
@@ -107,7 +107,8 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 onChanged: (value) {
                                   setState(() {
-                                    _isEmailValid = value.isEmpty || _validateEmail(value);
+                                    _isEmailValid =
+                                        value.isEmpty || _validateEmail(value);
                                   });
                                 },
                                 validator: (value) {
@@ -134,7 +135,9 @@ class _LoginPageState extends State<LoginPage> {
                                   prefixIcon: Icons.lock_outline,
                                   suffixIcon: IconButton(
                                     icon: Icon(
-                                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                      _obscurePassword
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
                                       color: Colors.grey,
                                     ),
                                     onPressed: () {
@@ -160,7 +163,9 @@ class _LoginPageState extends State<LoginPage> {
                                   onPressed: () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              ForgotPasswordPage()),
                                     );
                                   },
                                   child: Text(
@@ -188,7 +193,8 @@ class _LoginPageState extends State<LoginPage> {
                                           context: context,
                                         );
                                       } catch (e) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
                                           SnackBar(content: Text(e.toString())),
                                         );
                                       }
@@ -213,9 +219,9 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              
+
                               SizedBox(height: 20),
-                              
+
                               // Don't have an account row
                               Padding(
                                 padding: const EdgeInsets.only(top: 20),
@@ -232,7 +238,8 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     TextButton(
                                       onPressed: () {
-                                        Navigator.pushNamed(context, '/register');
+                                        Navigator.pushNamed(
+                                            context, '/register');
                                       },
                                       child: Text(
                                         'Create Account',
@@ -276,7 +283,10 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         SizedBox(height: 5),
-        Divider(color: Color(0xFF53C0FF), thickness: 1.5, endIndent: 240), // Changed to blue color
+        Divider(
+            color: Color(0xFF53C0FF),
+            thickness: 1.5,
+            endIndent: 240), // Changed to blue color
         SizedBox(height: 15),
       ],
     );
@@ -305,7 +315,10 @@ class _LoginPageState extends State<LoginPage> {
       fillColor: Colors.white,
       hintText: hintText,
       hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-      prefixIcon: Icon(prefixIcon, color: isValid ? Color(0xFF53C0FF) : Colors.red), // Changed to blue color
+      prefixIcon: Icon(prefixIcon,
+          color: isValid
+              ? Color(0xFF53C0FF)
+              : Colors.red), // Changed to blue color
       suffixIcon: suffixIcon,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
@@ -317,7 +330,8 @@ class _LoginPageState extends State<LoginPage> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: isValid ? Color(0xFF53C0FF) : Colors.red, // Changed to blue color
+          color:
+              isValid ? Color(0xFF53C0FF) : Colors.red, // Changed to blue color
           width: 2.0,
         ),
       ),

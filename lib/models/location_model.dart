@@ -48,7 +48,7 @@ class LocationData {
   // Create from Firestore DocumentSnapshot
   factory LocationData.fromSnapshot(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     // Handle timestamp conversion with better error handling
     DateTime timestamp;
     try {
@@ -70,7 +70,7 @@ class LocationData {
       print('Error parsing timestamp: $e, using current time');
       timestamp = DateTime.now();
     }
-    
+
     return LocationData(
       id: data['id'] ?? doc.id, // Use document ID if id field is missing
       userId: data['userId'] ?? '',
@@ -119,7 +119,8 @@ class TrustedContact {
       'relationship': relationship,
       'isVerified': isVerified,
       'canAccessLocation': canAccessLocation,
-      'createdAt': Timestamp.fromDate(createdAt), // Convert to Firestore Timestamp
+      'createdAt':
+          Timestamp.fromDate(createdAt), // Convert to Firestore Timestamp
     };
   }
 
@@ -133,11 +134,12 @@ class TrustedContact {
       createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
     } else if (createdAtValue is Map && createdAtValue['seconds'] != null) {
       // Handle server timestamp format
-      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue['seconds'] * 1000);
+      createdAt =
+          DateTime.fromMillisecondsSinceEpoch(createdAtValue['seconds'] * 1000);
     } else {
       createdAt = DateTime.now(); // Fallback
     }
-    
+
     return TrustedContact(
       id: map['id'] ?? '',
       userId: map['userId'] ?? '',

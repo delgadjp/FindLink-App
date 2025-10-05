@@ -6,8 +6,8 @@ class SubmitButton extends StatelessWidget {
   final bool isLoading;
 
   const SubmitButton({
-    Key? key, 
-    required this.formKey, 
+    Key? key,
+    required this.formKey,
     this.onPressed,
     this.isLoading = false,
   }) : super(key: key);
@@ -37,28 +37,31 @@ class SubmitButton extends StatelessWidget {
           // Disable the button when loading
           disabledBackgroundColor: Color(0xFF1E215A).withOpacity(0.6),
         ),
-        onPressed: isLoading ? null : onPressed ?? () {
-          if (formKey.currentState?.validate() ?? false) {
-            // Proceed with form submission
-          }
-        },
-        child: isLoading 
-          ? SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
+        onPressed: isLoading
+            ? null
+            : onPressed ??
+                () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    // Proceed with form submission
+                  }
+                },
+        child: isLoading
+            ? SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                'SUBMIT',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-            )
-          : Text(
-              'SUBMIT',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
       ),
     );
   }

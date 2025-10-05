@@ -119,9 +119,11 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error_outline, size: 48, color: Color(0xFF0D47A1)),
+                              Icon(Icons.error_outline,
+                                  size: 48, color: Color(0xFF0D47A1)),
                               SizedBox(height: 8),
-                              Text('Image not available', style: TextStyle(color: Color(0xFF0D47A1))),
+                              Text('Image not available',
+                                  style: TextStyle(color: Color(0xFF0D47A1))),
                             ],
                           ),
                         );
@@ -150,9 +152,11 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.image_not_supported, size: 48, color: Color(0xFF0D47A1)),
+                  Icon(Icons.image_not_supported,
+                      size: 48, color: Color(0xFF0D47A1)),
                   SizedBox(height: 8),
-                  Text('No image available', style: TextStyle(color: Color(0xFF0D47A1))),
+                  Text('No image available',
+                      style: TextStyle(color: Color(0xFF0D47A1))),
                 ],
               ),
             ),
@@ -160,7 +164,8 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
   }
 
   Widget _buildStatusChip() {
-    final status = widget.person.status.isNotEmpty ? widget.person.status : 'UNRESOLVED';
+    final status =
+        widget.person.status.isNotEmpty ? widget.person.status : 'UNRESOLVED';
     Color bgColor;
     Color textColor;
 
@@ -191,6 +196,7 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
       padding: EdgeInsets.symmetric(horizontal: 8),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -222,7 +228,13 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
           ),
         ),
         child: SingleChildScrollView(
-          padding: EdgeInsets.only(top: AppBar().preferredSize.height + MediaQuery.of(context).padding.top + 16, left: 16, right: 16, bottom: 16),
+          padding: EdgeInsets.only(
+              top: AppBar().preferredSize.height +
+                  MediaQuery.of(context).padding.top +
+                  16,
+              left: 16,
+              right: 16,
+              bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -272,7 +284,10 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                         ),
                       ),
                       SizedBox(height: 8),
-                      Divider(thickness: 1.5, color: Colors.blue.shade50, height: 18),
+                      Divider(
+                          thickness: 1.5,
+                          color: Colors.blue.shade50,
+                          height: 18),
                       SizedBox(height: 18),
                       // Case information section
                       Row(
@@ -290,17 +305,25 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                           ),
                         ],
                       ),
-                      Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
+                      Divider(
+                          thickness: 2,
+                          color: Colors.blue.shade100,
+                          height: 24),
                       SizedBox(height: 10),
-                      _buildInfoRow('Description', widget.person.descriptions, isMultiline: true),
+                      _buildInfoRow('Description', widget.person.descriptions,
+                          isMultiline: true),
                       _buildInfoRow('Address', widget.person.address),
-                      _buildInfoRow('Last Seen At', widget.person.placeLastSeen),
-                      _buildInfoRow('Last Seen Date', widget.person.datetimeLastSeen),
-                      _buildInfoRow('Date Reported', widget.person.datetimeReported),
+                      _buildInfoRow(
+                          'Last Seen At', widget.person.placeLastSeen),
+                      _buildInfoRow(
+                          'Last Seen Date', widget.person.datetimeLastSeen),
+                      _buildInfoRow(
+                          'Date Reported', widget.person.datetimeReported),
                       SizedBox(height: 22),
                       Row(
                         children: [
-                          Icon(Icons.contact_phone_outlined, color: Color(0xFF0D47A1)),
+                          Icon(Icons.contact_phone_outlined,
+                              color: Color(0xFF0D47A1)),
                           SizedBox(width: 10),
                           Text(
                             'Contact Information',
@@ -313,7 +336,10 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                           ),
                         ],
                       ),
-                      Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
+                      Divider(
+                          thickness: 2,
+                          color: Colors.blue.shade100,
+                          height: 24),
                       SizedBox(height: 10),
                       _buildInfoRow('Complainant', widget.person.complainant),
                       _buildInfoRow('Relationship', widget.person.relationship),
@@ -322,7 +348,8 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                         SizedBox(height: 22),
                         Row(
                           children: [
-                            Icon(Icons.notes_outlined, color: Color(0xFF0D47A1)),
+                            Icon(Icons.notes_outlined,
+                                color: Color(0xFF0D47A1)),
                             SizedBox(width: 10),
                             Text(
                               'Additional Information',
@@ -335,9 +362,13 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                             ),
                           ],
                         ),
-                        Divider(thickness: 2, color: Colors.blue.shade100, height: 24),
+                        Divider(
+                            thickness: 2,
+                            color: Colors.blue.shade100,
+                            height: 24),
                         SizedBox(height: 10),
-                        _buildInfoRow('Notes', widget.person.additionalInfo, isMultiline: true),
+                        _buildInfoRow('Notes', widget.person.additionalInfo,
+                            isMultiline: true),
                       ],
                     ],
                   ),
@@ -362,13 +393,17 @@ class _CaseDetailsScreenState extends State<CaseDetailsScreen> {
                   icon: Icon(Icons.tips_and_updates, size: 24),
                   label: Text(
                     'Report a Sighting',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5),
                   ),
                   onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => SubmitTipScreen(person: widget.person),
+                        builder: (context) =>
+                            SubmitTipScreen(person: widget.person),
                       ),
                     );
                   },

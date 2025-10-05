@@ -21,7 +21,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   static const int _itemsPerPage = 8;
   ViewMode _viewMode = ViewMode.card;
   bool _isSearchExpanded = false;
-  
+
   // Stream subscription for real-time updates
   StreamSubscription<QuerySnapshot>? _missingPersonsSubscription;
   List<MissingPerson> _allMissingPersons = [];
@@ -48,16 +48,15 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         _errorMessage = null;
       });
 
-      final stream = FirebaseFirestore.instance
-          .collection('missingPersons')
-          .snapshots();
-      
+      final stream =
+          FirebaseFirestore.instance.collection('missingPersons').snapshots();
+
       _missingPersonsSubscription = stream.listen(
         (QuerySnapshot snapshot) {
           final persons = snapshot.docs
               .map((doc) => MissingPerson.fromSnapshot(doc))
               .toList();
-          
+
           setState(() {
             _allMissingPersons = persons;
             _isLoading = false;
@@ -74,7 +73,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         },
       );
     } catch (e) {
-  debugPrint('Error setting up missing persons stream: $e');
+      debugPrint('Error setting up missing persons stream: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
@@ -98,7 +97,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         backgroundColor: Color(0xFF0D47A1),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.home, (route) => false),
         ),
         actions: [
           // Filter indicator badge
@@ -195,10 +195,12 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                             },
                             decoration: InputDecoration(
                               hintText: 'Search...',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
+                              hintStyle: TextStyle(
+                                  color: Colors.white70, fontSize: 14),
                               suffixIcon: searchQuery.isNotEmpty
                                   ? IconButton(
-                                      icon: Icon(Icons.clear, color: Colors.white70, size: 18),
+                                      icon: Icon(Icons.clear,
+                                          color: Colors.white70, size: 18),
                                       onPressed: () {
                                         setState(() {
                                           searchQuery = '';
@@ -209,7 +211,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                   : null,
                               filled: true,
                               fillColor: Colors.white24,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
                                 borderSide: BorderSide.none,
@@ -234,7 +237,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                         children: [
                           IconButton(
                             icon: Icon(Icons.view_agenda),
-                            color: _viewMode == ViewMode.card ? Colors.white : Colors.white54,
+                            color: _viewMode == ViewMode.card
+                                ? Colors.white
+                                : Colors.white54,
                             onPressed: () {
                               setState(() {
                                 _viewMode = ViewMode.card;
@@ -244,7 +249,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                           ),
                           IconButton(
                             icon: Icon(Icons.list),
-                            color: _viewMode == ViewMode.list ? Colors.white : Colors.white54,
+                            color: _viewMode == ViewMode.list
+                                ? Colors.white
+                                : Colors.white54,
                             onPressed: () {
                               setState(() {
                                 _viewMode = ViewMode.list;
@@ -254,7 +261,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                           ),
                           IconButton(
                             icon: Icon(Icons.grid_view),
-                            color: _viewMode == ViewMode.grid ? Colors.white : Colors.white54,
+                            color: _viewMode == ViewMode.grid
+                                ? Colors.white
+                                : Colors.white54,
                             onPressed: () {
                               setState(() {
                                 _viewMode = ViewMode.grid;
@@ -268,7 +277,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                   ],
                 ),
               ),
-              
+
               // Active filters indicator
               if (_hasActiveFilters())
                 Container(
@@ -330,7 +339,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
 
     // Handle error state
     if (_errorMessage != null) {
-  debugPrint('Error displaying missing persons: $_errorMessage');
+      debugPrint('Error displaying missing persons: $_errorMessage');
       // Check if it's a permission error and show appropriate message
       if (_errorMessage!.contains('permission-denied')) {
         return Center(
@@ -427,7 +436,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
       // Location filter
       bool matchesLocation = locationFilter.isEmpty ||
           person.address.toLowerCase().contains(locationFilter.toLowerCase()) ||
-          person.placeLastSeen.toLowerCase().contains(locationFilter.toLowerCase());
+          person.placeLastSeen
+              .toLowerCase()
+              .contains(locationFilter.toLowerCase());
 
       // Check date range filter
       bool matchesDateRange = true;
@@ -438,18 +449,22 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         } catch (e) {
           personDate = null;
         }
-        
+
         if (personDate != null) {
           if (startDate != null && personDate.isBefore(startDate!)) {
             matchesDateRange = false;
           }
-          if (endDate != null && personDate.isAfter(endDate!.add(Duration(days: 1)))) {
+          if (endDate != null &&
+              personDate.isAfter(endDate!.add(Duration(days: 1)))) {
             matchesDateRange = false;
           }
         }
       }
-      
-      return matchesSearch && matchesStatus && matchesLocation && matchesDateRange;
+
+      return matchesSearch &&
+          matchesStatus &&
+          matchesLocation &&
+          matchesDateRange;
     }).toList();
 
     // Sort persons based on selected sort option
@@ -464,17 +479,18 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         filteredPersons.sort((a, b) => a.status.compareTo(b.status));
         break;
       case 'Location':
-        filteredPersons.sort((a, b) => a.placeLastSeen.compareTo(b.placeLastSeen));
+        filteredPersons
+            .sort((a, b) => a.placeLastSeen.compareTo(b.placeLastSeen));
         break;
       case 'Date Last Seen':
         filteredPersons.sort((a, b) {
           DateTime? dateA = a.lastSeenDateTime;
           DateTime? dateB = b.lastSeenDateTime;
-          
+
           if (dateA == null && dateB == null) return 0;
           if (dateA == null) return 1;
           if (dateB == null) return -1;
-          
+
           return dateB.compareTo(dateA);
         });
         break;
@@ -484,7 +500,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
         filteredPersons.sort((a, b) {
           DateTime? dateA = a.reportedDateTime;
           DateTime? dateB = b.reportedDateTime;
-          
+
           // If parsed DateTime is null, fallback to string parsing
           if (dateA == null) {
             try {
@@ -493,7 +509,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
               dateA = null;
             }
           }
-          
+
           if (dateB == null) {
             try {
               dateB = DateTime.parse(b.datetimeReported.toString());
@@ -501,12 +517,12 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
               dateB = null;
             }
           }
-          
+
           // Handle null cases - put null dates at the end
           if (dateA == null && dateB == null) return 0;
           if (dateA == null) return 1;
           if (dateB == null) return -1;
-          
+
           // Sort by most recent first (descending order)
           return dateB.compareTo(dateA);
         });
@@ -556,10 +572,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
     }
 
     final startIndex = targetPage * _itemsPerPage;
-    final displayedPersons = filteredPersons
-        .skip(startIndex)
-        .take(_itemsPerPage)
-        .toList();
+    final displayedPersons =
+        filteredPersons.skip(startIndex).take(_itemsPerPage).toList();
 
     final showPagination = totalPages > 1;
     Widget contentView;
@@ -592,7 +606,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   }
 
   // Build card view (current implementation)
-  Widget _buildCardView(List<MissingPerson> displayedPersons, bool showPagination) {
+  Widget _buildCardView(
+      List<MissingPerson> displayedPersons, bool showPagination) {
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(16, 8, 16, showPagination ? 120 : 16),
       physics: AlwaysScrollableScrollPhysics(),
@@ -604,7 +619,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   }
 
   // Build list view (compact version)
-  Widget _buildListView(List<MissingPerson> displayedPersons, bool showPagination) {
+  Widget _buildListView(
+      List<MissingPerson> displayedPersons, bool showPagination) {
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(16, 8, 16, showPagination ? 120 : 16),
       physics: AlwaysScrollableScrollPhysics(),
@@ -616,10 +632,11 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   }
 
   // Build grid view
-  Widget _buildGridView(List<MissingPerson> displayedPersons, bool showPagination) {
+  Widget _buildGridView(
+      List<MissingPerson> displayedPersons, bool showPagination) {
     final screenWidth = MediaQuery.of(context).size.width;
     int crossAxisCount = 2;
-    
+
     // Adaptive grid based on screen width
     if (screenWidth > 1200) {
       crossAxisCount = 4;
@@ -688,7 +705,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                             color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.person, color: Color(0xFF0D47A1), size: 32),
+                          child: Icon(Icons.person,
+                              color: Color(0xFF0D47A1), size: 32),
                         );
                       },
                     ),
@@ -698,7 +716,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.person, color: Color(0xFF0D47A1), size: 32),
+                    child:
+                        Icon(Icons.person, color: Color(0xFF0D47A1), size: 32),
                   ),
           ),
           title: Text(
@@ -717,14 +736,16 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
               SizedBox(height: 6),
               Row(
                 children: [
-                  Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                  Icon(Icons.location_on,
+                      size: 14, color: Colors.grey.shade600),
                   SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       person.placeLastSeen,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.grey.shade700),
                     ),
                   ),
                 ],
@@ -827,7 +848,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                   margin: EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3), width: 1),
+                    border: Border.all(
+                        color: Color(0xFF0D47A1).withOpacity(0.3), width: 1),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -849,7 +871,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                                   borderRadius: BorderRadius.circular(11),
                                 ),
                                 child: Center(
-                                  child: Icon(Icons.person, size: 40, color: Color(0xFF0D47A1)),
+                                  child: Icon(Icons.person,
+                                      size: 40, color: Color(0xFF0D47A1)),
                                 ),
                               );
                             },
@@ -861,7 +884,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                             borderRadius: BorderRadius.circular(11),
                           ),
                           child: Center(
-                            child: Icon(Icons.person, size: 40, color: Color(0xFF0D47A1)),
+                            child: Icon(Icons.person,
+                                size: 40, color: Color(0xFF0D47A1)),
                           ),
                         ),
                 ),
@@ -876,7 +900,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                          Icon(Icons.location_on,
+                              size: 14, color: Colors.grey.shade600),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -895,7 +920,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                       SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+                          Icon(Icons.calendar_today,
+                              size: 14, color: Colors.grey.shade600),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -921,7 +947,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.visibility, size: 14, color: Color(0xFF0D47A1)),
+                            Icon(Icons.visibility,
+                                size: 14, color: Color(0xFF0D47A1)),
                             SizedBox(width: 4),
                             Text(
                               'View Details',
@@ -1011,11 +1038,11 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
   }
 
   bool _hasActiveFilters() {
-    return sortBy != 'Recent' || 
-           statusFilter != 'All' || 
-           locationFilter.isNotEmpty || 
-           startDate != null || 
-           endDate != null;
+    return sortBy != 'Recent' ||
+        statusFilter != 'All' ||
+        locationFilter.isNotEmpty ||
+        startDate != null ||
+        endDate != null;
   }
 
   int _getActiveFilterCount() {
@@ -1034,11 +1061,14 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
     if (locationFilter.isNotEmpty) filters.add('Location: $locationFilter');
     if (startDate != null || endDate != null) {
       if (startDate != null && endDate != null) {
-        filters.add('Date: ${startDate!.day}/${startDate!.month}/${startDate!.year} - ${endDate!.day}/${endDate!.month}/${endDate!.year}');
+        filters.add(
+            'Date: ${startDate!.day}/${startDate!.month}/${startDate!.year} - ${endDate!.day}/${endDate!.month}/${endDate!.year}');
       } else if (startDate != null) {
-        filters.add('From: ${startDate!.day}/${startDate!.month}/${startDate!.year}');
+        filters.add(
+            'From: ${startDate!.day}/${startDate!.month}/${startDate!.year}');
       } else if (endDate != null) {
-        filters.add('Until: ${endDate!.day}/${endDate!.month}/${endDate!.year}');
+        filters
+            .add('Until: ${endDate!.day}/${endDate!.month}/${endDate!.year}');
       }
     }
     return filters.join(' • ');
@@ -1074,7 +1104,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                         gradient: LinearGradient(
                           colors: [Color(0xFF0D47A1), Color(0xFF1976D2)],
                         ),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
                       ),
                       child: Row(
                         children: [
@@ -1099,7 +1130,7 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                         ],
                       ),
                     ),
-                    
+
                     // Content
                     Flexible(
                       child: Container(
@@ -1109,248 +1140,262 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                            // Sort Section
-                            _buildSectionHeader('Sort By', Icons.sort),
-                            SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _buildSortChip('Recent', setState),
-                                _buildSortChip('Name (A-Z)', setState),
-                                _buildSortChip('Name (Z-A)', setState),
-                                _buildSortChip('Status', setState),
-                                _buildSortChip('Location', setState),
-                                _buildSortChip('Date Last Seen', setState),
-                              ],
-                            ),
-                            
-                            SizedBox(height: 24),
-                            
-                            // Quick Filters Section
-                            _buildSectionHeader('Quick Filters', Icons.filter_alt),
-                            SizedBox(height: 12),
-                            
-                            // Status Filter
-                            _buildFilterSubheader('Status'),
-                            SizedBox(height: 8),
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: statusFilter,
-                                  isExpanded: true,
-                                  icon: Icon(Icons.arrow_drop_down, color: Color(0xFF0D47A1)),
-                                  dropdownColor: Colors.white,
-                                  items: [
-                                    'All',
-                                    'Reported',
-                                    'Under Review',
-                                    'Case Verified',
-                                    'In Progress',
-                                    'Evidence Submitted',
-                                    'Unresolved Case',
-                                  ].map((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Row(
-                                        children: [
-                                          _buildStatusIndicator(value),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            value,
-                                            style: TextStyle(color: Colors.black),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      statusFilter = newValue ?? 'All';
-                                    });
-                                    this.setState(() {
-                                      _currentPage = 0;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                            
-                            SizedBox(height: 16),
-                            
-                            // Location Filter
-                            _buildFilterSubheader('Location'),
-                            SizedBox(height: 8),
-                            TextField(
-                              onChanged: (value) {
-                                setState(() {
-                                  locationFilter = value;
-                                });
-                                this.setState(() {
-                                  _currentPage = 0;
-                                });
-                              },
-                              style: TextStyle(color: Colors.black),
-                              decoration: InputDecoration(
-                                hintText: 'Filter by location...',
-                                prefixIcon: Icon(Icons.location_on, color: Color(0xFF0D47A1)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Color(0xFF0D47A1), width: 2),
-                                ),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              ),
-                            ),
-                            
-                            SizedBox(height: 24),
-                            
-                            // Advanced Filters Section
-                            InkWell(
-                              onTap: () {
-                                setState(() {
-                                  showAdvancedFilters = !showAdvancedFilters;
-                                });
-                              },
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.schedule,
-                                    color: Color(0xFF0D47A1),
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Date Range Filter',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                      color: Color(0xFF0D47A1),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Icon(
-                                    showAdvancedFilters 
-                                        ? Icons.keyboard_arrow_up 
-                                        : Icons.keyboard_arrow_down,
-                                    color: Color(0xFF0D47A1),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            
-                            if (showAdvancedFilters) ...[
-                              SizedBox(height: 16),
-                              
-                              // Date Range Presets
-                              Text(
-                                'Quick Select',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                              SizedBox(height: 8),
+                              // Sort Section
+                              _buildSectionHeader('Sort By', Icons.sort),
+                              SizedBox(height: 12),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
-                                  _buildDatePresetChip('Last 7 days', setState),
-                                  _buildDatePresetChip('Last 30 days', setState),
-                                  _buildDatePresetChip('Last 90 days', setState),
-                                  _buildDatePresetChip('This Year', setState),
+                                  _buildSortChip('Recent', setState),
+                                  _buildSortChip('Name (A-Z)', setState),
+                                  _buildSortChip('Name (Z-A)', setState),
+                                  _buildSortChip('Status', setState),
+                                  _buildSortChip('Location', setState),
+                                  _buildSortChip('Date Last Seen', setState),
                                 ],
                               ),
-                              
-                              SizedBox(height: 16),
-                              
-                              // Custom Date Range
-                              Text(
-                                'Custom Range',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[800],
+
+                              SizedBox(height: 24),
+
+                              // Quick Filters Section
+                              _buildSectionHeader(
+                                  'Quick Filters', Icons.filter_alt),
+                              SizedBox(height: 12),
+
+                              // Status Filter
+                              _buildFilterSubheader('Status'),
+                              SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 4),
+                                decoration: BoxDecoration(
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: statusFilter,
+                                    isExpanded: true,
+                                    icon: Icon(Icons.arrow_drop_down,
+                                        color: Color(0xFF0D47A1)),
+                                    dropdownColor: Colors.white,
+                                    items: [
+                                      'All',
+                                      'Reported',
+                                      'Under Review',
+                                      'Case Verified',
+                                      'In Progress',
+                                      'Evidence Submitted',
+                                      'Unresolved Case',
+                                    ].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Row(
+                                          children: [
+                                            _buildStatusIndicator(value),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              value,
+                                              style: TextStyle(
+                                                  color: Colors.black),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        statusFilter = newValue ?? 'All';
+                                      });
+                                      this.setState(() {
+                                        _currentPage = 0;
+                                      });
+                                    },
+                                  ),
                                 ),
                               ),
+
+                              SizedBox(height: 16),
+
+                              // Location Filter
+                              _buildFilterSubheader('Location'),
                               SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildDatePicker(
-                                      'Start Date',
-                                      startDate,
-                                      (date) {
-                                        setState(() => startDate = date);
-                                        this.setState(() {
-                                          _currentPage = 0;
-                                        });
-                                      },
-                                    ),
+                              TextField(
+                                onChanged: (value) {
+                                  setState(() {
+                                    locationFilter = value;
+                                  });
+                                  this.setState(() {
+                                    _currentPage = 0;
+                                  });
+                                },
+                                style: TextStyle(color: Colors.black),
+                                decoration: InputDecoration(
+                                  hintText: 'Filter by location...',
+                                  prefixIcon: Icon(Icons.location_on,
+                                      color: Color(0xFF0D47A1)),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade300),
                                   ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildDatePicker(
-                                      'End Date',
-                                      endDate,
-                                      (date) {
-                                        setState(() => endDate = date);
-                                        this.setState(() {
-                                          _currentPage = 0;
-                                        });
-                                      },
-                                    ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Color(0xFF0D47A1), width: 2),
                                   ),
-                                ],
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                ),
                               ),
-                              
-                              // Clear date range button
-                              if (startDate != null || endDate != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 12.0),
-                                  child: Center(
-                                    child: TextButton.icon(
-                                      onPressed: () {
-                                        setState(() {
-                                          startDate = null;
-                                          endDate = null;
-                                        });
-                                        this.setState(() {
-                                          _currentPage = 0;
-                                        });
-                                      },
-                                      icon: Icon(Icons.clear, size: 18),
-                                      label: Text('Clear Date Range'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.grey[600],
+
+                              SizedBox(height: 24),
+
+                              // Advanced Filters Section
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    showAdvancedFilters = !showAdvancedFilters;
+                                  });
+                                },
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.schedule,
+                                      color: Color(0xFF0D47A1),
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Date Range Filter',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: Color(0xFF0D47A1),
+                                      ),
+                                    ),
+                                    Spacer(),
+                                    Icon(
+                                      showAdvancedFilters
+                                          ? Icons.keyboard_arrow_up
+                                          : Icons.keyboard_arrow_down,
+                                      color: Color(0xFF0D47A1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              if (showAdvancedFilters) ...[
+                                SizedBox(height: 16),
+
+                                // Date Range Presets
+                                Text(
+                                  'Quick Select',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    _buildDatePresetChip(
+                                        'Last 7 days', setState),
+                                    _buildDatePresetChip(
+                                        'Last 30 days', setState),
+                                    _buildDatePresetChip(
+                                        'Last 90 days', setState),
+                                    _buildDatePresetChip('This Year', setState),
+                                  ],
+                                ),
+
+                                SizedBox(height: 16),
+
+                                // Custom Date Range
+                                Text(
+                                  'Custom Range',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDatePicker(
+                                        'Start Date',
+                                        startDate,
+                                        (date) {
+                                          setState(() => startDate = date);
+                                          this.setState(() {
+                                            _currentPage = 0;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildDatePicker(
+                                        'End Date',
+                                        endDate,
+                                        (date) {
+                                          setState(() => endDate = date);
+                                          this.setState(() {
+                                            _currentPage = 0;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Clear date range button
+                                if (startDate != null || endDate != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 12.0),
+                                    child: Center(
+                                      child: TextButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            startDate = null;
+                                            endDate = null;
+                                          });
+                                          this.setState(() {
+                                            _currentPage = 0;
+                                          });
+                                        },
+                                        icon: Icon(Icons.clear, size: 18),
+                                        label: Text('Clear Date Range'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.grey[600],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
                             ],
                           ),
                         ),
                       ),
                     ),
-                    
+
                     // Action Buttons
                     Container(
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                        border: Border(
+                            top: BorderSide(color: Colors.grey.shade200)),
+                        borderRadius:
+                            BorderRadius.vertical(bottom: Radius.circular(20)),
                       ),
                       child: Row(
                         children: [
@@ -1571,7 +1616,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
     );
   }
 
-  Widget _buildDatePicker(String label, DateTime? selectedDate, Function(DateTime?) onDateSelected) {
+  Widget _buildDatePicker(String label, DateTime? selectedDate,
+      Function(DateTime?) onDateSelected) {
     return InkWell(
       onTap: () async {
         final DateTime? picked = await showDatePicker(
@@ -1623,8 +1669,9 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
       ),
     );
   }
-  
-  Widget _buildPaginationControls({required int totalPages, required int totalItems}) {
+
+  Widget _buildPaginationControls(
+      {required int totalPages, required int totalItems}) {
     const Color primaryColor = Color(0xFF0D47A1);
 
     return Align(
@@ -1691,7 +1738,8 @@ class _MissingPersonScreenState extends State<MissingPersonScreen> {
     );
   }
 
-  Widget _buildPaginationArrowButton({required IconData icon, required VoidCallback? onPressed}) {
+  Widget _buildPaginationArrowButton(
+      {required IconData icon, required VoidCallback? onPressed}) {
     final bool enabled = onPressed != null;
     return IconButton(
       onPressed: onPressed,

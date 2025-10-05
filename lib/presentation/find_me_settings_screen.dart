@@ -12,7 +12,8 @@ class FindMeSettingsScreen extends StatefulWidget {
 class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final TrustedContactsService _trustedContactsService = TrustedContactsService();
+  final TrustedContactsService _trustedContactsService =
+      TrustedContactsService();
   final SimpleLocationService _locationService = SimpleLocationService();
   final AutoLocationService _autoLocationService = AutoLocationService();
 
@@ -29,7 +30,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     super.initState();
     _loadSettings();
     _loadTrustedContacts();
-    
+
     // Ensure auto-initialization has completed
     _ensureAutoInitialization();
   }
@@ -56,11 +57,11 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             .where('userId', isEqualTo: user.uid)
             .limit(1)
             .get();
-        
+
         if (userQuery.docs.isNotEmpty) {
           final userDoc = userQuery.docs.first;
           final userData = userDoc.data();
-          
+
           setState(() {
             _findMeEnabled = userData['findMeEnabled'] ?? false;
             _isTracking = userData['isTracking'] ?? false;
@@ -120,17 +121,20 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
           .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      
+
       DocumentReference userDocRef;
       if (userQuery.docs.isNotEmpty) {
         userDocRef = userQuery.docs.first.reference;
       } else {
         // Create new user document with custom ID format
         final now = DateTime.now();
-        final datePart = "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
-        String emailPrefix = (user.email ?? 'USER').split('@')[0].substring(0, 3).toUpperCase();
-        final customDocId = "USER_${datePart}_${emailPrefix}_001"; // Simplified for now
-        
+        final datePart =
+            "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}";
+        String emailPrefix =
+            (user.email ?? 'USER').split('@')[0].substring(0, 3).toUpperCase();
+        final customDocId =
+            "USER_${datePart}_${emailPrefix}_001"; // Simplified for now
+
         userDocRef = _firestore.collection('users').doc(customDocId);
         await userDocRef.set({
           'userId': user.uid,
@@ -172,7 +176,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
         try {
           await _locationService.initializeLocationService();
-          
+
           // Enable FindMe feature
           await userDocRef.update({
             'findMeEnabled': true,
@@ -183,7 +187,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
           // Enable FindMe in location service
           await _locationService.enableFindMe(user.uid);
-          
+
           // Start simple location tracking
           bool trackingStarted = false;
           try {
@@ -208,10 +212,11 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             });
 
             _showStyledSnackBar(
-              message: trackingStarted 
-                ? 'FindMe feature enabled successfully!' 
-                : 'FindMe enabled. Location tracking will start automatically.',
-              type: trackingStarted ? SnackBarType.success : SnackBarType.warning,
+              message: trackingStarted
+                  ? 'FindMe feature enabled successfully!'
+                  : 'FindMe enabled. Location tracking will start automatically.',
+              type:
+                  trackingStarted ? SnackBarType.success : SnackBarType.warning,
               durationSeconds: trackingStarted ? 2 : 3,
             );
           }
@@ -220,14 +225,17 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
           if (dialogShown && mounted && Navigator.canPop(context)) {
             Navigator.of(context).pop();
           }
-          
+
           // Check if it's a permission/location service error
           String errorMessage = e.toString();
           if (errorMessage.contains('Location services are disabled')) {
-            throw Exception('Please enable location services in your device settings to use FindMe.');
+            throw Exception(
+                'Please enable location services in your device settings to use FindMe.');
           } else if (errorMessage.contains('Location permissions')) {
-            throw Exception('Location permissions are required. Please grant location access in app settings.');
-          } else if (errorMessage.contains('TimeoutException') || errorMessage.contains('Cannot access location')) {
+            throw Exception(
+                'Location permissions are required. Please grant location access in app settings.');
+          } else if (errorMessage.contains('TimeoutException') ||
+              errorMessage.contains('Cannot access location')) {
             // For timeout errors, still enable FindMe but warn about location access
             try {
               // Try to enable FindMe without the location test
@@ -247,14 +255,16 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                 });
 
                 _showStyledSnackBar(
-                  message: 'FindMe enabled. Location access may take a moment to initialize.',
+                  message:
+                      'FindMe enabled. Location access may take a moment to initialize.',
                   type: SnackBarType.warning,
                   durationSeconds: 4,
                 );
               }
               return; // Don't re-throw the error
             } catch (enableError) {
-              print('Failed to enable FindMe even without location test: $enableError');
+              print(
+                  'Failed to enable FindMe even without location test: $enableError');
               throw enableError;
             }
           } else {
@@ -266,7 +276,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         try {
           // Stop tracking first
           await _locationService.stopTracking();
-          
+
           // Update database
           await userDocRef.update({
             'findMeEnabled': false,
@@ -302,13 +312,13 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
       }
     } catch (e) {
       print('Error toggling FindMe: $e');
-      
+
       if (mounted) {
         _showStyledSnackBar(
           message: 'Error updating settings: ${e.toString()}',
           type: SnackBarType.error,
         );
-        
+
         // Reset state in case of error
         setState(() {
           _findMeEnabled = false;
@@ -327,286 +337,293 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
   Future<bool> _showConsentDialog() async {
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 8,
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.85,
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 8,
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header Section
-                Container(
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 15,
+                      offset: Offset(0, 8),
                     ),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header Section
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
                         ),
-                        child: Icon(
-                          Icons.location_on,
-                          color: Colors.white,
-                          size: 28,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.location_on,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'FindMe Feature',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Privacy & Consent Agreement',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Content Section
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'FindMe Feature',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
+                            // Introduction
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.blue.shade200, width: 1),
                               ),
-                            ),
-                            Text(
-                              'Privacy & Consent Agreement',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Content Section
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Introduction
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200, width: 1),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: Color(0xFF0D47A1),
-                                size: 20,
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'By enabling FindMe, you consent to the following data collection and sharing:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
                                     color: Color(0xFF0D47A1),
-                                    fontSize: 15,
+                                    size: 20,
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        
-                        // Data Collection Section
-                        _buildConsentSection(
-                          'Data Collection & Tracking',
-                          Icons.track_changes,
-                          Color(0xFFE57373),
-                          [
-                            'True background location tracking (continues when app is closed)',
-                            'Real-time location sharing with family members',
-                            'Battery and network status monitoring',
-                            'Storing location data for up to 30 days',
-                            'Last known location when device goes offline',
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        
-                        // Features Section
-                        _buildConsentSection(
-                          'Enhanced Features',
-                          Icons.star,
-                          Color(0xFF66BB6A),
-                          [
-                            'Live location tracking even when app is closed',
-                            'Battery-efficient motion-based tracking',
-                            'Remote sound alerts and device management',
-                            'Offline location history',
-                            'Emergency location broadcast',
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        
-                        // Privacy Controls Section
-                        _buildConsentSection(
-                          'Privacy Controls',
-                          Icons.security,
-                          Color(0xFF42A5F5),
-                          [
-                            'Location shared ONLY with permitted trusted contacts',
-                            'You control who can access your location',
-                            'Explicit sharing required for location access',
-                            'Can be disabled anytime in settings',
-                          ],
-                        ),
-                        SizedBox(height: 20),
-                        
-                        // Legal Compliance
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade300, width: 1),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.gavel,
-                                color: Colors.grey.shade600,
-                                size: 20,
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'This feature complies with the Data Privacy Act of 2012. Your data is encrypted and securely stored.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'By enabling FindMe, you consent to the following data collection and sharing:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0D47A1),
+                                        fontSize: 15,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                // Actions Section
-                Container(
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            side: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.close, size: 18, color: Colors.grey.shade600),
-                              SizedBox(width: 8),
-                              Text(
-                                'Decline',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade600,
-                                ),
+                            SizedBox(height: 20),
+
+                            // Data Collection Section
+                            _buildConsentSection(
+                              'Data Collection & Tracking',
+                              Icons.track_changes,
+                              Color(0xFFE57373),
+                              [
+                                'True background location tracking (continues when app is closed)',
+                                'Real-time location sharing with family members',
+                                'Battery and network status monitoring',
+                                'Storing location data for up to 30 days',
+                                'Last known location when device goes offline',
+                              ],
+                            ),
+                            SizedBox(height: 16),
+
+                            // Features Section
+                            _buildConsentSection(
+                              'Enhanced Features',
+                              Icons.star,
+                              Color(0xFF66BB6A),
+                              [
+                                'Live location tracking even when app is closed',
+                                'Battery-efficient motion-based tracking',
+                                'Remote sound alerts and device management',
+                                'Offline location history',
+                                'Emergency location broadcast',
+                              ],
+                            ),
+                            SizedBox(height: 16),
+
+                            // Privacy Controls Section
+                            _buildConsentSection(
+                              'Privacy Controls',
+                              Icons.security,
+                              Color(0xFF42A5F5),
+                              [
+                                'Location shared ONLY with permitted trusted contacts',
+                                'You control who can access your location',
+                                'Explicit sharing required for location access',
+                                'Can be disabled anytime in settings',
+                              ],
+                            ),
+                            SizedBox(height: 20),
+
+                            // Legal Compliance
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.grey.shade300, width: 1),
                               ),
-                            ],
-                          ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.gavel,
+                                    color: Colors.grey.shade600,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'This feature complies with the Data Privacy Act of 2012. Your data is encrypted and securely stored.',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade700,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF0D47A1),
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle, size: 18, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'I Consent',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
+
+                    // Actions Section
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                side: BorderSide(
+                                    color: Colors.grey.shade400, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.close,
+                                      size: 18, color: Colors.grey.shade600),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Decline',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF0D47A1),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_circle,
+                                      size: 18, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'I Consent',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      },
-    ) ?? false;
+              ),
+            );
+          },
+        ) ??
+        false;
   }
 
-  Widget _buildConsentSection(String title, IconData icon, Color color, List<String> items) {
+  Widget _buildConsentSection(
+      String title, IconData icon, Color color, List<String> items) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -643,33 +660,35 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
             ],
           ),
           SizedBox(height: 12),
-          ...items.map((item) => Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: EdgeInsets.only(top: 6, right: 10),
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 14,
-                      height: 1.4,
+          ...items
+              .map((item) => Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: EdgeInsets.only(top: 6, right: 10),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-              ],
-            ),
-          )).toList(),
+                  ))
+              .toList(),
         ],
       ),
     );
@@ -683,7 +702,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     Color backgroundColor;
     Color textColor = Colors.white;
     IconData icon;
-    
+
     switch (type) {
       case SnackBarType.success:
         backgroundColor = Colors.green.shade600;
@@ -740,25 +759,26 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     );
   }
 
-  Future<void> _updateContactPermission(String contactId, String permission, bool value) async {
+  Future<void> _updateContactPermission(
+      String contactId, String permission, bool value) async {
     try {
       // Get current contact index
-      final contactIndex = _trustedContacts.indexWhere((c) => c.id == contactId);
+      final contactIndex =
+          _trustedContacts.indexWhere((c) => c.id == contactId);
       if (contactIndex == -1) return;
-      
+
       // Update permissions - only handle canAccessLocation now
       if (permission == 'canAccessLocation') {
         await _trustedContactsService.updateTrustedContactPermissions(
-          contactId, 
-          value
-        );
-        
+            contactId, value);
+
         // Update local state
         setState(() {
-          _trustedContacts[contactIndex] = _trustedContacts[contactIndex].copyWith(canAccessLocation: value);
+          _trustedContacts[contactIndex] =
+              _trustedContacts[contactIndex].copyWith(canAccessLocation: value);
         });
       }
-      
+
       _showStyledSnackBar(
         message: 'Permission updated successfully',
         type: SnackBarType.success,
@@ -779,7 +799,8 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     );
 
     if (result != null) {
-      final addResult = await _trustedContactsService.addTrustedContactWithValidation(
+      final addResult =
+          await _trustedContactsService.addTrustedContactWithValidation(
         name: result['name']!,
         email: result['email']!,
         phone: '', // Default empty phone since it's not required
@@ -795,7 +816,8 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
         );
       } else {
         _showStyledSnackBar(
-          message: addResult.errorMessage ?? 'An error occurred while adding the trusted contact',
+          message: addResult.errorMessage ??
+              'An error occurred while adding the trusted contact',
           type: SnackBarType.error,
           durationSeconds: 4,
         );
@@ -848,190 +870,52 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(
-          'FindMe Settings',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          title: Text(
+            'FindMe Settings',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.white,
+            ),
           ),
+          backgroundColor: Color(0xFF0D47A1),
         ),
-        backgroundColor: Color(0xFF0D47A1),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D47A1), Colors.blue.shade100],
-            stops: [0.0, 1.0],
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0D47A1), Colors.blue.shade100],
+              stops: [0.0, 1.0],
+            ),
           ),
-        ),
-        child: SingleChildScrollView(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Main FindMe Feature Card
-              Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.white, Colors.blue.shade50],
+          child: SingleChildScrollView(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Main FindMe Feature Card
+                  Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF0D47A1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.my_location,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'FindMe Feature',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0D47A1),
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Location tracking with real-time features similar to Find My Device and Find My iPhone.',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Colors.white, Colors.blue.shade50],
                         ),
-                        SizedBox(height: 20),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Enable FindMe',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0D47A1),
-                                ),
-                              ),
-                              Switch(
-                                value: _findMeEnabled,
-                                onChanged: _isTogglingFindMe ? null : _toggleFindMe,
-                                activeColor: Color(0xFF0D47A1),
-                                activeTrackColor: Color(0xFF0D47A1).withOpacity(0.3),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_findMeEnabled) ...[
-                          SizedBox(height: 16),
-                          Divider(color: Colors.blue.shade200),
-                          SizedBox(height: 16),
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: _isTracking ? Colors.green.shade50 : Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _isTracking ? Colors.green.shade200 : Colors.orange.shade200,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: _isTracking ? Colors.green : Colors.orange,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    _isTracking ? Icons.location_on : Icons.location_off,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _isTracking ? 'Real-time tracking active' : 'Real-time tracking inactive',
-                                    style: TextStyle(
-                                      color: _isTracking ? Colors.green.shade800 : Colors.orange.shade800,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              // Trusted Contacts Card
-              Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.white, Colors.blue.shade50],
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
@@ -1042,328 +926,558 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(
-                                    Icons.people,
+                                    Icons.my_location,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'FindMe Feature',
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0D47A1),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Location tracking with real-time features similar to Find My Device and Find My iPhone.',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 20),
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Enable FindMe',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0D47A1),
+                                    ),
+                                  ),
+                                  Switch(
+                                    value: _findMeEnabled,
+                                    onChanged: _isTogglingFindMe
+                                        ? null
+                                        : _toggleFindMe,
+                                    activeColor: Color(0xFF0D47A1),
+                                    activeTrackColor:
+                                        Color(0xFF0D47A1).withOpacity(0.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_findMeEnabled) ...[
+                              SizedBox(height: 16),
+                              Divider(color: Colors.blue.shade200),
+                              SizedBox(height: 16),
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: _isTracking
+                                      ? Colors.green.shade50
+                                      : Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _isTracking
+                                        ? Colors.green.shade200
+                                        : Colors.orange.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: _isTracking
+                                            ? Colors.green
+                                            : Colors.orange,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        _isTracking
+                                            ? Icons.location_on
+                                            : Icons.location_off,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _isTracking
+                                            ? 'Real-time tracking active'
+                                            : 'Real-time tracking inactive',
+                                        style: TextStyle(
+                                          color: _isTracking
+                                              ? Colors.green.shade800
+                                              : Colors.orange.shade800,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  // Trusted Contacts Card
+                  Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Colors.white, Colors.blue.shade50],
+                        ),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFF0D47A1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        Icons.people,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Text(
+                                      'Trusted Contacts',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0D47A1),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF0D47A1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: IconButton(
+                                    onPressed: _addTrustedContact,
+                                    icon: Icon(Icons.add, color: Colors.white),
+                                    tooltip: 'Add Trusted Contact',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Add family members or friends who can access your location. Grant specific permissions for each contact.',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            if (_trustedContacts.isEmpty)
+                              Container(
+                                padding: EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      style: BorderStyle.solid),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.person_add,
+                                          size: 48,
+                                          color: Colors.grey.shade400),
+                                      SizedBox(height: 12),
+                                      Text(
+                                        'No trusted contacts added yet',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Tap the + button to add your first contact',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade500,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: _trustedContacts.length,
+                                itemBuilder: (context, index) {
+                                  final contact = _trustedContacts[index];
+                                  return Container(
+                                    margin: EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: Colors.blue.shade200),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blue.withOpacity(0.1),
+                                          spreadRadius: 1,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 50,
+                                                height: 50,
+                                                decoration: BoxDecoration(
+                                                  color: Color(0xFF0D47A1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(25),
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    contact.name[0]
+                                                        .toUpperCase(),
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 20,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 16),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      contact.name,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                        color:
+                                                            Color(0xFF0D47A1),
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 2),
+                                                    Text(
+                                                      contact.email,
+                                                      style: TextStyle(
+                                                          color:
+                                                              Colors.grey[600],
+                                                          fontSize: 14),
+                                                    ),
+                                                    Text(
+                                                      '${contact.relationship} • ${contact.phone}',
+                                                      style: TextStyle(
+                                                          color:
+                                                              Colors.grey[600],
+                                                          fontSize: 14),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (contact.isVerified)
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.all(6),
+                                                      margin: EdgeInsets.only(
+                                                          right: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Icon(
+                                                          Icons.verified,
+                                                          color: Colors.white,
+                                                          size: 16),
+                                                    ),
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          Colors.red.shade100,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
+                                                    ),
+                                                    child: IconButton(
+                                                      constraints:
+                                                          BoxConstraints(
+                                                              minWidth: 40,
+                                                              minHeight: 40),
+                                                      padding:
+                                                          EdgeInsets.all(8),
+                                                      onPressed: () =>
+                                                          _removeTrustedContact(
+                                                              contact.id),
+                                                      icon: Icon(Icons.delete,
+                                                          color: Colors
+                                                              .red.shade700,
+                                                          size: 20),
+                                                      tooltip: 'Remove Contact',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 12),
+                                          Container(
+                                            padding: EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on,
+                                                  size: 16,
+                                                  color: Color(0xFF0D47A1),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Location Access',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Color(0xFF0D47A1),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Switch(
+                                                  value:
+                                                      contact.canAccessLocation,
+                                                  onChanged: (value) =>
+                                                      _updateContactPermission(
+                                                          contact.id,
+                                                          'canAccessLocation',
+                                                          value),
+                                                  activeColor:
+                                                      Color(0xFF0D47A1),
+                                                  activeTrackColor:
+                                                      Color(0xFF0D47A1)
+                                                          .withOpacity(0.3),
+                                                  materialTapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+
+                  // Privacy Information Card
+                  Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Colors.white, Colors.purple.shade50],
+                        ),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple.shade600,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.security,
                                     color: Colors.white,
                                     size: 24,
                                   ),
                                 ),
                                 SizedBox(width: 16),
                                 Text(
-                                  'Trusted Contacts',
+                                  'Privacy & Security',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D47A1),
+                                    color: Colors.purple.shade700,
                                   ),
                                 ),
                               ],
                             ),
+                            SizedBox(height: 20),
+                            _buildPrivacyItem(
+                                'All location data is encrypted and secured',
+                                Icons.lock),
+                            _buildPrivacyItem(
+                                'Background tracking works even when app is closed',
+                                Icons.phone_android),
+                            _buildPrivacyItem(
+                                'Motion-based tracking conserves battery life',
+                                Icons.battery_charging_full),
+                            _buildPrivacyItem(
+                                'Trusted contacts with permission can access your location',
+                                Icons.people),
+                            _buildPrivacyItem(
+                                'Individual permissions can be granted per contact',
+                                Icons.person_add),
+                            _buildPrivacyItem(
+                                'Location history is kept for maximum 30 days',
+                                Icons.history),
+                            _buildPrivacyItem(
+                                'You can disable any feature anytime',
+                                Icons.toggle_off),
+                            _buildPrivacyItem(
+                                'Full compliance with Data Privacy Act of 2012',
+                                Icons.gavel),
+                            SizedBox(height: 16),
                             Container(
+                              padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Color(0xFF0D47A1),
+                                color: Color(0xFF0D47A1).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Color(0xFF0D47A1).withOpacity(0.3)),
                               ),
-                              child: IconButton(
-                                onPressed: _addTrustedContact,
-                                icon: Icon(Icons.add, color: Colors.white),
-                                tooltip: 'Add Trusted Contact',
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Add family members or friends who can access your location. Grant specific permissions for each contact.',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        if (_trustedContacts.isEmpty)
-                          Container(
-                            padding: EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
-                            ),
-                            child: Center(
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.person_add, size: 48, color: Colors.grey.shade400),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'No trusted contacts added yet',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Tap the + button to add your first contact',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
-                            itemCount: _trustedContacts.length,
-                            itemBuilder: (context, index) {
-                              final contact = _trustedContacts[index];
-                              return Container(
-                                margin: EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blue.shade200),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withOpacity(0.1),
-                                      spreadRadius: 1,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  Row(
                                     children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 50,
-                                            height: 50,
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFF0D47A1),
-                                              borderRadius: BorderRadius.circular(25),
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                contact.name[0].toUpperCase(),
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  contact.name,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                    color: Color(0xFF0D47A1),
-                                                  ),
-                                                ),
-                                                SizedBox(height: 2),
-                                                Text(
-                                                  contact.email,
-                                                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                                                ),
-                                                Text(
-                                                  '${contact.relationship} • ${contact.phone}',
-                                                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              if (contact.isVerified)
-                                                Container(
-                                                  padding: EdgeInsets.all(6),
-                                                  margin: EdgeInsets.only(right: 8),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Icon(Icons.verified, color: Colors.white, size: 16),
-                                                ),
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red.shade100,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: IconButton(
-                                                  constraints: BoxConstraints(minWidth: 40, minHeight: 40),
-                                                  padding: EdgeInsets.all(8),
-                                                  onPressed: () => _removeTrustedContact(contact.id),
-                                                  icon: Icon(Icons.delete, color: Colors.red.shade700, size: 20),
-                                                  tooltip: 'Remove Contact',
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      Container(
-                                        padding: EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.shade50,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.location_on,
-                                              size: 16,
-                                              color: Color(0xFF0D47A1),
-                                            ),
-                                            SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Location Access',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Color(0xFF0D47A1),
-                                                ),
-                                              ),
-                                            ),
-                                            Switch(
-                                              value: contact.canAccessLocation,
-                                              onChanged: (value) => _updateContactPermission(contact.id, 'canAccessLocation', value),
-                                              activeColor: Color(0xFF0D47A1),
-                                              activeTrackColor: Color(0xFF0D47A1).withOpacity(0.3),
-                                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            ),
-                                          ],
+                                      Icon(Icons.star,
+                                          color: Color(0xFF0D47A1), size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Features:',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0D47A1),
+                                          fontSize: 16,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Privacy Information Card
-              Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.white, Colors.purple.shade50],
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.shade600,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.security,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Text(
-                              'Privacy & Security',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.purple.shade700,
+                                  SizedBox(height: 12),
+                                  _buildEnhancedFeature(
+                                      'Live location updates every 10 meters',
+                                      Icons.gps_fixed),
+                                  _buildEnhancedFeature(
+                                      'Offline location buffering',
+                                      Icons.cloud_off),
+                                  _buildEnhancedFeature(
+                                      'Remote sound alerts (even on silent)',
+                                      Icons.volume_up),
+                                  _buildEnhancedFeature(
+                                      'Last known location when device is offline',
+                                      Icons.location_searching),
+                                  _buildEnhancedFeature(
+                                      'Battery and network status monitoring',
+                                      Icons.battery_alert),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 20),
-                        _buildPrivacyItem('All location data is encrypted and secured', Icons.lock),
-                        _buildPrivacyItem('Background tracking works even when app is closed', Icons.phone_android),
-                        _buildPrivacyItem('Motion-based tracking conserves battery life', Icons.battery_charging_full),
-                        _buildPrivacyItem('Trusted contacts with permission can access your location', Icons.people),
-                        _buildPrivacyItem('Individual permissions can be granted per contact', Icons.person_add),
-                        _buildPrivacyItem('Location history is kept for maximum 30 days', Icons.history),
-                        _buildPrivacyItem('You can disable any feature anytime', Icons.toggle_off),
-                        _buildPrivacyItem('Full compliance with Data Privacy Act of 2012', Icons.gavel),
-                        
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF0D47A1).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Color(0xFF0D47A1).withOpacity(0.3)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.star, color: Color(0xFF0D47A1), size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Features:',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0D47A1),
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 12),
-                              _buildEnhancedFeature('Live location updates every 10 meters', Icons.gps_fixed),
-                              _buildEnhancedFeature('Offline location buffering', Icons.cloud_off),
-                              _buildEnhancedFeature('Remote sound alerts (even on silent)', Icons.volume_up),
-                              _buildEnhancedFeature('Last known location when device is offline', Icons.location_searching),
-                              _buildEnhancedFeature('Battery and network status monitoring', Icons.battery_alert),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  SizedBox(height: 20),
+                ],
               ),
-              SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
-      ),
-      )
-    );
+        ));
   }
 
   Widget _buildPrivacyItem(String text, IconData icon) {
@@ -1429,12 +1543,12 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     final contact = _trustedContacts.firstWhere(
       (c) => c.id == contactId,
       orElse: () => TrustedContact(
-        id: '', 
-        userId: '', 
-        contactUserId: '', 
-        name: 'Contact', 
-        email: '', 
-        phone: '', 
+        id: '',
+        userId: '',
+        contactUserId: '',
+        name: 'Contact',
+        email: '',
+        phone: '',
         relationship: '',
         createdAt: DateTime.now(),
       ),
@@ -1483,7 +1597,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   ),
                 ),
                 SizedBox(height: 20),
-                
+
                 // Title
                 Text(
                   'Remove Trusted Contact',
@@ -1495,7 +1609,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 12),
-                
+
                 // Contact Info
                 Container(
                   padding: EdgeInsets.all(16),
@@ -1515,7 +1629,9 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            contact.name.isNotEmpty ? contact.name[0].toUpperCase() : 'C',
+                            contact.name.isNotEmpty
+                                ? contact.name[0].toUpperCase()
+                                : 'C',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -1554,7 +1670,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   ),
                 ),
                 SizedBox(height: 16),
-                
+
                 // Warning Message
                 Container(
                   padding: EdgeInsets.all(16),
@@ -1598,7 +1714,7 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                   ),
                 ),
                 SizedBox(height: 24),
-                
+
                 // Action Buttons
                 Row(
                   children: [
@@ -1661,7 +1777,8 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
     );
 
     if (confirm == true) {
-      final success = await _trustedContactsService.removeTrustedContact(contactId);
+      final success =
+          await _trustedContactsService.removeTrustedContact(contactId);
       if (success) {
         _loadTrustedContacts();
         _showStyledSnackBar(
@@ -1680,7 +1797,8 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
 
 class _AddTrustedContactDialog extends StatefulWidget {
   @override
-  _AddTrustedContactDialogState createState() => _AddTrustedContactDialogState();
+  _AddTrustedContactDialogState createState() =>
+      _AddTrustedContactDialogState();
 }
 
 class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
@@ -1697,7 +1815,7 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
       elevation: 8,
       backgroundColor: Colors.transparent,
       insetPadding: EdgeInsets.symmetric(
-        horizontal: 16, 
+        horizontal: 16,
         vertical: MediaQuery.of(context).viewInsets.bottom > 0 ? 16 : 80,
       ),
       child: Container(
@@ -1765,7 +1883,7 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                   ],
                 ),
                 SizedBox(height: 24),
-                
+
                 // Name field
                 TextFormField(
                   controller: _nameController,
@@ -1785,11 +1903,13 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                      borderSide:
+                          BorderSide(color: Colors.red.shade700, width: 2),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                      borderSide:
+                          BorderSide(color: Colors.red.shade700, width: 2),
                     ),
                     errorStyle: TextStyle(
                       color: Colors.red.shade700,
@@ -1797,10 +1917,11 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  validator: (value) => value?.isEmpty == true ? 'Name is required' : null,
+                  validator: (value) =>
+                      value?.isEmpty == true ? 'Name is required' : null,
                 ),
                 SizedBox(height: 16),
-                
+
                 // Email field
                 TextFormField(
                   controller: _emailController,
@@ -1820,11 +1941,13 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                      borderSide:
+                          BorderSide(color: Colors.red.shade700, width: 2),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+                      borderSide:
+                          BorderSide(color: Colors.red.shade700, width: 2),
                     ),
                     errorStyle: TextStyle(
                       color: Colors.red.shade700,
@@ -1835,14 +1958,15 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value?.isEmpty == true) return 'Email is required';
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value!)) {
                       return 'Please enter a valid email address';
                     }
                     return null;
                   },
                 ),
                 SizedBox(height: 16),
-                
+
                 // Important note
                 Container(
                   padding: EdgeInsets.all(16),
@@ -1886,7 +2010,7 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                   ),
                 ),
                 SizedBox(height: 24),
-                
+
                 // Action buttons
                 Row(
                   children: [
@@ -1916,7 +2040,8 @@ class _AddTrustedContactDialogState extends State<_AddTrustedContactDialog> {
                           if (_formKey.currentState!.validate()) {
                             Navigator.pop(context, {
                               'name': _nameController.text.trim(),
-                              'email': _emailController.text.trim().toLowerCase(),
+                              'email':
+                                  _emailController.text.trim().toLowerCase(),
                             });
                           }
                         },
