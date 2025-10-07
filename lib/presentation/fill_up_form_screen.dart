@@ -1776,8 +1776,8 @@ class FillUpForm extends State<FillUpFormScreen> {
       // Enhanced image picker settings for better quality
       final pickedFile = await picker.pickImage(
         source: source,
-        maxWidth: 1024, // Optimal resolution for Vision API
-        maxHeight: 1024,
+        maxWidth: 800, // Optimal resolution for Vision API
+        maxHeight: 800,
         imageQuality: 90, // High quality for better detection
         preferredCameraDevice:
             CameraDevice.rear, // Rear camera typically better quality

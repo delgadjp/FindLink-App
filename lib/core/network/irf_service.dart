@@ -169,9 +169,9 @@ class IRFService {
 
       // Check and optimize resolution (ideal: 640-1024px on longest side)
       int maxDimension = math.max(image.width, image.height);
-      if (maxDimension > 1024) {
+      if (maxDimension > 800) {
         // Resize maintaining aspect ratio
-        double scale = 1024.0 / maxDimension;
+        double scale = 800.0 / maxDimension;
         int newWidth = (image.width * scale).round();
         int newHeight = (image.height * scale).round();
         image = img.copyResize(image, width: newWidth, height: newHeight);

@@ -1401,9 +1401,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                                 'All location data is encrypted and secured',
                                 Icons.lock),
                             _buildPrivacyItem(
-                                'Background tracking works even when app is closed',
-                                Icons.phone_android),
-                            _buildPrivacyItem(
                                 'Motion-based tracking conserves battery life',
                                 Icons.battery_charging_full),
                             _buildPrivacyItem(
@@ -1412,9 +1409,6 @@ class _FindMeSettingsScreenState extends State<FindMeSettingsScreen> {
                             _buildPrivacyItem(
                                 'Individual permissions can be granted per contact',
                                 Icons.person_add),
-                            _buildPrivacyItem(
-                                'Location history is kept for maximum 30 days',
-                                Icons.history),
                             _buildPrivacyItem(
                                 'You can disable any feature anytime',
                                 Icons.toggle_off),
